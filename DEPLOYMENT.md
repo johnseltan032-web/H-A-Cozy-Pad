@@ -18,9 +18,10 @@ Netlify hosts the Vite frontend. Railway runs the PHP API and MySQL database. Th
    ```
 
    Replace `MySQL` in the references with the actual Railway MySQL service name. Add these to the PHP/API service, not only the MySQL service. Remove any `DB_HOST=localhost` override if present. Do not commit database credentials.
-4. Import the schema from `sql/database/create_db.sql` into the Railway database. Apply any additional migrations required by the application.
-5. Generate a public domain for the API service and note its origin, such as `https://your-api-service.up.railway.app`.
-6. Add a Railway Volume mounted at `/var/www/html/api/uploads` if listing images and booking uploads must survive redeploys. The container prepares this directory for PHP writes at startup.
+4. Add `DIFY_API_KEY` to the API service variables. Optionally set `DIFY_API_URL` if using a Dify-compatible endpoint other than `https://api.dify.ai/v1`. Keep the API key server-side; never prefix it with `VITE_` or add it to Netlify.
+5. Import the schema from `sql/database/create_db.sql` into the Railway database. Apply any additional migrations required by the application.
+6. Generate a public domain for the API service and note its origin, such as `https://your-api-service.up.railway.app`.
+7. Add a Railway Volume mounted at `/var/www/html/api/uploads` if listing images and booking uploads must survive redeploys. The container prepares this directory for PHP writes at startup.
 
 ## Netlify
 

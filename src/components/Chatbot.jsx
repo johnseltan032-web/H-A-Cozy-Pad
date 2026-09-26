@@ -1,9 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { API_BASE_URL } from '../lib/api';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
+  const [conversationId, setConversationId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const chatMessagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -16,24 +19,55 @@ export default function Chatbot() {
     }
   }, [messages, isOpen]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const text = inputValue.trim();
-    if (!text) return;
+    if (!text || isLoading) return;
 
-    const userMessage = { id: Date.now(), text, sender: 'user' };
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-user`, text, sender: 'user' },
+    ]);
     setInputValue('');
+    setIsLoading(true);
 
-    // Simulated Bot Reply (from chatbot.js)
-    setTimeout(() => {
-      const botMessage = {
-        id: Date.now() + 1,
-        text: 'Thanks for your message! A real answer will go here once this is connected to the bot.',
-        sender: 'bot',
-      };
-      setMessages((prev) => [...prev, botMessage]);
-    }, 500);
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          user: 'guest-user',
+          conversation_id: conversationId,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to contact customer support.');
+      }
+
+      setConversationId(data.conversation_id || '');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: data.message_id || `${Date.now()}-bot`,
+          text: data.answer || 'I could not find an answer. Please try again.',
+          sender: 'bot',
+        },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-error`,
+          text: error.message || 'Unable to contact customer support.',
+          sender: 'bot',
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -97,6 +131,11 @@ export default function Chatbot() {
                 </div>
               </div>
             ))}
+            {isLoading && (
+              <p className="text-sm text-neutral-500" role="status">
+                H&A Cozy Pad is replying...
+              </p>
+            )}
             <div ref={chatMessagesEndRef} />
           </div>
 
@@ -108,12 +147,14 @@ export default function Chatbot() {
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask Me Anything"
                 autoComplete="off"
+                disabled={isLoading}
                 className="w-full bg-transparent border-none outline-none text-base"
               />
               <button
                 type="submit"
                 aria-label="Send"
-                className="w-8 h-8 shrink-0 rounded-full bg-black flex items-center justify-center hover:bg-neutral-800 border-0 cursor-pointer"
+                disabled={isLoading || !inputValue.trim()}
+                className="w-8 h-8 shrink-0 rounded-full bg-black flex items-center justify-center hover:bg-neutral-800 border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M5 12l14-8-6 8 6 8z" />
