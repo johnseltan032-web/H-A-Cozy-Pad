@@ -6,6 +6,7 @@ Netlify hosts the Vite frontend. Railway runs the PHP API and MySQL database. Th
 
 1. Create a Railway project and add a MySQL service.
 2. Add this repository as a service in the same Railway project and environment. Railway should build it with the root `Dockerfile`; the PHP API is served under `/api`.
+   In **Settings → Deploy → Custom Start Command**, set the command to `/usr/local/bin/start-apache`. This image-bundled launcher configures Railway's `PORT` and starts Apache. Do not use `npm` or paste a shell command here.
 3. In the API service variables, connect the MySQL service values. Use Railway's variable references if they are not injected automatically:
 
    ```text
