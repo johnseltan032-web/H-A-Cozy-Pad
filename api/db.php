@@ -32,7 +32,8 @@
         );
     } catch (PDOException $e) {
         http_response_code(500);
-        echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
+        error_log('Database connection failed: ' . $e->getMessage());
+        echo json_encode(['error' => 'Database connection failed. Check the API service database variables.']);
         exit;
     }
 ?>
