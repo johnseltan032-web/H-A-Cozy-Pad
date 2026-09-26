@@ -17,6 +17,7 @@ RUN docker-php-ext-install pdo_mysql \
 
 COPY docker/apache-site.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/start-apache.sh /usr/local/bin/start-apache
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 RUN chmod +x /usr/local/bin/start-apache
 COPY .htaccess /var/www/html/.htaccess
 COPY --from=frontend-build /app/dist/ /var/www/html/

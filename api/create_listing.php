@@ -430,6 +430,25 @@ try {
                 $uploadError !==
                 UPLOAD_ERR_OK
             ) {
+                if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+                    throw new Exception(
+                        'Each image must be 10 MB or smaller.'
+                    );
+                }
+
+                if ($uploadError === UPLOAD_ERR_PARTIAL) {
+                    throw new Exception(
+                        'One image upload was interrupted. Please retry.'
+                    );
+                }
+
+                if ($uploadError === UPLOAD_ERR_NO_TMP_DIR || $uploadError === UPLOAD_ERR_CANT_WRITE) {
+                    error_log('Property image upload failed with PHP upload error ' . $uploadError);
+                    throw new Exception(
+                        'The server could not store an image. Please try again later.'
+                    );
+                }
+
                 throw new Exception(
                     'One of the images failed to upload.'
                 );
