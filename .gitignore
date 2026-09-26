@@ -28,5 +28,4 @@ node_modules/
 .env
  
 # Backend (PHP/XAMPP)
-api/config.php
- 
+

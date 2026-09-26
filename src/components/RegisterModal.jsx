@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../lib/api';
+import GoogleAuthButton from './GoogleAuthButton';
 
 export default function RegisterModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -42,7 +44,7 @@ export default function RegisterModal({ isOpen, onClose }) {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/register.php`, {
+      const res = await fetch(`${API_BASE_URL}/register.php`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -53,7 +55,17 @@ export default function RegisterModal({ isOpen, onClose }) {
           password: formData.password,
         }),
       });
-      const data = await res.json();
+      const responseText = await res.text();
+      let data = {};
+
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        if (res.ok) {
+          onClose();
+          return;
+        }
+      }
 
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.');
@@ -62,7 +74,7 @@ export default function RegisterModal({ isOpen, onClose }) {
 
       console.log('Registered:', data.user);
       onClose();
-    } catch (err) {
+    } catch {
       setError('Could not reach the server. Is XAMPP running?');
     } finally {
       setIsSubmitting(false);
@@ -72,7 +84,7 @@ export default function RegisterModal({ isOpen, onClose }) {
   return (
     <div
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
+      className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
     >
       <div className="w-full max-w-[520px] bg-white rounded-[25px] shadow-xl px-8 sm:px-12 py-10 relative max-h-[90vh] overflow-y-auto">
         <button
@@ -83,6 +95,40 @@ export default function RegisterModal({ isOpen, onClose }) {
           &times;
         </button>
         <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8">Register your account</h2>
+
+        <GoogleAuthButton
+            onSuccess={async (credentialResponse) => {
+              setError('');
+              setIsSubmitting(true);
+
+              try {
+                const res = await fetch(`${API_BASE_URL}/google_login.php`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ credential: credentialResponse.credential }),
+                });
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error || 'Google registration failed.');
+
+                window.dispatchEvent(new CustomEvent('auth-changed', {
+                  detail: { loggedIn: true, user: data.user },
+                }));
+                onClose();
+              } catch (registrationError) {
+                setError(registrationError.message || 'Google registration failed.');
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+            onError={() => setError('Google registration failed. Please try again.')}
+        />
+        <div className="my-6 flex items-center gap-4 text-sm font-medium text-neutral-400">
+          <span className="h-px flex-1 bg-neutral-200" />
+          <span>OR</span>
+          <span className="h-px flex-1 bg-neutral-200" />
+        </div>
         
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-3">

@@ -1,21 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../lib/api';
+import { useNavigate } from 'react-router-dom';
+import GoogleAuthButton from './GoogleAuthButton';
 
-export default function AuthModal({ isOpen, onClose, onSwitchToRegister }) {
+export default function AuthModal({
+  isOpen,
+  onClose,
+  onSwitchToRegister,
+  onLoginSuccess,
+}) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Lock body scroll and register escape key (from login.js)
+  const navigate = useNavigate();
+
+  // Lock body scroll and register escape key
   useEffect(() => {
     if (!isOpen) return;
 
     document.body.classList.add('overflow-hidden');
+
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.body.classList.remove('overflow-hidden');
       window.removeEventListener('keydown', handleKeyDown);
@@ -26,28 +40,108 @@ export default function AuthModal({ isOpen, onClose, onSwitchToRegister }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setError('');
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/login.php`, {
+      const res = await fetch(`${API_BASE_URL}/login.php`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // sends/receives the PHP session cookie
-        body: JSON.stringify({ identifier, password }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          identifier,
+          password,
+        }),
       });
+
       const data = await res.json();
 
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong. Please try again.');
+      if (!res.ok || !data.success) {
+        setError(
+          data.error || 'Invalid email or password. Please try again.'
+        );
         return;
       }
 
-      // data.user now has { id, firstName, lastName, email }
-      console.log('Logged in:', data.user);
+      // Tell App.jsx that login was successful.
+      // App.jsx will update the user and redirect to "/".
+      if (onLoginSuccess) {
+        onLoginSuccess(data.user);
+      }
+
+      // Keep the auth state synchronized with the rest of the app.
+      window.dispatchEvent(
+        new CustomEvent('auth-changed', {
+          detail: {
+            loggedIn: true,
+            user: data.user,
+          },
+        })
+      );
+
+      // Close the modal.
       onClose();
-    } catch (err) {
+
+      // Fallback redirect in case onLoginSuccess is not provided.
+      navigate('/');
+    } catch (error) {
+      console.error('Login failed:', error);
       setError('Could not reach the server. Is XAMPP running?');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/google_login.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          credential: credentialResponse.credential,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Google login failed.');
+      }
+
+      // Update App.jsx state
+      if (onLoginSuccess) {
+        onLoginSuccess(data.user);
+      }
+
+      // Update auth state for other components
+      window.dispatchEvent(
+        new CustomEvent('auth-changed', {
+          detail: {
+            loggedIn: true,
+            user: data.user,
+          },
+        })
+      );
+
+      onClose();
+
+      // Redirect to index/home page
+      navigate('/');
+    } catch (loginError) {
+      console.error('Google login failed:', loginError);
+
+      setError(
+        loginError.message || 'Google login failed.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -55,8 +149,12 @@ export default function AuthModal({ isOpen, onClose, onSwitchToRegister }) {
 
   return (
     <div
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
     >
       <div className="w-full max-w-[520px] bg-white rounded-[25px] shadow-xl px-8 sm:px-12 py-10 relative">
         <button
@@ -66,9 +164,30 @@ export default function AuthModal({ isOpen, onClose, onSwitchToRegister }) {
         >
           &times;
         </button>
-        <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8">Log in or Sign up</h2>
-        
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+
+        <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8">
+          Log in or Sign up
+        </h2>
+
+        <GoogleAuthButton
+          onSuccess={handleGoogleSuccess}
+          onError={() =>
+            setError(
+              'Google login failed. Check the configured authorized origin.'
+            )
+          }
+        />
+
+        <div className="my-6 flex items-center gap-4 text-sm font-medium text-neutral-400">
+          <span className="h-px flex-1 bg-neutral-200" />
+          <span>OR</span>
+          <span className="h-px flex-1 bg-neutral-200" />
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-5"
+        >
           <input
             type="text"
             value={identifier}
@@ -77,6 +196,7 @@ export default function AuthModal({ isOpen, onClose, onSwitchToRegister }) {
             className="w-full border border-neutral-300 rounded-full px-6 py-4 text-lg outline-none focus:border-black transition-colors"
             required
           />
+
           <input
             type="password"
             value={password}
@@ -85,19 +205,27 @@ export default function AuthModal({ isOpen, onClose, onSwitchToRegister }) {
             className="w-full border border-neutral-300 rounded-full px-6 py-4 text-lg outline-none focus:border-black transition-colors"
             required
           />
+
           {error && (
-            <p className="text-sm text-red-600 -mt-2">{error}</p>
+            <p className="text-sm text-red-600 -mt-2">
+              {error}
+            </p>
           )}
+
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
-              onSwitchToRegister();
+
+              if (onSwitchToRegister) {
+                onSwitchToRegister();
+              }
             }}
             className="text-base font-medium underline text-black w-fit bg-transparent border-0 cursor-pointer text-left p-0"
           >
             Register Account
           </button>
+
           <button
             type="submit"
             disabled={isSubmitting}
