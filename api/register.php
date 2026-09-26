@@ -27,8 +27,16 @@
         exit;
     }
     
-    $stmt = $pdo->prepare('SELECT user_id FROM users WHERE email = ?');
-    $stmt->execute([$email]);
+    try {
+        $stmt = $pdo->prepare('SELECT user_id FROM users WHERE email = ?');
+        $stmt->execute([$email]);
+    } catch (PDOException $e) {
+        error_log('Registration account lookup failed: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => 'Registration is temporarily unavailable. Please try again.']);
+        exit;
+    }
+
     if ($stmt->fetch()) {
         http_response_code(409);
         echo json_encode(['error' => 'An account with that email already exists']);
@@ -52,6 +60,7 @@
         $pdo->commit();
     } catch (PDOException $e) {
         $pdo->rollBack();
+        error_log('Registration database write failed: ' . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Registration failed. Please try again.']);
         exit;
