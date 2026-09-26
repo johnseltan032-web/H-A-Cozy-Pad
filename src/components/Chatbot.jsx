@@ -8,6 +8,11 @@ export default function Chatbot() {
   const [conversationId, setConversationId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const chatMessagesEndRef = useRef(null);
+  const suggestedQuestions = [
+    'How do I book a stay?',
+    'How can I list my property?',
+    'What is the cancellation policy?',
+  ];
 
   const scrollToBottom = () => {
     chatMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -19,9 +24,8 @@ export default function Chatbot() {
     }
   }, [messages, isOpen]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const text = inputValue.trim();
+  const sendMessage = async (messageText) => {
+    const text = messageText.trim();
     if (!text || isLoading) return;
 
     setMessages((prev) => [
@@ -70,6 +74,11 @@ export default function Chatbot() {
     }
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    sendMessage(inputValue);
+  };
+
   return (
     <>
       {/* Floating Chat Trigger Button */}
@@ -96,7 +105,10 @@ export default function Chatbot() {
                   <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold">Chatbot Name</span>
+              <div>
+                <p className="text-base font-semibold leading-tight">CozyBot</p>
+                <p className="mt-0.5 text-xs text-neutral-500">H&amp;A Cozy Pad support</p>
+              </div>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -111,6 +123,29 @@ export default function Chatbot() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+            {messages.length === 0 && (
+              <div className="mt-2 rounded-2xl border border-neutral-200 bg-white p-4">
+                <p className="text-sm font-semibold text-neutral-900">
+                  Welcome to H&amp;A Cozy Pad
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-neutral-600">
+                  I can help with bookings, stays, and hosting your property.
+                </p>
+                <div className="mt-4 flex flex-col items-start gap-2">
+                  {suggestedQuestions.map((question) => (
+                    <button
+                      key={question}
+                      type="button"
+                      onClick={() => sendMessage(question)}
+                      disabled={isLoading}
+                      className="max-w-full rounded-full border border-neutral-300 bg-white px-3 py-2 text-left text-xs text-neutral-700 transition-colors hover:border-neutral-500 hover:bg-neutral-50 disabled:opacity-50"
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {messages.map((msg) => (
               <div
                 key={msg.id}
@@ -145,7 +180,8 @@ export default function Chatbot() {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask Me Anything"
+                placeholder="Ask about bookings or hosting"
+                aria-label="Message CozyBot"
                 autoComplete="off"
                 disabled={isLoading}
                 className="w-full bg-transparent border-none outline-none text-base"
