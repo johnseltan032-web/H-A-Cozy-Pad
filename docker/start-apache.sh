@@ -3,7 +3,7 @@ set -eu
 
 port="${PORT:-8080}"
 
-find /etc/apache2/mods-enabled -maxdepth 1 -name 'mpm_*.load' ! -name 'mpm_prefork.load' -delete
+find /etc/apache2/mods-enabled -maxdepth 1 \( -name 'mpm_*.load' -o -name 'mpm_*.conf' \) ! -name 'mpm_prefork.load' ! -name 'mpm_prefork.conf' -delete
 a2enmod mpm_prefork
 module_output="$(apache2ctl -M 2>&1)" || {
 	printf '%s\n' "$module_output" >&2
