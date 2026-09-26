@@ -7,6 +7,7 @@
     "dev": "vite",
     "calendar-server": "node --env-file=.env server/google-calendar-server.mjs",
     "build": "vite build",
+    "build:netlify": "npm run build && node scripts/write-netlify-redirect.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
