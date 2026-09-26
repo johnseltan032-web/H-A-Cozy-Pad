@@ -10,7 +10,9 @@ RUN npm run build
 
 FROM php:8.3-apache
 
-RUN docker-php-ext-install pdo_mysql && a2enmod rewrite
+RUN docker-php-ext-install pdo_mysql \
+	&& for module in mpm_event mpm_worker; do a2dismod "$module" || true; done \
+	&& a2enmod mpm_prefork rewrite
 
 COPY docker/apache-site.conf /etc/apache2/sites-available/000-default.conf
 COPY .htaccess /var/www/html/.htaccess
