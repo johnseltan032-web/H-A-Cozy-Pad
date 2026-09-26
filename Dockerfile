@@ -11,8 +11,9 @@ RUN npm run build
 FROM php:8.3-apache
 
 RUN docker-php-ext-install pdo_mysql \
-	&& for module in mpm_event mpm_worker; do a2dismod "$module" || true; done \
-	&& a2enmod mpm_prefork rewrite
+	&& find /etc/apache2/mods-enabled -maxdepth 1 -name 'mpm_*.load' ! -name 'mpm_prefork.load' -delete \
+	&& a2enmod mpm_prefork rewrite \
+	&& test "$(apache2ctl -M 2>/dev/null | grep -Ec 'mpm_(prefork|event|worker)_module')" -eq 1
 
 COPY docker/apache-site.conf /etc/apache2/sites-available/000-default.conf
 COPY .htaccess /var/www/html/.htaccess
