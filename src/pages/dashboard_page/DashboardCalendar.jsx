@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
-const CALENDAR_API_URL = import.meta.env.VITE_GOOGLE_CALENDAR_URL || 'http://localhost:3001';
+const CALENDAR_API_URL = (
+  import.meta.env.VITE_GOOGLE_CALENDAR_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3001' : '')
+).replace(/\/+$/, '');
 
 function monthStart(date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
@@ -61,6 +64,13 @@ export default function DashboardCalendar() {
       if (!reservationsResponse.ok) throw new Error(reservationsData.error || 'Unable to load bookings');
       setReservations(reservationsData.reservations || []);
 
+      if (!CALENDAR_API_URL) {
+        setIsConnected(false);
+        setEvents([]);
+        setError('Google Calendar URL is missing from this Netlify build. Set VITE_GOOGLE_CALENDAR_URL and redeploy.');
+        return;
+      }
+
       const statusResponse = await fetch(`${CALENDAR_API_URL}/auth/status`);
       const status = await statusResponse.json();
       setIsConnected(status.connected);
@@ -89,13 +99,22 @@ export default function DashboardCalendar() {
 
   const connectCalendar = async () => {
     setError('');
-    const response = await fetch(`${CALENDAR_API_URL}/auth/url`);
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error || 'Unable to start Google Calendar authorization');
+    if (!CALENDAR_API_URL) {
+      setError('Google Calendar URL is missing from this Netlify build. Set VITE_GOOGLE_CALENDAR_URL and redeploy.');
       return;
     }
-    window.location.assign(data.url);
+
+    try {
+      const response = await fetch(`${CALENDAR_API_URL}/auth/url`);
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Unable to start Google Calendar authorization');
+        return;
+      }
+      window.location.assign(data.url);
+    } catch {
+      setError('Unable to reach the Railway Google Calendar service. Check its public domain and deployment logs.');
+    }
   };
 
   const calendarEvents = [
