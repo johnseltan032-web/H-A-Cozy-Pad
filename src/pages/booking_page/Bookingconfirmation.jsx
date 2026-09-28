@@ -716,14 +716,21 @@ export default function BookingConfirmation({
       !checkOut ||
       checkOut <= checkIn
     ) {
-      
-      
       return undefined;
     }
 
-    const controller =
-      new AbortController();
+    const controller = new AbortController();
 
+    const parseJsonResponse = async (response) => {
+      const text = await response.text();
+      if (!text) return {};
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { error: 'Unexpected server response. Please try again.' };
+      }
+    };
 
     fetch(
       `${API_BASE_URL}/check_availability.php?unit_id=${encodeURIComponent(
@@ -738,25 +745,20 @@ export default function BookingConfirmation({
       }
     )
       .then(async (response) => {
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
 
         if (!response.ok) {
           throw new Error(
-            data.error ||
-              "Unable to check room availability."
+            data.error || 'Unable to check room availability.'
           );
         }
 
-        setIsAvailable(
-          Boolean(data.available)
-        );
+        setIsAvailable(Boolean(data.available));
       })
       .catch((error) => {
-        if (error.name !== "AbortError") {
+        if (error.name !== 'AbortError') {
           setIsAvailable(null);
-          setAvailabilityError(
-            error.message
-          );
+          setAvailabilityError(error.message);
         }
       });
 

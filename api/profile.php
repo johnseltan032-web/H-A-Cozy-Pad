@@ -36,6 +36,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
         $updates[] = 'email = ?';
         $values[] = $email;
+        // Changing the email address invalidates any prior verification
+        $updates[] = 'email_verified = 0';
+        $updates[] = 'email_verified_at = NULL';
     }
 
     if (array_key_exists('contactNum', $data)) {
@@ -47,7 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         }
         $updates[] = 'contact_num = ?';
         $values[] = $contactNum;
-        $_SESSION['needs_setup'] = false;
+    }
+
+    if (array_key_exists('emailNotifications', $data)) {
+        $updates[] = 'email_notifications = ?';
+        $values[] = $data['emailNotifications'] ? 1 : 0;
     }
 
     if (!empty($data['password'])) {
@@ -71,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $stmt->execute($values);
 
     $stmt = $pdo->prepare(
-        'SELECT user_id, full_name, email, contact_num, role FROM users WHERE user_id = ?'
+        'SELECT user_id, full_name, email, contact_num, role, email_verified, email_notifications FROM users WHERE user_id = ?'
     );
     $stmt->execute([$_SESSION['user_id']]);
     $updatedUser = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -84,14 +91,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             'email' => $updatedUser['email'],
             'contactNum' => $updatedUser['contact_num'],
             'role' => strtolower($updatedUser['role']),
-            'needsSetup' => trim((string) ($updatedUser['contact_num'] ?? '')) === '',
+            'emailVerified' => (bool) $updatedUser['email_verified'],
+            'emailNotifications' => (bool) $updatedUser['email_notifications'],
         ],
     ]);
     exit;
 }
 
 $stmt = $pdo->prepare(
-    'SELECT user_id, full_name, email, contact_num, role FROM users WHERE user_id = ?'
+    'SELECT user_id, full_name, email, contact_num, role, email_verified, email_notifications FROM users WHERE user_id = ?'
 );
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -109,7 +117,8 @@ echo json_encode([
         'email' => $user['email'],
         'contactNum' => $user['contact_num'],
         'role' => strtolower($user['role']),
-        'needsSetup' => trim((string) ($user['contact_num'] ?? '')) === '',
+        'emailVerified' => (bool) $user['email_verified'],
+        'emailNotifications' => (bool) $user['email_notifications'],
     ],
 ]);
 ?>

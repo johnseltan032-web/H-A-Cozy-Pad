@@ -14,7 +14,7 @@
     header('Access-Control-Allow-Origin: ' . ($isLocalFrontend ? $requestOrigin : $FRONTEND_ORIGIN));
     header('Access-Control-Allow-Credentials: true');
     header('Access-Control-Allow-Headers: Content-Type');
-    header('Access-Control-Allow-Methods: POST, GET, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Methods: POST, GET, PUT, PATCH, OPTIONS');
     header('Vary: Origin');
     header('Content-Type: application/json');
     

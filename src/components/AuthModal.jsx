@@ -14,6 +14,8 @@ export default function AuthModal({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const hasGoogleClient = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your-google-oauth-client-id';
+
   const navigate = useNavigate();
 
   // Lock body scroll and register escape key
@@ -170,6 +172,7 @@ export default function AuthModal({
         </h2>
 
         <GoogleAuthButton
+          disabled={!hasGoogleClient}
           onSuccess={handleGoogleSuccess}
           onError={() =>
             setError(

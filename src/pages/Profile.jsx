@@ -87,12 +87,7 @@ export default function Profile({ user }) {
       }
       if (!response.ok) throw new Error(data.error || 'Unable to save changes');
 
-      if (data.user) {
-        setAccount(data.user);
-        window.dispatchEvent(new CustomEvent('auth-changed', {
-          detail: { loggedIn: true, user: data.user },
-        }));
-      }
+      if (data.user) setAccount(data.user);
       setEditingField(null);
     } catch (error) {
       setSaveError(error.message);
@@ -160,6 +155,23 @@ export default function Profile({ user }) {
                 isSaving={isSaving}
               />
             </div>
+          ) : activeSection === 'Login & security' ? (
+            <div className="border-t border-neutral-200">
+              <EmailVerificationRow
+                isLoading={isLoading}
+                email={account?.email}
+                isVerified={!!account?.emailVerified}
+              />
+            </div>
+          ) : activeSection === 'Notifications' ? (
+            <div className="border-t border-neutral-200">
+              <EmailNotificationsRow
+                isLoading={isLoading}
+                enabled={account?.emailNotifications !== false}
+                isSaving={isSaving}
+                onToggle={(next) => saveField('emailNotifications', next)}
+              />
+            </div>
           ) : (
             <div className="border-t border-neutral-200 py-8 text-base text-neutral-600">
               <p className="m-0">This account setting is not available yet.</p>
@@ -168,6 +180,97 @@ export default function Profile({ user }) {
           {saveError && <p className="mt-4 text-sm text-red-600">{saveError}</p>}
         </section>
       </main>
+    </div>
+  );
+}
+
+function EmailNotificationsRow({ isLoading, enabled, isSaving, onToggle }) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-start gap-5 py-6 md:py-7">
+      <div className="min-w-0">
+        <h3 className="m-0 text-base font-semibold text-[#111827]">Email notifications</h3>
+        <p className="mt-1 max-w-[520px] text-[15px] leading-5 text-neutral-500">
+          Get emails about booking requests, confirmations and check-in reminders.
+          You will still see these updates in your notifications inside the app.
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="Email notifications"
+        disabled={isLoading || isSaving}
+        onClick={() => onToggle(!enabled)}
+        className={`relative mt-1 h-7 w-12 shrink-0 cursor-pointer rounded-full border-0 transition-colors disabled:opacity-50 ${
+          enabled ? 'bg-neutral-900' : 'bg-neutral-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all ${
+            enabled ? 'left-[22px]' : 'left-0.5'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function EmailVerificationRow({ isLoading, email, isVerified }) {
+  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [message, setMessage] = useState('');
+
+  const resendVerification = async () => {
+    setStatus('sending');
+    setMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/send_verification.php`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to send verification email');
+
+      setStatus('sent');
+      setMessage(data.message || 'Verification email sent. Check your inbox.');
+    } catch (error) {
+      setStatus('error');
+      setMessage(error.message);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-[1fr_auto] gap-5 py-6 md:py-7">
+      <div className="min-w-0">
+        <h3 className="m-0 text-base font-semibold text-[#111827]">Email verification</h3>
+        <p className="mt-1 break-words text-[15px] text-neutral-500">
+          {isLoading ? 'Loading...' : (email || 'Not provided')}
+        </p>
+        <p className="mt-2">
+          {isLoading ? null : isVerified ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[13px] font-semibold text-green-700">
+              Verified
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-1 text-[13px] font-semibold text-yellow-700">
+              Not verified
+            </span>
+          )}
+        </p>
+        {message && (
+          <p className={`mt-2 text-sm ${status === 'error' ? 'text-red-600' : 'text-green-700'}`}>{message}</p>
+        )}
+      </div>
+      {!isLoading && !isVerified && (
+        <button
+          type="button"
+          disabled={status === 'sending'}
+          onClick={resendVerification}
+          className="self-start border-0 bg-transparent p-0 text-sm font-semibold text-[#111827] underline underline-offset-2 hover:text-neutral-500 cursor-pointer disabled:opacity-50"
+        >
+          {status === 'sending' ? 'Sending...' : 'Send verification email'}
+        </button>
+      )}
     </div>
   );
 }

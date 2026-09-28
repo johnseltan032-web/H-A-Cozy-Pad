@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import logo from '../images/logo.png';
+import NotificationBell from './NotificationBell';
 
 export default function Header({
   isMenuOpen,
@@ -111,6 +112,8 @@ export default function Header({
             </button>
           </>
         )}
+
+        {user && <NotificationBell />}
 
         <button
           ref={buttonRef}
