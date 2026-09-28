@@ -83,7 +83,7 @@ export default function PropertySection({ title, properties = [] }) {
                   <div className="mt-2 sm:mt-3">
                     <div className="flex justify-between items-start gap-2">
                       <h3 className="min-w-0 break-words [overflow-wrap:anywhere] text-sm sm:text-base lg:text-lg font-normal leading-tight">
-                        {property.unit_name}
+                        {property.building_name}
                       </h3>
 
                       {property.max_guests && (
@@ -94,7 +94,7 @@ export default function PropertySection({ title, properties = [] }) {
                     </div>
 
                     <p className="min-w-0 break-words [overflow-wrap:anywhere] text-xs sm:text-sm text-neutral-500 mt-0.5 line-clamp-2">
-                      {property.building_name} • {property.location}
+                      {property.unit_name} • {property.location}
                     </p>
 
                     <p className="text-sm sm:text-base lg:text-lg font-light mt-1">

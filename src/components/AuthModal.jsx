@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './GoogleAuthButton';
+import { isGoogleConfigured } from '../lib/googleAuth';
 
 export default function AuthModal({
   isOpen,
@@ -14,7 +15,7 @@ export default function AuthModal({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasGoogleClient = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your-google-oauth-client-id';
+  const hasGoogleClient = isGoogleConfigured;
 
   const navigate = useNavigate();
 
