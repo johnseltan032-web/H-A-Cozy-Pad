@@ -294,23 +294,23 @@ export default function FaqManagement() {
     <div className="bg-white text-black font-sans min-h-screen">
       <HostHeader activeNav="FAQ" />
 
-      <main className="px-5 md:px-10 lg:px-[52px] py-10">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between mb-8">
+      <main className="px-3 py-5 sm:px-5 sm:py-8 md:px-10 lg:px-[52px] md:py-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 sm:mb-8">
           <div>
-            <h1 className="text-4xl font-bold">FAQ Options</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold">FAQ Options</h1>
           </div>
 
           <button
             type="button"
             onClick={openCreateForm}
             disabled={!selectedCategoryId || isLoading}
-            className="w-fit px-5 py-2.5 text-base font-medium bg-black text-white rounded-md hover:bg-neutral-800 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-fit shrink-0 px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium bg-black text-white rounded-md hover:bg-neutral-800 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             + Add FAQ
           </button>
         </div>
 
-        <div className="mb-8 border border-sky-200 bg-sky-50 px-5 py-4 text-sm text-sky-900">
+        <div className="mb-5 sm:mb-8 border border-sky-200 bg-sky-50 px-3 py-3 sm:px-5 sm:py-4 text-xs sm:text-sm text-sky-900">
           Manage the questions shown in the help experience. Select a category to review, edit, or remove its FAQs.
         </div>
 
@@ -325,12 +325,12 @@ export default function FaqManagement() {
             Loading FAQs...
           </p>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="border border-neutral-200 bg-neutral-50 p-5 h-fit">
+          <div className="grid gap-4 sm:gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="border-0 bg-transparent p-0 h-fit md:border md:border-neutral-200 md:bg-neutral-50 md:p-5">
               <button
                 type="button"
                 onClick={() => setIsCategoryFormOpen(true)}
-                className="w-full mb-6 px-4 py-2.5 text-sm font-medium border border-black bg-black text-white rounded-md hover:bg-neutral-800 cursor-pointer"
+                className="w-fit mb-3 md:mb-6 px-3 py-2 md:w-full md:px-4 md:py-2.5 text-xs sm:text-sm font-medium border border-black bg-black text-white rounded-md hover:bg-neutral-800 cursor-pointer"
               >
                 + Add category
               </button>
@@ -339,7 +339,7 @@ export default function FaqManagement() {
                 Categories
               </p>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:gap-1 md:overflow-visible">
                 {categories.map((category) => {
                   const faqCount = faqs.filter(
                     (faq) => faq.categoryId === category.categoryId
@@ -354,7 +354,7 @@ export default function FaqManagement() {
                         setSearch('');
                         setIsFormOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm rounded-md cursor-pointer ${
+                      className={`w-auto shrink-0 flex items-center justify-between gap-3 px-3 py-2 text-left text-xs sm:text-sm rounded-md cursor-pointer md:w-full md:py-2.5 ${
                         selectedCategoryId === category.categoryId
                           ? 'bg-black text-white'
                           : 'bg-transparent text-neutral-700 hover:bg-neutral-200'
@@ -384,13 +384,13 @@ export default function FaqManagement() {
             </aside>
 
             <section className="min-w-0">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-5">
                 <div>
                   <p className="text-sm text-neutral-500">
                     Selected category
                   </p>
 
-                  <h2 className="text-2xl font-semibold">
+                  <h2 className="text-xl sm:text-2xl font-semibold">
                     {selectedCategory?.categoryName || 'No category selected'}
                   </h2>
                 </div>
@@ -484,7 +484,7 @@ export default function FaqManagement() {
               )}
 
               <div className="overflow-x-auto border border-neutral-200">
-                <table className="w-full min-w-[620px] border-collapse">
+                <table className="w-full min-w-[520px] border-collapse md:min-w-[620px]">
                   <thead className="bg-neutral-50">
                     <tr className="text-left border-b border-neutral-200">
                       <th className="px-4 py-3 font-semibold text-sm">
@@ -507,12 +507,12 @@ export default function FaqManagement() {
                           {faq.question}
                         </td>
 
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
+                        <td className="px-3 py-2 sm:px-4 sm:py-3">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
                             <button
                               type="button"
                               onClick={() => openEditForm(faq)}
-                              className="px-3 py-1.5 text-xs font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 cursor-pointer"
+                              className="px-2.5 py-1.5 text-xs font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 cursor-pointer"
                             >
                               Edit
                             </button>
@@ -520,7 +520,7 @@ export default function FaqManagement() {
                             <button
                               type="button"
                               onClick={() => openDeleteDialog(faq)}
-                              className="px-3 py-1.5 text-xs font-medium border border-red-200 text-red-700 rounded-md hover:bg-red-50 cursor-pointer"
+                              className="px-2.5 py-1.5 text-xs font-medium border border-red-200 text-red-700 rounded-md hover:bg-red-50 cursor-pointer"
                             >
                               Delete
                             </button>

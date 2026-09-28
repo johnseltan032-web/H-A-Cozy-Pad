@@ -72,11 +72,11 @@ export default function HostHeader({
   };
 
   return (
-    <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 md:px-10 lg:px-[52px] py-6 bg-[#fdfdfd] border-b border-neutral-200 relative">
+    <header className="host-header grid grid-cols-[1fr_auto_1fr] items-center px-5 py-4 md:px-10 md:py-6 lg:px-[52px] bg-[#fdfdfd] border-b border-neutral-200 relative">
       {/* Logo */}
       <Link
         to="/"
-        className="text-2xl lg:text-3xl font-bold text-black no-underline justify-self-start"
+        className="host-header__brand text-2xl lg:text-3xl font-bold text-black no-underline justify-self-start"
       >
         H&A Cozy Pad
       </Link>
@@ -126,7 +126,7 @@ export default function HostHeader({
       </nav>
 
       {/* Right side */}
-      <div className="flex items-center gap-4 justify-self-end">
+      <div className="host-header__actions flex items-center gap-4 justify-self-end">
         {/* Profile icon */}
         <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden">
           <svg
@@ -156,7 +156,7 @@ export default function HostHeader({
       {isMenuOpen && (
         <div
           ref={menuRef}
-          className="absolute right-[20px] top-[70px] w-[280px] bg-white rounded-2xl shadow-xl border border-neutral-100 py-3 z-[2100]"
+          className="host-header-menu absolute left-auto right-5 top-[70px] w-[280px] bg-white rounded-2xl shadow-xl border border-neutral-100 py-3 z-[2100]"
         >
           {/* Switch to guest */}
           <Link

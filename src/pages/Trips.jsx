@@ -548,7 +548,7 @@ const modificationDifference =
 
         {showCancelBox && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
-            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
               <h2 className="text-xl font-semibold">
                 Cancel booking?
               </h2>
@@ -570,7 +570,7 @@ const modificationDifference =
                 className="mt-2 w-full resize-none rounded-lg border border-gray-300 p-3 text-sm outline-none focus:border-red-500 disabled:bg-gray-100"
               />
 
-              <div className="mt-5 flex justify-end gap-3">
+              <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   disabled={isCancelling}
@@ -578,7 +578,7 @@ const modificationDifference =
                     setShowCancelBox(false);
                     setCancelReason("");
                   }}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Keep booking
                 </button>
@@ -587,7 +587,7 @@ const modificationDifference =
                   type="button"
                   disabled={isCancelling || !cancelReason.trim()}
                   onClick={handleCancelBooking}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {isCancelling
                     ? "Cancelling..."
@@ -600,7 +600,7 @@ const modificationDifference =
 
         {showModifyBox && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
               <h2 className="text-xl font-semibold">
                 Request to change booking
               </h2>
@@ -788,12 +788,12 @@ const modificationDifference =
                 />
               </div>
 
-              <div className="mt-5 flex justify-end gap-3">
+              <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   disabled={isSubmittingModification}
                   onClick={closeModificationBox}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -809,7 +809,7 @@ const modificationDifference =
                     (modificationDifference > 0 && !proofOfPayment)
                   }
                   onClick={handleModificationRequest}
-                  className="rounded-lg bg-yellow-500 px-4 py-2 text-sm text-white hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-lg bg-yellow-500 px-4 py-2 text-sm text-white hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {isSubmittingModification
                     ? "Submitting..."

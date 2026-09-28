@@ -27,6 +27,8 @@ export default function DashboardListings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedBuildingId, setSelectedBuildingId] = useState(null);
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
@@ -70,7 +72,7 @@ export default function DashboardListings() {
   };
 
   const deleteListing = async () => {
-    if (!selectedBuildingId || !window.confirm('Delete this listing?')) {
+    if (!selectedBuildingId) {
       return;
     }
 
@@ -101,6 +103,8 @@ export default function DashboardListings() {
       );
 
       setSelectedBuildingId(null);
+      setSelectedListing(null);
+      setIsDeleteConfirmOpen(false);
     } catch (deleteError) {
       setError(deleteError.message);
     } finally {
@@ -193,6 +197,16 @@ export default function DashboardListings() {
     } finally {
       setIsLoadingEdit(false);
     }
+  };
+
+  const getListingImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    return `${API_BASE_URL.replace(/\/$/, '')}/${imagePath.replace(/^\/+/, '')}`;
+  };
+
+  const openListingDetails = (listing) => {
+    setSelectedListing(listing);
+    setSelectedBuildingId(listing.building_id);
   };
 
   const closeEditModal = () => {
@@ -350,36 +364,50 @@ export default function DashboardListings() {
       <HostHeader activeNav="Listing" />
 
       <main className="px-5 md:px-10 lg:px-13 py-10">
-        <div className="flex items-center justify-between mb-10">
-          <h1 className="text-4xl font-bold">
+        <div className="mb-5 flex items-center justify-between gap-2 sm:mb-10 md:gap-4">
+          <h1 className="text-xl font-bold sm:text-2xl md:text-4xl">
             Your Listing
           </h1>
 
-          <div className="flex gap-3">
+          <div className="flex w-auto shrink-0 flex-wrap justify-end gap-1.5 sm:gap-2 md:gap-3">
             <button
               type="button"
               disabled={!selectedBuildingId || isDeleting}
-              onClick={deleteListing}
-              className="px-6 py-2.5 text-base font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => {
+                if (selectedBuildingId && window.confirm('Delete this listing?')) {
+                  deleteListing();
+                }
+              }}
+              title="Delete listing"
+              aria-label="Delete listing"
+              className="hidden h-10 w-10 items-center justify-center gap-2 border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:flex md:h-auto md:w-auto md:px-4 md:py-2.5"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? <span className="sr-only">Deleting...</span> : null}
+              <svg aria-hidden="true" className="h-5 w-5 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6" /></svg>
+              <span className="hidden md:inline">{isDeleting ? 'Deleting...' : 'Delete'}</span>
             </button>
 
             <button
               type="button"
               disabled={!selectedBuildingId}
               onClick={openEditModal}
-              className="px-6 py-2.5 text-base font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Edit listing"
+              aria-label="Edit listing"
+              className="hidden h-10 w-10 items-center justify-center gap-2 border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:flex md:h-auto md:w-auto md:px-4 md:py-2.5"
             >
-              Edit
+              <svg aria-hidden="true" className="h-5 w-5 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m14 5 5 5M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4Z" /></svg>
+              <span className="hidden md:inline">Edit</span>
             </button>
 
             <button
               type="button"
               onClick={handleAddListing}
-              className="px-6 py-2.5 text-base font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer"
+              title="Add listing"
+              aria-label="Add listing"
+              className="flex h-10 w-10 items-center justify-center gap-2 border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer md:h-auto md:w-auto md:px-4 md:py-2.5"
             >
-              Add
+              <svg aria-hidden="true" className="h-5 w-5 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+              <span className="hidden md:inline">Add</span>
             </button>
           </div>
         </div>
@@ -399,7 +427,8 @@ export default function DashboardListings() {
             </p>
           </div>
         ) : (
-          <table className="w-full border-collapse">
+          <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[680px] border-collapse">
             <thead>
               <tr className="text-left border-b border-neutral-200">
                 <th className="pb-3 font-semibold text-base w-2/5">
@@ -424,9 +453,7 @@ export default function DashboardListings() {
               {listings.map((listing) => (
                 <tr
                   key={listing.unit_id}
-                  onClick={() =>
-                    setSelectedBuildingId(listing.building_id)
-                  }
+                  onClick={() => setSelectedBuildingId(listing.building_id)}
                   className={`border-b border-neutral-100 cursor-pointer transition-colors ${
                     selectedBuildingId === listing.building_id
                       ? 'bg-neutral-100'
@@ -494,12 +521,105 @@ export default function DashboardListings() {
               ))}
             </tbody>
           </table>
+          </div>
+        )}
+
+        {!loading && !error && listings.length > 0 && (
+          <div className="space-y-3 md:hidden">
+            {listings.map((listing) => {
+              const imagePath = Array.isArray(listing.images) ? listing.images[0] : null;
+              const imageUrl = getListingImageUrl(imagePath);
+
+              return (
+                <div key={listing.unit_id} className="flex items-center gap-3 border-b border-neutral-200 pb-3">
+                  <div className="h-20 w-24 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-neutral-500">No photo</div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 break-words text-sm font-medium text-neutral-900">
+                      {listing.building_name || listing.unit_name}
+                    </p>
+                    {listing.unit_name && listing.building_name && (
+                      <p className="mt-1 line-clamp-1 text-xs text-neutral-500">{listing.unit_name}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openListingDetails(listing)}
+                    className="shrink-0 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900"
+                  >
+                    Detail
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
       </main>
 
+      {selectedListing && !isEditOpen && (
+        <div className="fixed inset-0 z-[3200] flex items-end justify-center bg-black/40 sm:items-center sm:px-5 sm:py-8 md:hidden" onClick={() => setSelectedListing(null)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="listing-summary-title"
+            className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-w-lg sm:rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="overflow-y-auto p-5 sm:p-7">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-neutral-500">Property summary</p>
+                  <h2 id="listing-summary-title" className="mt-1 text-xl font-semibold">
+                    {selectedListing.building_name || selectedListing.unit_name}
+                  </h2>
+                </div>
+                <button type="button" onClick={() => setSelectedListing(null)} aria-label="Close property details" className="text-2xl leading-none text-neutral-500">&times;</button>
+              </div>
+
+              {Array.isArray(selectedListing.images) && selectedListing.images[0] && (
+                <img src={getListingImageUrl(selectedListing.images[0])} alt="" className="mb-5 aspect-video w-full rounded-xl object-cover" />
+              )}
+
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+                <div><dt className="text-neutral-500">Unit</dt><dd className="mt-1 font-medium">{selectedListing.unit_name || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Type</dt><dd className="mt-1 font-medium">{getPropertyCategoryLabel(selectedListing.property_category)}</dd></div>
+                <div className="col-span-2"><dt className="text-neutral-500">Location</dt><dd className="mt-1 font-medium break-words">{selectedListing.location || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Guests</dt><dd className="mt-1 font-medium">{selectedListing.max_guests || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Rate per night</dt><dd className="mt-1 font-medium">{selectedListing.rate_per_night ? `₱${Number(selectedListing.rate_per_night).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : 'Not specified'}</dd></div>
+                {selectedListing.description && <div className="col-span-2"><dt className="text-neutral-500">Description</dt><dd className="mt-1 whitespace-pre-wrap break-words">{selectedListing.description}</dd></div>}
+              </dl>
+            </div>
+
+            <div className="flex shrink-0 justify-end gap-2 border-t border-neutral-200 bg-white px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-7">
+              <button type="button" onClick={() => setIsDeleteConfirmOpen(true)} disabled={isDeleting} className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 disabled:opacity-50">Delete</button>
+              <button type="button" onClick={() => { setSelectedListing(null); openEditModal(); }} className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white">Edit</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isDeleteConfirmOpen && (
+        <div className="fixed inset-0 z-[3300] flex items-center justify-center bg-black/45 px-4 md:hidden" onClick={() => !isDeleting && setIsDeleteConfirmOpen(false)}>
+          <section role="alertdialog" aria-modal="true" aria-labelledby="confirm-delete-title" className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl sm:p-6" onClick={(event) => event.stopPropagation()}>
+            <h2 id="confirm-delete-title" className="text-lg font-semibold">Delete this listing?</h2>
+            <p className="mt-2 text-sm leading-5 text-neutral-600">This will permanently remove {selectedListing?.building_name || selectedListing?.unit_name || 'this property'} and its listing details.</p>
+            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} disabled={isDeleting} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={deleteListing} disabled={isDeleting} className="rounded-lg bg-red-700 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{isDeleting ? 'Deleting...' : 'Delete listing'}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {isEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5 py-8">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-7 shadow-xl">
+        <div className="fixed inset-0 z-[3400] flex items-center justify-center bg-black/40 px-5 py-8">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neutral-500">Listing details</p>

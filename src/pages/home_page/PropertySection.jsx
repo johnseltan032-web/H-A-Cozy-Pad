@@ -9,7 +9,7 @@ export default function PropertySection({ title, properties = [] }) {
   };
 
   return (
-    <section className="px-4 md:px-8 lg:px-10 py-6">
+    <section className="w-full px-4 py-5 sm:px-6 md:px-8 md:py-6 lg:px-10">
       {title && (
         <div className="flex items-center gap-3 mb-7">
           <h2 className="text-xl lg:text-2xl font-medium">
@@ -48,7 +48,7 @@ export default function PropertySection({ title, properties = [] }) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-7">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 md:grid-cols-4 lg:grid-cols-5 lg:gap-7">
           {properties.map((property) => {
             // First uploaded image = homepage thumbnail
             const thumbnail =
@@ -62,9 +62,9 @@ export default function PropertySection({ title, properties = [] }) {
                 to={`/property/${property.unit_id}`}
                 className="block no-underline text-black hover:text-black group"
               >
-                <div>
+                <div className="min-w-0">
                   {/* Property Image */}
-                  <div className="w-full aspect-square bg-neutral-300 rounded-[20px] overflow-hidden group-hover:opacity-95 transition-opacity">
+                  <div className="w-full aspect-[4/3] sm:aspect-square bg-neutral-300 rounded-xl sm:rounded-2xl overflow-hidden group-hover:opacity-95 transition-opacity">
                     {thumbnail ? (
                       <img
                         src={thumbnail}
@@ -80,24 +80,24 @@ export default function PropertySection({ title, properties = [] }) {
                   </div>
 
                   {/* Property Details */}
-                  <div className="mt-3">
+                  <div className="mt-2 sm:mt-3">
                     <div className="flex justify-between items-start gap-2">
-                      <h3 className="text-base lg:text-lg font-normal leading-tight">
+                      <h3 className="min-w-0 break-words [overflow-wrap:anywhere] text-sm sm:text-base lg:text-lg font-normal leading-tight">
                         {property.unit_name}
                       </h3>
 
                       {property.max_guests && (
-                        <span className="text-xs bg-neutral-200 text-neutral-700 px-2 py-1 rounded-full whitespace-nowrap">
+                        <span className="hidden sm:inline text-xs bg-neutral-200 text-neutral-700 px-2 py-1 rounded-full whitespace-nowrap">
                           Up to {property.max_guests} guests
                         </span>
                       )}
                     </div>
 
-                    <p className="text-sm text-neutral-500 mt-0.5">
+                    <p className="min-w-0 break-words [overflow-wrap:anywhere] text-xs sm:text-sm text-neutral-500 mt-0.5 line-clamp-2">
                       {property.building_name} • {property.location}
                     </p>
 
-                    <p className="text-base lg:text-lg font-light mt-1">
+                    <p className="text-sm sm:text-base lg:text-lg font-light mt-1">
                       ₱{' '}
                       {Number(property.rate_per_night).toLocaleString(
                         'en-PH',
@@ -105,7 +105,7 @@ export default function PropertySection({ title, properties = [] }) {
                           minimumFractionDigits: 2,
                         }
                       )}{' '}
-                      <span className="text-sm text-neutral-500 font-normal">
+                      <span className="text-xs sm:text-sm text-neutral-500 font-normal">
                         / night
                       </span>
                     </p>

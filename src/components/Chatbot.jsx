@@ -1,8 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/api';
 
-export default function Chatbot() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function Chatbot({ isOpen: controlledIsOpen, onOpen, onClose }) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = typeof controlledIsOpen === 'boolean';
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+  const openChat = () => {
+    setInternalIsOpen(true);
+    onOpen?.();
+  };
+  const closeChat = () => {
+    setInternalIsOpen(false);
+    onClose?.();
+  };
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [conversationId, setConversationId] = useState('');
@@ -84,9 +94,9 @@ export default function Chatbot() {
       {/* Floating Chat Trigger Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={openChat}
           aria-label="Open chat"
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-black text-white shadow-lg flex items-center justify-center hover:bg-neutral-800 z-50 cursor-pointer border-0"
+          className="chatbot-launcher fixed bottom-6 right-6 w-14 h-14 rounded-full bg-black text-white shadow-lg flex items-center justify-center hover:bg-neutral-800 z-50 cursor-pointer border-0"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
@@ -96,7 +106,7 @@ export default function Chatbot() {
 
       {/* Floating Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-[340px] h-[480px] bg-[#f2f2f2] border border-neutral-300 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50">
+        <div className="chatbot-panel fixed bottom-24 left-3 right-3 z-50 mx-auto flex h-[min(480px,calc(100dvh-7rem))] w-auto max-w-[340px] flex-col overflow-hidden rounded-2xl border border-neutral-300 bg-[#f2f2f2] shadow-2xl sm:left-auto sm:right-6">
           <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-300 bg-[#f2f2f2]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-neutral-300 flex items-center justify-center shrink-0">
@@ -111,7 +121,7 @@ export default function Chatbot() {
               </div>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
+              onClick={closeChat}
               aria-label="Close"
               className="w-7 h-7 rounded-full border border-neutral-400 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 bg-transparent cursor-pointer"
             >

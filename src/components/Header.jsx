@@ -59,7 +59,7 @@ export default function Header({
   };
 
   return (
-    <header className="relative flex items-center justify-between px-5 md:px-10 lg:px-[52px] py-7 bg-[#fdfdfd]">
+    <header className="relative flex items-center justify-between px-5 py-3 md:px-10 md:py-7 lg:px-[52px] bg-[#fdfdfd]">
       <Link
         to="/"
         className="text-3xl lg:text-4xl font-bold text-black no-underline"
@@ -67,7 +67,7 @@ export default function Header({
         <img
           src={logo}
           alt="H&A Cozy Pad"
-          className="h-20 w-auto object-contain"
+          className="h-12 w-auto object-contain md:h-20"
         />
       </Link>
 
@@ -127,13 +127,13 @@ export default function Header({
       {isMenuOpen && (
         <div
           ref={menuRef}
-          className="absolute right-[30px] top-[90px] w-[280px] bg-white rounded-2xl shadow-xl border border-neutral-100 py-3 z-[2100]"
+          className="header-menu absolute right-3 top-[90px] z-[2100] w-[min(280px,calc(100vw-1.5rem))] rounded-2xl border border-neutral-100 bg-white py-3 shadow-xl sm:right-[30px]"
         >
           {user && (
             <Link
               to="/host/listings"
               onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
+              className="header-menu-item flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -155,7 +155,7 @@ export default function Header({
           <Link
             to="/profile"
             onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
+            className="header-menu-item flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -178,7 +178,7 @@ export default function Header({
           <Link
             to="/help"
             onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
+            className="header-menu-item flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -203,7 +203,7 @@ export default function Header({
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
+              className="header-menu-item w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -226,7 +226,7 @@ export default function Header({
             <button
               type="button"
               onClick={handleSignIn}
-              className="w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
+              className="header-menu-item w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

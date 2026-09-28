@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export default function SearchSection({ onSearch }) {
   const [query, setQuery] = useState('');
@@ -36,14 +36,14 @@ export default function SearchSection({ onSearch }) {
   };
 
   return (
-    <section className="flex justify-center px-5 md:px-10 lg:px-[52px] pt-6 pb-12 bg-[#fdfdfd]">
+    <section className="flex justify-center px-4 md:px-10 lg:px-[52px] pt-4 pb-7 md:pt-6 md:pb-12 bg-[#fdfdfd]">
       <form 
         onSubmit={handleSearch}
-        className="w-full max-w-[971px] flex flex-col items-center gap-5 bg-[#efefef] rounded-[25px] px-5 md:px-10 lg:px-[60px] py-10"
+        className="w-full max-w-[971px] flex flex-col items-center gap-3 md:gap-5 bg-[#efefef] rounded-[20px] md:rounded-[25px] px-4 py-4 md:px-10 md:py-10 lg:px-[60px]"
       >
         {/* Search Input: Buildings & Units */}
-        <div className="flex items-center gap-4 w-full bg-white border border-neutral-300 rounded-[10px] px-6 py-[18px]">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-[26px] h-[26px] shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="flex items-center gap-3 md:gap-4 w-full bg-white border border-neutral-300 rounded-[10px] px-4 py-3 md:px-6 md:py-[18px]">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-[26px] md:h-[26px] shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
@@ -52,14 +52,14 @@ export default function SearchSection({ onSearch }) {
             placeholder="Search destination, building, or unit..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-transparent border-none outline-none text-lg lg:text-xl font-light text-neutral-800 placeholder-neutral-400"
+            className="w-full min-w-0 bg-transparent border-none outline-none text-base md:text-lg lg:text-xl font-light text-neutral-800 placeholder-neutral-400"
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 w-full">
           {/* Check-In Date */}
-          <div className="flex items-center gap-3 bg-white border border-neutral-300 rounded-[10px] px-5 py-3.5">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2 md:gap-3 bg-white border border-neutral-300 rounded-[10px] px-3 md:px-5 py-3.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6 shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/>
               <line x1="8" y1="2" x2="8" y2="6"/>
@@ -73,14 +73,14 @@ export default function SearchSection({ onSearch }) {
                 value={checkInDate}
                 min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setCheckInDate(e.target.value)}
-                className="text-sm font-medium text-neutral-700 bg-transparent outline-none w-full cursor-pointer"
+                className="min-w-0 text-xs md:text-sm font-medium text-neutral-700 bg-transparent outline-none w-full cursor-pointer"
               />
             </div>
           </div>
 
           {/* Check-Out Date */}
-          <div className="flex items-center gap-3 bg-white border border-neutral-300 rounded-[10px] px-5 py-3.5">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex items-center gap-2 md:gap-3 bg-white border border-neutral-300 rounded-[10px] px-3 md:px-5 py-3.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6 shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/>
               <line x1="8" y1="2" x2="8" y2="6"/>
@@ -94,14 +94,14 @@ export default function SearchSection({ onSearch }) {
                 value={checkOutDate}
                 min={checkInDate || new Date().toISOString().split('T')[0]}
                 onChange={(e) => setCheckOutDate(e.target.value)}
-                className="text-sm font-medium text-neutral-700 bg-transparent outline-none w-full cursor-pointer"
+                className="min-w-0 text-xs md:text-sm font-medium text-neutral-700 bg-transparent outline-none w-full cursor-pointer"
               />
             </div>
           </div>
 
           {/* Number of Guests */}
-          <div className="flex items-center gap-3 bg-white border border-neutral-300 rounded-[10px] px-5 py-3.5">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="flex min-w-0 items-center gap-2 md:gap-3 bg-white border border-neutral-300 rounded-[10px] px-3 md:px-5 py-3.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6 shrink-0 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
               <path d="M23 21v-2a4 4 0 00-3-3.87"/>
@@ -113,7 +113,7 @@ export default function SearchSection({ onSearch }) {
                 id="num_of_guests"
                 value={numOfGuests} 
                 onChange={(e) => setNumOfGuests(Number(e.target.value))}
-                className="text-sm font-medium text-neutral-700 bg-transparent outline-none cursor-pointer w-full"
+                className="min-w-0 text-xs md:text-sm font-medium text-neutral-700 bg-transparent outline-none cursor-pointer w-full"
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
                   <option key={num} value={num}>
@@ -128,7 +128,7 @@ export default function SearchSection({ onSearch }) {
         {/* Submit Button */}
         <button 
           type="submit"
-          className="mt-2 px-16 py-3 text-2xl lg:text-3xl font-bold text-white bg-neutral-600 border border-neutral-700 rounded-full hover:bg-neutral-700 active:bg-neutral-800 transition-colors cursor-pointer"
+          className="mt-1 w-full md:w-auto px-8 md:px-16 py-3 text-base md:text-2xl lg:text-3xl font-bold text-white bg-neutral-600 border border-neutral-700 rounded-full hover:bg-neutral-700 active:bg-neutral-800 transition-colors cursor-pointer"
         >
           SEARCH
         </button>

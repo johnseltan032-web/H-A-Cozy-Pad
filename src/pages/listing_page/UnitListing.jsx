@@ -157,14 +157,14 @@ export default function UnitListing() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto flex items-center justify-between px-10 pb-6 pt-8">
+        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Exit */}
           <button
             type="button"
             onClick={() => navigate('/host/listings')}
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-black
               bg-white
@@ -182,7 +182,7 @@ export default function UnitListing() {
             disabled={!selectedProperty}
             onClick={handleContinue}
             className={`
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-black
               text-[20px]

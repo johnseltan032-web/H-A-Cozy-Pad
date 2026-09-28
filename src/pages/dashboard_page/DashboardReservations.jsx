@@ -338,7 +338,7 @@ export default function DashboardReservations() {
     <div className="bg-white text-black font-sans min-h-screen flex flex-col">
       <HostHeader activeNav="Today" />
 
-      <main className="flex flex-col items-center px-5 pt-10 pb-10 grow">
+      <main className="flex flex-col items-center px-5 pt-6 pb-28 md:pt-10 md:pb-10 grow">
         <div className="mb-10 flex flex-wrap gap-3">
           <button
             onClick={() => setActiveTab('today')}
@@ -374,7 +374,7 @@ export default function DashboardReservations() {
           </button>
         </div>
 
-        <div className="mb-8 text-center">
+          <div className="mb-8 text-center">
           <p className="m-0 text-sm text-neutral-500">
             {activeReservations.length} active booking
             {activeReservations.length === 1 ? '' : 's'}
@@ -382,7 +382,7 @@ export default function DashboardReservations() {
         </div>
 
         {error && (
-          <div className="mb-5 w-full max-w-6xl rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          <div className="mb-5 w-full max-w-5xl rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -392,7 +392,7 @@ export default function DashboardReservations() {
             Loading customer bookings...
           </p>
         ) : visibleReservations.length > 0 ? (
-          <div className="grid w-full max-w-6xl grid-cols-[repeat(auto-fit,minmax(min(100%,320px),1fr))] justify-items-center gap-6">
+          <div className="grid w-full max-w-5xl grid-cols-[repeat(auto-fit,minmax(min(100%,300px),300px))] justify-center gap-4 lg:gap-5">
             {visibleReservations.map((reservation) => {
               const isUpdating =
                 updatingBookingId === reservation.booking_id;
@@ -424,7 +424,7 @@ export default function DashboardReservations() {
               return (
                 <article
                   key={reservation.booking_id}
-                  className="w-full max-w-[390px] rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm"
+                  className="w-full max-w-[300px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:max-w-[340px] md:p-5"
                 >
                   <div className="mb-5 flex items-start justify-between gap-3">
                     <div>

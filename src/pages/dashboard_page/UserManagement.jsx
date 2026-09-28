@@ -253,16 +253,16 @@ export default function UserManagement() {
     <div className="bg-white text-black font-sans min-h-screen">
       <HostHeader activeNav="Users" />
 
-      <main className="px-5 md:px-10 lg:px-[52px] py-10">
-        <div className="flex items-center justify-between mb-10">
-          <h1 className="text-4xl font-bold">User Management</h1>
+      <main className="px-3 py-5 sm:px-5 sm:py-8 md:px-10 lg:px-[52px] md:py-10">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 sm:mb-10">
+          <h1 className="text-2xl font-bold sm:text-4xl">User Management</h1>
 
-          <div className="flex gap-3">
+          <div className="flex w-auto flex-wrap gap-2 sm:gap-3">
             <button
               type="button"
               disabled={!selectedUserId || isSaving}
               onClick={() => setModal('delete')}
-              className="px-6 py-2.5 text-base font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-2 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed sm:px-6 sm:py-2.5 sm:text-base"
             >
               Delete
             </button>
@@ -271,7 +271,7 @@ export default function UserManagement() {
               type="button"
               disabled={!selectedUserId || isSaving}
               onClick={openEditModal}
-              className="px-6 py-2.5 text-base font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-2 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed sm:px-6 sm:py-2.5 sm:text-base"
             >
               Edit
             </button>
@@ -279,7 +279,7 @@ export default function UserManagement() {
             <button
               type="button"
               onClick={openAddModal}
-              className="px-6 py-2.5 text-base font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer"
+              className="px-3 py-2 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer sm:px-6 sm:py-2.5 sm:text-base"
             >
               Add
             </button>
@@ -296,7 +296,8 @@ export default function UserManagement() {
             <p className="mt-2">Add a user to see them here.</p>
           </div>
         ) : (
-          <table className="w-full border-collapse">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse">
             <thead>
               <tr className="text-left border-b border-neutral-200">
                 <th className="pb-3 font-semibold text-base">Name</th>
@@ -343,6 +344,7 @@ export default function UserManagement() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
 
         {error && !loading && users.length > 0 && (
@@ -352,7 +354,7 @@ export default function UserManagement() {
 
       {modal === 'add' && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-5 z-50">
-          <div className="bg-white w-full max-w-lg rounded-lg p-7">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 sm:p-7">
             <h2 className="text-2xl font-bold mb-6">Add User</h2>
 
             <form onSubmit={saveUser} className="space-y-4">
@@ -457,7 +459,7 @@ export default function UserManagement() {
 
       {modal === 'edit' && selectedUser && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-5 z-50">
-          <div className="bg-white w-full max-w-lg rounded-lg p-7">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 sm:p-7">
             <h2 className="text-2xl font-bold mb-6">Edit User</h2>
 
             <form onSubmit={saveUser} className="space-y-4">
@@ -555,7 +557,7 @@ export default function UserManagement() {
 
       {modal === 'delete' && selectedUser && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-5 z-50">
-          <div className="bg-white w-full max-w-md rounded-lg p-7">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 sm:p-7">
             <h2 className="text-2xl font-bold mb-3">Delete User</h2>
 
             <p className="text-neutral-600">
