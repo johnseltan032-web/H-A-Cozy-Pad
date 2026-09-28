@@ -24,6 +24,19 @@ Netlify hosts the Vite frontend. Railway runs the PHP API and MySQL database. Th
 7. Generate a public domain for the API service and note its origin, such as `https://your-api-service.up.railway.app`.
 8. Add a Railway Volume mounted at `/var/www/html/api/uploads` if listing images and booking uploads must survive redeploys. The container prepares this directory for PHP writes at startup.
 
+### Google Calendar service
+
+The Google Calendar OAuth server is a separate Node service; it does not run inside the PHP/API service. In the same Railway project, create another service from this repository and set **Settings → Build → Dockerfile Path** to `Dockerfile.calendar`. Set its variables to:
+
+```text
+CLIENT_ID=<Google OAuth web client ID>
+SECRET_ID=<Google OAuth client secret>
+FRONTEND_ORIGIN=https://your-site.netlify.app
+GOOGLE_REDIRECT_URI=https://your-calendar-service.up.railway.app/auth/callback
+```
+
+Generate a public domain for this calendar service. Railway injects `PORT`; the calendar server listens on it. In Google Cloud, add the exact `GOOGLE_REDIRECT_URI` above under **Authorized redirect URIs**. Keep `SECRET_ID` only in Railway. After Google authorization settings are saved, redeploy the calendar service.
+
 ## Netlify
 
 1. Import the same GitHub repository as a Netlify site. The committed `netlify.toml` selects the build command and `dist` publish directory.
@@ -36,6 +49,14 @@ Netlify hosts the Vite frontend. Railway runs the PHP API and MySQL database. Th
    Use the Railway API service's public HTTPS origin only: no `/api` suffix and no trailing path. The build uses it to generate the `/api/*` proxy rule.
 3. Trigger a fresh deploy after setting the variable. Do not set `VITE_API_URL` in Netlify; the frontend must keep its relative `/api` base so the proxy and PHP session cookies remain same-origin.
 4. Set Railway's `FRONTEND_ORIGIN` to the exact deployed Netlify origin, for example `https://your-site.netlify.app`. This is used for credentialed API CORS responses and email verification links.
+
+For Google Calendar (separate from Google sign-in), set this Netlify build variable to the public URL of the Railway calendar service, with no trailing slash:
+
+```text
+VITE_GOOGLE_CALENDAR_URL=https://your-calendar-service.up.railway.app
+```
+
+Trigger a new Netlify deploy after setting it. Do not set `VITE_GOOGLE_CALENDAR_URL` on Railway; it is embedded in the frontend during the Netlify build.
 
 Google sign-in is configured at frontend build time. Add `VITE_GOOGLE_CLIENT_ID` to the Netlify site's environment variables using the Google OAuth web client ID, then redeploy the site. Setting this variable only on Railway has no effect on the Netlify-built frontend. In Google Cloud OAuth client settings, add the Netlify site origin to **Authorized JavaScript origins** and the appropriate callback/origin URLs required by the configured login flow.
 

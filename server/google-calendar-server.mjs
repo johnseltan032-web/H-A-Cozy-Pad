@@ -1,9 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { google } from 'googleapis';
 
 const app = express();
-const port = Number(process.env.GOOGLE_CALENDAR_PORT || 3001);
+const port = Number(process.env.PORT || process.env.GOOGLE_CALENDAR_PORT || 3001);
 const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const redirectUri = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${port}/auth/callback`;
 
