@@ -234,7 +234,13 @@ function EmailVerificationRow({ isLoading, email, isVerified }) {
         method: 'POST',
         credentials: 'include',
       });
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Verification request failed (HTTP ${response.status}). Check the API service logs.`);
+      }
       if (!response.ok) throw new Error(data.error || 'Unable to send verification email');
 
       setStatus('sent');
