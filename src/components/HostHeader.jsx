@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
+import NotificationBell from './NotificationBell';
 
 export default function HostHeader({
   activeNav = 'Today',
@@ -127,6 +128,8 @@ export default function HostHeader({
 
       {/* Right side */}
       <div className="host-header__actions flex items-center gap-4 justify-self-end">
+        <NotificationBell />
+
         {/* Profile icon */}
         <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden">
           <svg

@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require __DIR__ . '/mailer.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -136,6 +137,64 @@ try {
     }
 
     $pdo->commit();
+
+    // Notify the customer after commit so a mail problem never undoes the
+    // status change. The in-app notification is always saved; the email is
+    // only sent on approval, and only if the customer has emails enabled.
+    try {
+        $info = $pdo->prepare(
+            'SELECT bk.check_in_date, bk.check_out_date,
+                    u.user_id, u.full_name, u.email,
+                    un.unit_name, bl.building_name,
+                    bd.guest_name, bd.guest_contact_num
+             FROM bookings bk
+             JOIN customer_profiles cp ON cp.customer_id = bk.customer_id
+             JOIN users u ON u.user_id = cp.user_id
+             JOIN units un ON un.unit_id = bk.unit_id
+             JOIN buildings bl ON bl.building_id = un.building_id
+             LEFT JOIN booking_details bd ON bd.booking_id = bk.booking_id
+             WHERE bk.booking_id = ?'
+        );
+        $info->execute([$bookingId]);
+        $booking = $info->fetch(PDO::FETCH_ASSOC);
+
+        if ($booking) {
+            $stay = sprintf(
+                '%s (%s), %s to %s',
+                $booking['unit_name'],
+                $booking['building_name'],
+                $booking['check_in_date'],
+                $booking['check_out_date']
+            );
+
+            $notifyMessage = $status === 'confirmed'
+                ? 'Your booking has been confirmed: ' . $stay . '.'
+                : 'Your booking was not approved: ' . $stay . '.';
+
+            $pdo->prepare(
+                "INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
+                 VALUES (?, ?, 'booking', ?, 0, NOW())"
+            )->execute([$booking['user_id'], $bookingId, $notifyMessage]);
+
+            if ($status === 'confirmed') {
+                sendNotificationMail(
+                    $pdo,
+                    (int) $booking['user_id'],
+                    $booking['email'],
+                    $booking['full_name'],
+                    'Your booking is confirmed',
+                    '<p>Hi ' . htmlspecialchars($booking['full_name']) . ',</p>' .
+                    '<p>Good news! Your booking has been confirmed.</p>' .
+                    '<p><strong>Stay:</strong> ' . htmlspecialchars($stay) . '<br>' .
+                    '<strong>Guest name:</strong> ' . htmlspecialchars($booking['guest_name'] ?? '') . '<br>' .
+                    '<strong>Contact number:</strong> ' . htmlspecialchars($booking['guest_contact_num'] ?? '') . '</p>' .
+                    '<p>We look forward to hosting you.</p>'
+                );
+            }
+        }
+    } catch (Throwable $notifyError) {
+        error_log('Status notification/email failed: ' . $notifyError->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

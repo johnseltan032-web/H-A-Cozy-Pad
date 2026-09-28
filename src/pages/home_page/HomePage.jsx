@@ -18,18 +18,41 @@ export default function HomePage({
   const [filteredProperties, setFilteredProperties] = useState([]);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/available_listings.php`)
-      .then((response) => {
+    fetch(`${API_BASE_URL}/available_listings.php`, { credentials: 'include' })
+      .then(async (response) => {
+        const text = await response.text();
+
         if (!response.ok) {
-          throw new Error('Unable to load available housing');
+          let message = 'Unable to load available housing';
+          try {
+            const data = JSON.parse(text);
+            message = data.error || message;
+          } catch {
+            message = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || message;
+          }
+          throw new Error(message);
         }
-        return response.json();
+
+        if (!text) {
+          return [];
+        }
+
+        try {
+          const data = JSON.parse(text);
+          return Array.isArray(data) ? data : [];
+        } catch {
+          throw new Error('Server returned an invalid listings response.');
+        }
       })
       .then((data) => {
         setProperties(data);
         setFilteredProperties(data);
       })
-      .catch((error) => console.error(error));
+      .catch((error) => {
+        console.error(error);
+        setProperties([]);
+        setFilteredProperties([]);
+      });
   }, []);
 
   // Filter properties dynamically when search parameters change

@@ -45,6 +45,8 @@ import PlaceDetail from './pages/listing_page/PlaceDetail';
 import ListingPublish from './pages/listing_page/ListingPublish';
 import PlaceImages from './pages/listing_page/PlaceImages';
 
+import VerifyEmail from './pages/verify_email';
+
 export default function App() {
   return (
     <Router>
@@ -152,14 +154,14 @@ function AppContent() {
           element={<FaqManagement />}
         />
 
-        <Route
-          element={
+        <Route path="/verify-email" element={<VerifyEmail />} />
+
+        <Route element={
             <ProtectedRoute
               user={user}
               isLoading={isLoading}
             />
-          }
-        >
+          }>
           <Route
             path="/profile"
             element={

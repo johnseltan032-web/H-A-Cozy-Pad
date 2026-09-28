@@ -5,4 +5,6 @@
     $DB_PASS = getenv('MYSQLPASSWORD') ?: getenv('MYSQL_ROOT_PASSWORD') ?: getenv('DB_PASSWORD') ?: '';
     $DB_PORT = (int) (getenv('MYSQLPORT') ?: getenv('DB_PORT') ?: 3306);
     $FRONTEND_ORIGIN = getenv('FRONTEND_ORIGIN') ?: 'http://localhost:5173';
+    $GMAIL_USER = getenv('GMAIL_USER') ?: '';
+    $GMAIL_APP_PASSWORD = getenv('GMAIL_APP_PASSWORD') ?: '';
 ?>

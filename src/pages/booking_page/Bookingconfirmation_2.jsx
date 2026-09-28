@@ -620,12 +620,20 @@ export default function AdditionalInformation({
         }
       );
 
-      const data = await response.json();
+      const text = await response.text();
+      let data = {};
+
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { error: 'Unexpected server response. Please try again.' };
+        }
+      }
 
       if (!response.ok) {
         throw new Error(
-          data.error ||
-            "Unable to create booking."
+          data.error || 'Unable to create booking.'
         );
       }
 
