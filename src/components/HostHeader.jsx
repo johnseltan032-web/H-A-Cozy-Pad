@@ -128,6 +128,19 @@ export default function HostHeader({
 
           <li>
             <Link
+              to="/host/expenses"
+              className={`text-lg ${
+                activeNav === 'Expenses'
+                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
+                  : 'text-neutral-600 hover:text-black'
+              }`}
+            >
+              Expenses
+            </Link>
+          </li>
+
+          <li>
+            <Link
               to="/host/listings"
               className={`text-lg ${
                 activeNav === 'Listing'

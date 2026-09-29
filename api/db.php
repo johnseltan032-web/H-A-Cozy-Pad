@@ -4,7 +4,7 @@
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
-    
+
     $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
     $isLocalFrontend = preg_match(
         '/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/',
