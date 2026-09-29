@@ -64,11 +64,15 @@ CREATE TABLE IF NOT EXISTS units (
     bedroom_details JSON NULL,
     rate_per_night DECIMAL(10, 2) NOT NULL,
     base_price DECIMAL(10, 2) NULL,
-    discounts JSON NULL,
+    customer_id INT NULL,
     status ENUM('available', 'occupied', 'maintenance', 'unavailable') NOT NULL DEFAULT 'available',
     available_from DATE NULL,
     available_until DATE NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_unit_customer
+        FOREIGN KEY (customer_id)
+        REFERENCES customer_profiles(customer_id)
+        ON DELETE SET NULL,
     CONSTRAINT fk_unit_building
         FOREIGN KEY (building_id)
         REFERENCES buildings(building_id)
@@ -77,7 +81,7 @@ CREATE TABLE IF NOT EXISTS units (
 
 CREATE TABLE IF NOT EXISTS bookings (
     booking_id INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id INT NOT NULL,
+    customer_id INT NULL,
     unit_id INT NOT NULL,
     check_in_date DATE NOT NULL,
     check_out_date DATE NOT NULL,
@@ -89,7 +93,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_booking_customer
         FOREIGN KEY (customer_id)
-        REFERENCES customer_profiles(customer_id),
+        REFERENCES customer_profiles(customer_id)
+        ON DELETE SET NULL,
     CONSTRAINT fk_booking_unit
         FOREIGN KEY (unit_id)
         REFERENCES units(unit_id),
@@ -102,6 +107,7 @@ CREATE TABLE IF NOT EXISTS booking_details (
     booking_id INT NOT NULL UNIQUE,
     guest_name VARCHAR(50) NOT NULL,
     guest_contact_num VARCHAR(11) NOT NULL,
+    guest_email VARCHAR(254) NULL,
     valid_id_path VARCHAR(255) NOT NULL,
     vehicle_plate_num VARCHAR(7) NULL,
     vehicle_type VARCHAR(50) NULL,

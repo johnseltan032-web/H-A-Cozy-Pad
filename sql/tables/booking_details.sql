@@ -3,6 +3,7 @@ create table booking_details(
     booking_id int not null unique,
     guest_name varchar(50) not null,
     guest_contact_num varchar(11) not null,
+    guest_email varchar(254) null,
     valid_id_path varchar(255) not null,
     vehicle_plate_num varchar(7) null,
     vehicle_type varchar(50) null,

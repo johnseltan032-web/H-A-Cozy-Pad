@@ -84,14 +84,6 @@ try {
             echo json_encode(['error' => 'Customer profile not found']);
             exit;
         }
-    } else {
-        $existingAccount = $pdo->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
-        $existingAccount->execute([$guestEmail]);
-        if ($existingAccount->fetchColumn()) {
-            http_response_code(409);
-            echo json_encode(['error' => 'An account with this email already exists. Sign in to book with that email.']);
-            exit;
-        }
     }
 
     $unit = $pdo->prepare(
@@ -198,25 +190,6 @@ try {
          FOR UPDATE'
     );
     $lockedUnit->execute([$unitId]);
-
-    $guestUserId = null;
-    if ($isGuestCheckout) {
-        $guestAccount = $pdo->prepare(
-            'INSERT INTO users (full_name, email, password, contact_num, role)
-             VALUES (?, ?, ?, ?, \'customer\')'
-        );
-        $guestAccount->execute([
-            $guestName,
-            $guestEmail,
-            password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT),
-            $guestContactNum,
-        ]);
-        $guestUserId = (int) $pdo->lastInsertId();
-
-        $guestProfile = $pdo->prepare('INSERT INTO customer_profiles (user_id) VALUES (?)');
-        $guestProfile->execute([$guestUserId]);
-        $customerId = (int) $pdo->lastInsertId();
-    }
 
     $overlap = $pdo->prepare(
         'SELECT booking_id
@@ -332,14 +305,15 @@ try {
 
     $details = $pdo->prepare(
         'INSERT INTO booking_details
-            (booking_id, guest_name, guest_contact_num, valid_id_path, vehicle_type, special_requests)
-         VALUES (?, ?, ?, ?, ?, ?)'
+            (booking_id, guest_name, guest_contact_num, guest_email, valid_id_path, vehicle_type, special_requests)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
 
     $details->execute([
         $bookingId,
         $guestName,
         $guestContactNum,
+        $guestEmail ?: null,
         $validIdPath,
         $vehicleType ?: null,
         $specialRequests ?: null
@@ -363,16 +337,9 @@ try {
 
     $pdo->commit();
 
-    if ($isGuestCheckout) {
-        $_SESSION['user_id'] = $guestUserId;
-        $_SESSION['email'] = $guestEmail;
-        $_SESSION['role'] = 'customer';
-        $_SESSION['full_name'] = $guestName;
-    }
-
     try {
-        $admins = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role = 'admin'");
-        $adminList = $admins->fetchAll(PDO::FETCH_ASSOC);
+        $hosts = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role IN ('admin', 'assistant')");
+        $hostList = $hosts->fetchAll(PDO::FETCH_ASSOC);
 
         $notifyMessage = sprintf(
             '%s requested a booking at %s (%s) for %s to %s.',
@@ -388,16 +355,16 @@ try {
              VALUES (?, ?, 'booking', ?, 0, NOW())"
         );
 
-        foreach ($adminList as $admin) {
-            $insertNotif->execute([$admin['user_id'], $bookingId, $notifyMessage]);
+        foreach ($hostList as $host) {
+            $insertNotif->execute([$host['user_id'], $bookingId, $notifyMessage]);
 
             sendNotificationMail(
                 $pdo,
-                (int) $admin['user_id'],
-                $admin['email'],
-                $admin['full_name'],
+                (int) $host['user_id'],
+                $host['email'],
+                $host['full_name'],
                 'New booking request',
-                '<p>Hi ' . htmlspecialchars($admin['full_name']) . ',</p>' .
+                '<p>Hi ' . htmlspecialchars($host['full_name']) . ',</p>' .
                 '<p>' . htmlspecialchars($notifyMessage) . '</p>' .
                 '<p>Guest contact number: ' . htmlspecialchars($guestContactNum) . '</p>' .
                 '<p>Review it in your dashboard.</p>'
@@ -414,17 +381,7 @@ try {
         'proofOfPaymentPath' => $proofOfPaymentPath
     ];
 
-    if ($isGuestCheckout) {
-        $responseData['user'] = [
-            'id' => $guestUserId,
-            'user_id' => $guestUserId,
-            'name' => $guestName,
-            'fullName' => $guestName,
-            'email' => $guestEmail,
-            'contactNum' => $guestContactNum,
-            'role' => 'customer',
-        ];
-    }
+    $responseData['guestBooking'] = $isGuestCheckout;
 
     echo json_encode($responseData);
 

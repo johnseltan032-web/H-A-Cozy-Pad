@@ -140,9 +140,11 @@ export default function AdditionalInformation({
 
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
   const [savedBookingId, setSavedBookingId] = useState(
     booking.bookingId || null
   );
+  const [isGuestBooking, setIsGuestBooking] = useState(false);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -262,13 +264,12 @@ export default function AdditionalInformation({
       return;
     }
 
-    // Allows numbers, spaces, +, -, and parentheses
-    const phoneRegex = /^[0-9+\-()\s]+$/;
+    const phoneRegex = /^\d{11}$/;
 
     if (!phoneRegex.test(value)) {
       setFieldError(
         "phone",
-        "Please enter a valid phone number."
+        "Enter an 11-digit phone number using numbers only."
       );
       return;
     }
@@ -438,11 +439,11 @@ export default function AdditionalInformation({
         "Phone number is required.";
       isValid = false;
     } else {
-      const phoneRegex = /^[0-9+\-()\s]+$/;
+      const phoneRegex = /^\d{11}$/;
 
       if (!phoneRegex.test(phone)) {
         newErrors.phone =
-          "Please enter a valid phone number.";
+          "Enter an 11-digit phone number using numbers only.";
         isValid = false;
       }
     }
@@ -543,6 +544,12 @@ export default function AdditionalInformation({
       return;
     }
 
+    setShowBookingConfirmation(true);
+  };
+
+  const submitBooking = async () => {
+    setShowBookingConfirmation(false);
+    setSubmitError("");
     setIsSubmitting(true);
 
     try {
@@ -631,19 +638,19 @@ export default function AdditionalInformation({
         }
       }
 
+      if (data.success && data.bookingId) {
+        setIsGuestBooking(Boolean(data.guestBooking));
+        setSavedBookingId(data.bookingId);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(
           data.error || 'Unable to create booking.'
         );
       }
 
-      if (data.user) {
-        window.dispatchEvent(new CustomEvent('auth-changed', {
-          detail: { loggedIn: true, user: data.user },
-        }));
-      }
-
-      setSavedBookingId(data.bookingId);
+      throw new Error(data.error || 'Unable to confirm that the booking was saved.');
     } catch (error) {
       setSubmitError(
         error.message ||
@@ -785,6 +792,8 @@ export default function AdditionalInformation({
 
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  maxLength={11}
                   value={phone}
                   onChange={handlePhoneChange}
                   onBlur={() => {
@@ -1046,6 +1055,43 @@ export default function AdditionalInformation({
 
       <Footer />
 
+      {showBookingConfirmation && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-confirmation-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 text-center shadow-2xl sm:p-7">
+            <h2
+              id="booking-confirmation-title"
+              className="text-xl font-semibold text-gray-900"
+            >
+              Are you sure about the booking details?
+            </h2>
+            <p className="mt-3 text-sm text-gray-600">
+              {booking.checkIn} to {booking.checkOut} · {booking.guests || 1} guest{Number(booking.guests || 1) === 1 ? "" : "s"}
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBookingConfirmation(false)}
+                className="rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50"
+              >
+                Review details
+              </button>
+              <button
+                type="button"
+                onClick={submitBooking}
+                className="rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                Yes, book
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Booking success modal */}
       {savedBookingId && (
         <div
@@ -1063,12 +1109,13 @@ export default function AdditionalInformation({
               id="booking-success-title"
               className="text-xl font-semibold text-gray-900"
             >
-              Booking confirmed
+              {isGuestBooking ? 'Booking request submitted' : 'Booking confirmed'}
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
-              Your booking has been saved. What would you
-              like to do next?
+              {isGuestBooking
+                ? 'Your booking request is saved for review. No account was created.'
+                : 'Your booking has been saved. What would you like to do next?'}
             </p>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -1080,13 +1127,23 @@ export default function AdditionalInformation({
                 Browse home
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/trips")}
-                className="rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
-              >
-                View trips
-              </button>
+              {isGuestBooking ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
+                >
+                  Done
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate('/trips')}
+                  className="rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
+                >
+                  View trips
+                </button>
+              )}
             </div>
           </div>
         </div>

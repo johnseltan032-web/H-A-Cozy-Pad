@@ -42,11 +42,12 @@ try {
             b.cancelled_at,
             cp.customer_id,
             usr.user_id,
-            usr.full_name,
-            usr.email,
-            usr.contact_num,
+            COALESCE(usr.full_name, bd.guest_name) AS full_name,
+            COALESCE(usr.email, bd.guest_email) AS email,
+            COALESCE(usr.contact_num, bd.guest_contact_num) AS contact_num,
             bd.guest_name,
             bd.guest_contact_num,
+            bd.guest_email,
             bd.valid_id_path,
             bd.vehicle_type,
             bd.special_requests,
@@ -60,10 +61,10 @@ try {
 
          FROM bookings b
 
-         JOIN customer_profiles cp
+            LEFT JOIN customer_profiles cp
             ON cp.customer_id = b.customer_id
 
-         JOIN users usr
+            LEFT JOIN users usr
             ON usr.user_id = cp.user_id
 
          LEFT JOIN booking_details bd
@@ -94,8 +95,8 @@ try {
             'bookingStatus' => $customer['status'],
             'cancellationReason' => $customer['cancellation_reason'],
             'cancelledAt' => $customer['cancelled_at'],
-            'customerId' => (int) $customer['customer_id'],
-            'userId' => (int) $customer['user_id'],
+            'customerId' => $customer['customer_id'] !== null ? (int) $customer['customer_id'] : null,
+            'userId' => $customer['user_id'] !== null ? (int) $customer['user_id'] : null,
             'fullName' => $customer['full_name'],
             'email' => $customer['email'],
             'contactNum' => $customer['contact_num'],

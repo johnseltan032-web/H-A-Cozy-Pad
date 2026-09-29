@@ -43,8 +43,8 @@ try {
         FROM bookings b
         INNER JOIN units u ON b.unit_id = u.unit_id
         INNER JOIN buildings bu ON u.building_id = bu.building_id
-        INNER JOIN customer_profiles cp ON b.customer_id = cp.customer_id
-        INNER JOIN users cu ON cp.user_id = cu.user_id
+        LEFT JOIN customer_profiles cp ON b.customer_id = cp.customer_id
+        LEFT JOIN users cu ON cp.user_id = cu.user_id
         LEFT JOIN booking_details bd ON b.booking_id = bd.booking_id
         WHERE b.check_out_date >= CURDATE()
           AND b.status NOT IN ('cancelled', 'rejected', 'checked_out')
@@ -64,8 +64,8 @@ try {
                bu.building_name, u.unit_name
         FROM payments p
         INNER JOIN bookings b ON p.booking_id = b.booking_id
-        INNER JOIN customer_profiles cp ON b.customer_id = cp.customer_id
-        INNER JOIN users cu ON cp.user_id = cu.user_id
+        LEFT JOIN customer_profiles cp ON b.customer_id = cp.customer_id
+        LEFT JOIN users cu ON cp.user_id = cu.user_id
         INNER JOIN units u ON b.unit_id = u.unit_id
         INNER JOIN buildings bu ON u.building_id = bu.building_id
         LEFT JOIN booking_details bd ON b.booking_id = bd.booking_id
