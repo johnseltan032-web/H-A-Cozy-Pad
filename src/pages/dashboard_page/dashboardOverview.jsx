@@ -164,7 +164,7 @@ export default function DashboardOverview() {
 
   return (
     <div className="min-h-screen bg-white font-sans text-neutral-900">
-      <HostHeader activeNav="Overview" />
+      <HostHeader activeNav="Dashboard" />
       <main className="mx-auto max-w-7xl px-5 py-8 md:px-10">
         <header className="mb-7">
           <h1 className="m-0 text-3xl font-semibold">Operations Overview</h1>

@@ -14,6 +14,16 @@ export default function HostHeader({
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
 
+  const navItems = [
+    { label: 'Dashboard', to: '/host/overview', key: 'Dashboard' },
+    { label: 'Calendar', to: '/host/calendar', key: 'Calendar' },
+    { label: 'Expenses', to: '/host/expenses', key: 'Expenses' },
+    ...(canViewStatistics
+      ? [{ label: 'Statistics', to: '/host/statistics', key: 'Statistics' }]
+      : []),
+    { label: 'Settings', to: isAdmin ? '/host/users' : '/profile', key: 'Settings' },
+  ];
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/check_auth.php`, {
       credentials: 'include',
@@ -87,76 +97,37 @@ export default function HostHeader({
 
       {/* Navigation */}
       <nav className="hidden md:block justify-self-center">
-        <ul className="flex gap-10 list-none m-0 p-0">
-          <li>
-            <Link
-              to="/host/overview"
-              className={`text-lg ${
-                activeNav === 'Overview'
-                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
-                  : 'text-neutral-600 hover:text-black'
-              }`}
-            >
-              Overview
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/host/reservations"
-              className={`text-lg ${
-                activeNav === 'Today'
-                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
-                  : 'text-neutral-600 hover:text-black'
-              }`}
-            >
-              Today
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              to="/host/calendar"
-              className={`text-lg ${
-                activeNav === 'Calendar'
-                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
-                  : 'text-neutral-600 hover:text-black'
-              }`}
-            >
-              Calendar
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              to="/host/expenses"
-              className={`text-lg ${
-                activeNav === 'Expenses'
-                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
-                  : 'text-neutral-600 hover:text-black'
-              }`}
-            >
-              Expenses
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              to="/host/listings"
-              className={`text-lg ${
-                activeNav === 'Listing'
-                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
-                  : 'text-neutral-600 hover:text-black'
-              }`}
-            >
-              Listing
-            </Link>
-          </li>
-
+        <ul className="flex items-center gap-7 list-none m-0 p-0">
+          {navItems.map((item) => (
+            <li key={item.key}>
+              <Link
+                to={item.to}
+                className={`text-base font-medium ${
+                  activeNav === item.key
+                    ? 'text-black border-b-2 border-black pb-1'
+                    : 'text-neutral-600 hover:text-black'
+                }`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
 
       {/* Right side */}
       <div className="host-header__actions flex items-center gap-4 justify-self-end">
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = '/host/reservations?new_booking=1';
+          }}
+          className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-700"
+        >
+          <span className="text-lg leading-none">+</span>
+          <span>New Booking</span>
+        </button>
+
         <NotificationBell />
 
         {/* Profile icon */}

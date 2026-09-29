@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS unit_expenses (
     CONSTRAINT chk_unit_expense_amount
         CHECK (amount >= 0)
 );
-
 CREATE INDEX idx_unit_expenses_unit_date
     ON unit_expenses(unit_id, expense_date);
 
