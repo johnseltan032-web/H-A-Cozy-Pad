@@ -87,7 +87,7 @@ try {
     }
 
     $unit = $pdo->prepare(
-        'SELECT u.unit_id, u.unit_name, u.max_guests, u.rate_per_night, u.available_from, u.available_until, b.building_name
+        'SELECT u.unit_id, u.unit_name, u.max_guests, u.status, u.rate_per_night, u.available_from, u.available_until, b.building_name
          FROM units u
          JOIN buildings b ON b.building_id = u.building_id
          WHERE u.unit_id = ?'
@@ -105,6 +105,14 @@ try {
 
     $availableFrom = $unitData['available_from'];
     $availableUntil = $unitData['available_until'];
+
+    if (in_array($unitData['status'] ?? '', ['occupied', 'maintenance', 'unavailable'], true)) {
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'This unit is currently occupied or blocked and cannot accept new bookings.'
+        ]);
+        exit;
+    }
 
     if (empty($availableFrom) || empty($availableUntil)) {
         http_response_code(400);
@@ -211,7 +219,28 @@ try {
 
         http_response_code(409);
         echo json_encode([
-            'error' => 'This room is already booked for some or all of those dates'
+            'error' => 'This unit is already booked for some or all of the selected dates.'
+        ]);
+        exit;
+    }
+
+    $blocked = $pdo->prepare(
+        'SELECT reason
+         FROM unit_blocked_dates
+         WHERE unit_id = ?
+         AND blocked_from <= ?
+         AND blocked_until >= ?
+         LIMIT 1'
+    );
+    $blocked->execute([$unitId, $checkOut, $checkIn]);
+    $blockedDate = $blocked->fetch(PDO::FETCH_ASSOC);
+
+    if ($blockedDate) {
+        $pdo->rollBack();
+
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'This unit is blocked for the selected dates due to ' . str_replace('_', ' ', $blockedDate['reason']) . '.'
         ]);
         exit;
     }

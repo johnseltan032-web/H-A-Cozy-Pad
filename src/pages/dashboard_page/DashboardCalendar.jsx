@@ -61,8 +61,21 @@ function reservationEvents(reservations) {
         endDateExclusive: reservation.check_out_date,
         detail: reservation.unit_name || '',
         source: 'booking',
+        unit_id: reservation.unit_id,
       };
     });
+}
+
+function blockedDatesEvents(blockedDates) {
+  return (blockedDates || []).map((blockedDate) => ({
+    id: `blocked-${blockedDate.blocked_date_id}`,
+    summary: `Blocked • ${blockedDate.reason ? blockedDate.reason.replace('_', ' ') : 'Unavailable'}`,
+    startDate: blockedDate.blocked_from,
+    endDateExclusive: dateKey(addDays(parseDateKey(blockedDate.blocked_until), 1)),
+    detail: blockedDate.notes || blockedDate.reason || 'Blocked',
+    source: 'blocked',
+    unit_id: blockedDate.unit_id,
+  }));
 }
 
 function googleCalendarEvents(events) {
@@ -124,6 +137,9 @@ export default function DashboardCalendar() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [events, setEvents] = useState([]);
   const [reservations, setReservations] = useState([]);
+  const [blockedDates, setBlockedDates] = useState([]);
+  const [blockForm, setBlockForm] = useState({ unitId: '', blockedFrom: '', blockedUntil: '', reason: 'owner_stay', notes: '' });
+  const [blockMessage, setBlockMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -136,6 +152,11 @@ export default function DashboardCalendar() {
       const reservationsData = await reservationsResponse.json();
       if (!reservationsResponse.ok) throw new Error(reservationsData.error || 'Unable to load bookings');
       setReservations(reservationsData.reservations || []);
+
+      const blockedResponse = await fetch(`${API_BASE_URL}/blocked_dates.php`, { credentials: 'include' });
+      const blockedData = await blockedResponse.json();
+      if (!blockedResponse.ok) throw new Error(blockedData.error || 'Unable to load blocked dates');
+      setBlockedDates(blockedData.blockedDates || []);
 
       if (!CALENDAR_API_URL) {
         setIsConnected(false);
@@ -217,7 +238,7 @@ export default function DashboardCalendar() {
     }
   };
 
-  const calendarEvents = [...reservationEvents(reservations), ...googleCalendarEvents(events)];
+  const calendarEvents = [...reservationEvents(reservations), ...blockedDatesEvents(blockedDates), ...googleCalendarEvents(events)];
   const range = calendarRange(currentDate, viewMode);
   const visibleEvents = calendarEvents
     .filter((event) => event.startDate < range.endExclusive && event.endDateExclusive > range.start)
@@ -228,14 +249,73 @@ export default function DashboardCalendar() {
     ? `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
     : formatMonth(currentDate);
   const unitRows = Array.from(new Map(
-    reservations
-      .filter((reservation) => reservation.unit_id)
-      .map((reservation) => [reservation.unit_id, {
-        id: reservation.unit_id,
-        name: reservation.unit_name || `Unit ${reservation.unit_id}`,
-        building: reservation.building_name || 'Property',
-      }])
+    [...reservations, ...blockedDates].filter((item) => item.unit_id).map((item) => [item.unit_id, {
+      id: Number(item.unit_id),
+      name: item.unit_name || item.unitName || `Unit ${item.unit_id}`,
+      building: item.building_name || item.buildingName || 'Property',
+    }])
   ).values());
+
+  const blockReasonLabels = {
+    owner_stay: 'Owner stay / personal use',
+    maintenance: 'Maintenance',
+    renovation: 'Renovation',
+    deep_cleaning: 'Deep cleaning',
+    other: 'Other',
+  };
+
+  const handleBlockSubmit = async (event) => {
+    event.preventDefault();
+    setBlockMessage('');
+
+    if (!blockForm.unitId || !blockForm.blockedFrom || !blockForm.blockedUntil) {
+      setBlockMessage('Select a unit and enter a valid date range.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/blocked_dates.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          unit_id: Number(blockForm.unitId),
+          blocked_from: blockForm.blockedFrom,
+          blocked_until: blockForm.blockedUntil,
+          reason: blockForm.reason,
+          notes: blockForm.notes,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to block these dates');
+      }
+
+      setBlockMessage('Dates blocked successfully.');
+      setBlockForm({ unitId: blockForm.unitId, blockedFrom: '', blockedUntil: '', reason: 'owner_stay', notes: '' });
+      await loadEvents();
+    } catch (blockError) {
+      setBlockMessage(blockError.message || 'Unable to block dates.');
+    }
+  };
+
+  const unblockDates = async (blockedDateId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/blocked_dates.php?blocked_date_id=${encodeURIComponent(blockedDateId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to unblock dates');
+      }
+      setBlockMessage('Blocked dates removed.');
+      await loadEvents();
+    } catch (blockError) {
+      setBlockMessage(blockError.message || 'Unable to unblock dates.');
+    }
+  };
 
   const shiftPeriod = (amount) => {
     setSelectedDate(null);
@@ -279,6 +359,74 @@ export default function DashboardCalendar() {
         </div>
 
         {error && <p className="mb-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+        <section className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+          <h2 className="mb-3 text-lg font-semibold">Block dates</h2>
+          <form onSubmit={handleBlockSubmit} className="grid gap-3 md:grid-cols-5">
+            <select
+              value={blockForm.unitId}
+              onChange={(event) => setBlockForm((current) => ({ ...current, unitId: event.target.value }))}
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Select unit</option>
+              {unitRows.map((unit) => (
+                <option key={unit.id} value={unit.id}>{unit.name}</option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={blockForm.blockedFrom}
+              onChange={(event) => setBlockForm((current) => ({ ...current, blockedFrom: event.target.value }))}
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              value={blockForm.blockedUntil}
+              onChange={(event) => setBlockForm((current) => ({ ...current, blockedUntil: event.target.value }))}
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+            />
+            <select
+              value={blockForm.reason}
+              onChange={(event) => setBlockForm((current) => ({ ...current, reason: event.target.value }))}
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="owner_stay">Owner stay / personal use</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="renovation">Renovation</option>
+              <option value="deep_cleaning">Deep cleaning</option>
+              <option value="other">Other</option>
+            </select>
+            <button type="submit" className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-700">
+              Save block
+            </button>
+          </form>
+          <input
+            type="text"
+            value={blockForm.notes}
+            onChange={(event) => setBlockForm((current) => ({ ...current, notes: event.target.value }))}
+            placeholder="Notes or reason details"
+            className="mt-3 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+          />
+          {blockMessage && <p className="mt-3 text-sm text-neutral-700">{blockMessage}</p>}
+          {blockedDates.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {blockedDates.map((entry) => (
+                <div key={entry.blocked_date_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm">
+                  <span>
+                    <strong>{entry.unit_name}</strong> · {entry.blocked_from} to {entry.blocked_until} · {entry.reason?.replace('_', ' ')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => unblockDates(entry.blocked_date_id)}
+                    className="rounded border border-neutral-300 px-2 py-1 text-xs font-medium hover:bg-neutral-50"
+                  >
+                    Unblock
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4">
@@ -428,11 +576,14 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                         className={`min-h-[76px] border-r border-neutral-100 px-1 py-1 text-left ${isToday ? 'bg-amber-50' : 'bg-white'} ${isSelected ? 'ring-1 ring-inset ring-emerald-600' : ''}`}
                         aria-label={`${unit.name} on ${key}`}
                       >
-                        {unitBookings.some((event) => event.startDate <= key && key < event.endDateExclusive) && (
-                          <span className="inline-flex rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                            Booked
+                        {unitBookings.filter((event) => event.startDate <= key && key < event.endDateExclusive).map((event) => (
+                          <span
+                            key={`${event.id}-${key}`}
+                            className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${event.source === 'blocked' ? 'bg-amber-600' : 'bg-emerald-700'}`}
+                          >
+                            {event.source === 'blocked' ? 'Blocked' : 'Booked'}
                           </span>
-                        )}
+                        ))}
                       </button>
                     );
                   })}
@@ -524,7 +675,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                 type="button"
                 title={`${event.summary}${event.detail ? `: ${event.detail}` : ''}`}
                 onClick={() => onSelectDate(event.startDate < weekStartKey ? weekStartKey : event.startDate)}
-                className={`mx-0.5 my-0.5 min-w-0 truncate rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+                className={`mx-0.5 my-0.5 min-w-0 truncate rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
                 style={{ gridColumn: `${startColumn + 1} / ${endColumn + 1}`, gridRow: lane + 2 }}
               >
                 {event.summary}

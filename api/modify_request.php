@@ -145,6 +145,55 @@ try {
         exit;
     }
 
+    $unitState = $pdo->prepare(
+        "SELECT status, available_from, available_until
+         FROM units
+         WHERE unit_id = ?
+         LIMIT 1"
+    );
+    $unitState->execute([$request['unit_id']]);
+    $unitStateData = $unitState->fetch(PDO::FETCH_ASSOC);
+
+    if (!$unitStateData) {
+        $pdo->rollBack();
+
+        http_response_code(404);
+        echo json_encode([
+            'error' => 'The unit assigned to this booking no longer exists.'
+        ]);
+        exit;
+    }
+
+    if (in_array($unitStateData['status'] ?? '', ['occupied', 'maintenance', 'unavailable'], true)) {
+        $pdo->rollBack();
+
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'This unit is currently occupied or blocked and cannot be assigned to the requested dates.'
+        ]);
+        exit;
+    }
+
+    if (!empty($unitStateData['available_from']) && $request['requested_check_in'] < $unitStateData['available_from']) {
+        $pdo->rollBack();
+
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'The requested check-in date is before this unit is available.'
+        ]);
+        exit;
+    }
+
+    if (!empty($unitStateData['available_until']) && $request['requested_check_out'] > $unitStateData['available_until']) {
+        $pdo->rollBack();
+
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'The requested dates extend beyond this unit’s availability window.'
+        ]);
+        exit;
+    }
+
     if (
         $request['max_guests'] !== null &&
         (int) $request['requested_guests'] > (int) $request['max_guests']
@@ -191,7 +240,32 @@ try {
 
         http_response_code(409);
         echo json_encode([
-            'error' => 'The requested dates are no longer available for this unit'
+            'error' => 'This unit is already booked for some or all of the requested dates.'
+        ]);
+        exit;
+    }
+
+    $blocked = $pdo->prepare(
+        "SELECT reason
+         FROM unit_blocked_dates
+         WHERE unit_id = ?
+         AND blocked_from <= ?
+         AND blocked_until >= ?
+         LIMIT 1"
+    );
+    $blocked->execute([
+        $request['unit_id'],
+        $request['requested_check_out'],
+        $request['requested_check_in']
+    ]);
+    $blockedDate = $blocked->fetch(PDO::FETCH_ASSOC);
+
+    if ($blockedDate) {
+        $pdo->rollBack();
+
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'This unit is blocked for the requested dates due to ' . str_replace('_', ' ', $blockedDate['reason']) . '.'
         ]);
         exit;
     }

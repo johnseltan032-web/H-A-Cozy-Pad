@@ -1,6 +1,10 @@
 <?php
 require 'db.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['error' => 'Authentication required']);
@@ -14,6 +18,8 @@ if (!in_array(strtolower($_SESSION['role'] ?? ''), ['super_admin', 'admin'], tru
 }
 
 try {
+    $today = date('Y-m-d');
+
     $stats = $pdo->query("
         SELECT
             (SELECT COUNT(*) FROM bookings) AS total_bookings,
@@ -35,6 +41,70 @@ try {
     foreach ($summaryRows->fetchAll(PDO::FETCH_ASSOC) as $row) {
         $summary[$row['status']] = (int) $row['total'];
     }
+
+    $checkInRows = $pdo->query(
+        "SELECT b.booking_id, b.check_in_date, b.check_out_date, b.status,
+                u.unit_name, bu.building_name,
+                COALESCE(bd.guest_name, cu.full_name, 'Guest') AS guest_name,
+                COALESCE(b.check_in_time, '02:00 PM') AS check_in_time
+         FROM bookings b
+         INNER JOIN units u ON b.unit_id = u.unit_id
+         INNER JOIN buildings bu ON u.building_id = bu.building_id
+         LEFT JOIN customer_profiles cp ON b.customer_id = cp.customer_id
+         LEFT JOIN users cu ON cp.user_id = cu.user_id
+         LEFT JOIN booking_details bd ON b.booking_id = bd.booking_id
+         WHERE b.check_in_date = CURDATE()
+           AND b.status NOT IN ('cancelled', 'rejected')
+         ORDER BY b.created_at ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $checkOutRows = $pdo->query(
+        "SELECT b.booking_id, b.check_in_date, b.check_out_date, b.status,
+                u.unit_name, bu.building_name,
+                COALESCE(bd.guest_name, cu.full_name, 'Guest') AS guest_name,
+                COALESCE(b.check_out_time, '12:00 PM') AS check_out_time
+         FROM bookings b
+         INNER JOIN units u ON b.unit_id = u.unit_id
+         INNER JOIN buildings bu ON u.building_id = bu.building_id
+         LEFT JOIN customer_profiles cp ON b.customer_id = cp.customer_id
+         LEFT JOIN users cu ON cp.user_id = cu.user_id
+         LEFT JOIN booking_details bd ON b.booking_id = bd.booking_id
+         WHERE b.check_out_date = CURDATE()
+           AND b.status NOT IN ('cancelled', 'rejected')
+         ORDER BY b.created_at ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $cleaningRows = $pdo->query(
+        "SELECT DISTINCT b.unit_id, u.unit_name,
+                COALESCE(b.check_out_time, '12:00 PM') AS check_out_time
+         FROM bookings b
+         INNER JOIN units u ON u.unit_id = b.unit_id
+         WHERE b.check_out_date = CURDATE()
+           AND b.status NOT IN ('cancelled', 'rejected')
+         ORDER BY u.unit_name ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $occupiedToday = $pdo->query(
+        "SELECT DISTINCT u.unit_id, u.unit_name
+         FROM bookings b
+         INNER JOIN units u ON u.unit_id = b.unit_id
+         WHERE b.check_in_date <= CURDATE()
+           AND b.check_out_date > CURDATE()
+           AND b.status NOT IN ('cancelled', 'rejected')
+         ORDER BY u.unit_name ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $vacantUnits = $pdo->query(
+        "SELECT u.unit_id, u.unit_name
+         FROM units u
+         LEFT JOIN bookings b
+           ON b.unit_id = u.unit_id
+          AND b.check_in_date <= CURDATE()
+          AND b.check_out_date > CURDATE()
+          AND b.status NOT IN ('cancelled', 'rejected')
+         WHERE b.booking_id IS NULL
+         ORDER BY u.unit_name ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
 
     $upcoming = $pdo->query("
         SELECT b.booking_id, b.check_in_date, b.check_out_date, b.num_of_guests, b.status,
@@ -80,6 +150,50 @@ try {
     }
     unset($payment);
 
+    $dailyOperations = [
+        'checkIns' => [
+            'count' => count($checkInRows),
+            'items' => array_map(function ($row) {
+                return [
+                    'unit_name' => $row['unit_name'],
+                    'guest_name' => $row['guest_name'],
+                    'check_in_time' => $row['check_in_time'],
+                ];
+            }, $checkInRows),
+        ],
+        'checkOuts' => [
+            'count' => count($checkOutRows),
+            'items' => array_map(function ($row) {
+                return [
+                    'unit_name' => $row['unit_name'],
+                    'guest_name' => $row['guest_name'],
+                    'check_out_time' => $row['check_out_time'],
+                ];
+            }, $checkOutRows),
+        ],
+        'cleaning' => [
+            'count' => count($cleaningRows),
+            'items' => array_map(function ($row) {
+                return [
+                    'unit_name' => $row['unit_name'],
+                    'check_out_time' => $row['check_out_time'],
+                ];
+            }, $cleaningRows),
+        ],
+        'vacantUnits' => [
+            'count' => count($vacantUnits),
+            'units' => array_map(function ($row) {
+                return $row['unit_name'];
+            }, $vacantUnits),
+        ],
+        'occupiedUnits' => [
+            'count' => count($occupiedToday),
+            'units' => array_map(function ($row) {
+                return $row['unit_name'];
+            }, $occupiedToday),
+        ],
+    ];
+
     echo json_encode([
         'stats' => [
             'totalBookings' => (int) $stats['total_bookings'],
@@ -92,9 +206,11 @@ try {
             'totalCustomers' => (int) $stats['total_customers'],
             'verifiedRevenue' => (float) $stats['verified_revenue'],
         ],
+        'dailyOperations' => $dailyOperations,
         'bookingSummary' => $summary,
         'upcomingReservations' => $upcoming,
         'recentPayments' => $payments,
+        'today' => $today,
     ]);
 } catch (PDOException $error) {
     error_log('Dashboard overview query failed: ' . $error->getMessage());

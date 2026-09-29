@@ -162,17 +162,52 @@ try {
     }
 
     if ($requestType === 'modification') {
+        $unitState = $pdo->prepare(
+            'SELECT status, available_from, available_until
+             FROM units
+             WHERE unit_id = ?'
+        );
+        $unitState->execute([$bookingData['unit_id']]);
+        $unitStateData = $unitState->fetch(PDO::FETCH_ASSOC);
+
+        if (!$unitStateData) {
+            http_response_code(404);
+            echo json_encode([
+                'error' => 'Unit no longer exists.'
+            ]);
+            exit;
+        }
+
+        if (in_array($unitStateData['status'] ?? '', ['occupied', 'maintenance', 'unavailable'], true)) {
+            http_response_code(409);
+            echo json_encode([
+                'error' => 'This unit is currently occupied or blocked and cannot be moved to the requested dates.'
+            ]);
+            exit;
+        }
+
+        if (!empty($unitStateData['available_from']) && $requestedCheckIn < $unitStateData['available_from']) {
+            http_response_code(409);
+            echo json_encode([
+                'error' => 'The requested check-in is before this unit is available.'
+            ]);
+            exit;
+        }
+
+        if (!empty($unitStateData['available_until']) && $requestedCheckOut > $unitStateData['available_until']) {
+            http_response_code(409);
+            echo json_encode([
+                'error' => 'The requested dates extend beyond this unit’s availability window.'
+            ]);
+            exit;
+        }
+
         $overlap = $pdo->prepare(
             'SELECT booking_id
              FROM bookings
              WHERE unit_id = ?
              AND booking_id != ?
-             AND status IN (
-                 \'awaiting_payment\',
-                 \'payment_review\',
-                 \'confirmed\',
-                 \'checked_in\'
-             )
+             AND status NOT IN (\'cancelled\', \'rejected\')
              AND check_in_date < ?
              AND check_out_date > ?
              LIMIT 1'
@@ -188,7 +223,26 @@ try {
         if ($overlap->fetch()) {
             http_response_code(409);
             echo json_encode([
-                'error' => 'The requested dates are no longer available'
+                'error' => 'This unit is already booked for some or all of the requested dates.'
+            ]);
+            exit;
+        }
+
+        $blocked = $pdo->prepare(
+            'SELECT reason
+             FROM unit_blocked_dates
+             WHERE unit_id = ?
+             AND blocked_from <= ?
+             AND blocked_until >= ?
+             LIMIT 1'
+        );
+        $blocked->execute([$bookingData['unit_id'], $requestedCheckOut, $requestedCheckIn]);
+        $blockedDate = $blocked->fetch(PDO::FETCH_ASSOC);
+
+        if ($blockedDate) {
+            http_response_code(409);
+            echo json_encode([
+                'error' => 'This unit is blocked for the requested dates due to ' . str_replace('_', ' ', $blockedDate['reason']) . '.'
             ]);
             exit;
         }
