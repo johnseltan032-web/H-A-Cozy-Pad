@@ -23,6 +23,7 @@ import DashboardListings from './pages/dashboard_page/DashboardListings';
 import DashboardReservations from './pages/dashboard_page/DashboardReservations';
 import DashboardCalendar from './pages/dashboard_page/DashboardCalendar';
 import DashboardOverview from './pages/dashboard_page/dashboardOverview';
+import DashboardStatistics from './pages/dashboard_page/DashboardStatistics';
 import UserManagement from './pages/dashboard_page/UserManagement';
 
 // home page
@@ -181,6 +182,7 @@ function AppContent() {
           }
         >
           <Route path="/host/overview" element={<DashboardOverview />} />
+          <Route path="/host/statistics" element={<DashboardStatistics />} />
           <Route path="/host/listings" element={<DashboardListings />} />
           <Route path="/host/reservations" element={<DashboardReservations />} />
           <Route path="/host/calendar" element={<DashboardCalendar />} />
@@ -228,6 +230,7 @@ function AppContent() {
             />
           }
         >
+          <Route path="/host/statistics" element={<DashboardStatistics />} />
           <Route path="/host/listings" element={<DashboardListings />} />
           <Route
             path="/host/reservations"

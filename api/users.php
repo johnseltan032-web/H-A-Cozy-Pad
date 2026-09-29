@@ -25,7 +25,7 @@ function getRequestData() {
     return $data;
 }
 
-function syncUserProfile($pdo, $userId, $role) {
+function syncUserProfile($pdo, $userId, $role, $canViewStatistics = false) {
     if ($role === 'customer') {
         $stmt = $pdo->prepare("DELETE FROM admin_profiles WHERE user_id = ?");
         $stmt->execute([$userId]);
@@ -35,17 +35,18 @@ function syncUserProfile($pdo, $userId, $role) {
             VALUES (?)
         ");
         $stmt->execute([$userId]);
-    } else {
-        $stmt = $pdo->prepare("DELETE FROM customer_profiles WHERE user_id = ?");
-        $stmt->execute([$userId]);
-
-        $stmt = $pdo->prepare("
-            INSERT INTO admin_profiles (user_id, position)
-            VALUES (?, ?)
-            ON DUPLICATE KEY UPDATE position = VALUES(position)
-        ");
-        $stmt->execute([$userId, $role]);
+        return;
     }
+
+    $stmt = $pdo->prepare("DELETE FROM customer_profiles WHERE user_id = ?");
+    $stmt->execute([$userId]);
+
+    $stmt = $pdo->prepare("
+        INSERT INTO admin_profiles (user_id, position, can_view_statistics)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE position = VALUES(position), can_view_statistics = VALUES(can_view_statistics)
+    ");
+    $stmt->execute([$userId, $role, $canViewStatistics ? 1 : 0]);
 }
 
 function getCustomerBookingCount($pdo, $userId) {
@@ -64,15 +65,17 @@ try {
     if ($method === 'GET') {
         $stmt = $pdo->query("
             SELECT
-                user_id,
-                full_name,
-                email,
-                contact_num,
-                COALESCE(NULLIF(role, ''), 'customer') AS role,
-                created_at,
-                updated_at
-            FROM users
-            ORDER BY created_at DESC
+                u.user_id,
+                u.full_name,
+                u.email,
+                u.contact_num,
+                COALESCE(NULLIF(u.role, ''), 'customer') AS role,
+                COALESCE(ap.can_view_statistics, 0) AS can_view_statistics,
+                u.created_at,
+                u.updated_at
+            FROM users u
+            LEFT JOIN admin_profiles ap ON ap.user_id = u.user_id
+            ORDER BY u.created_at DESC
         ");
 
         echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -87,6 +90,7 @@ try {
         $password = $data['password'] ?? '';
         $role = $data['role'] ?? 'customer';
         $contactNum = trim($data['contact_num'] ?? '');
+        $canViewStatistics = (bool) ($data['statistics_access'] ?? false);
 
         if ($fullName === '' || $email === '' || $password === '' || $contactNum === '') {
             http_response_code(400);
@@ -136,7 +140,7 @@ try {
 
         $userId = $pdo->lastInsertId();
 
-        syncUserProfile($pdo, $userId, $role);
+        syncUserProfile($pdo, $userId, $role, $canViewStatistics && $role !== 'customer');
 
         echo json_encode([
             'message' => 'User created successfully',
@@ -153,6 +157,7 @@ try {
         $email = trim($data['email'] ?? '');
         $role = $data['role'] ?? '';
         $contactNum = trim($data['contact_num'] ?? '');
+        $canViewStatistics = (bool) ($data['statistics_access'] ?? false);
 
         if (
             $userId <= 0 ||
@@ -230,7 +235,7 @@ try {
             $userId
         ]);
 
-        syncUserProfile($pdo, $userId, $role);
+        syncUserProfile($pdo, $userId, $role, $canViewStatistics && $role !== 'customer');
 
         echo json_encode([
             'message' => 'User updated successfully'

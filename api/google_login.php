@@ -63,13 +63,23 @@ if ($user['contact_num'] === '00000000000') {
     $user['contact_num'] = '';
 }
 
+$role = strtolower($user['role'] ?? 'customer');
+$canViewStatistics = $role === 'super_admin';
+
+if ($role !== 'customer' && !$canViewStatistics) {
+    $profileStmt = $pdo->prepare('SELECT COALESCE(can_view_statistics, 0) FROM admin_profiles WHERE user_id = ?');
+    $profileStmt->execute([$user['user_id']]);
+    $canViewStatistics = (bool) $profileStmt->fetchColumn();
+}
+
 $needsSetup = trim((string) ($user['contact_num'] ?? '')) === '';
 
 $_SESSION['user_id'] = $user['user_id'];
 $_SESSION['email'] = $user['email'];
-$_SESSION['role'] = $user['role'];
+$_SESSION['role'] = $role;
 $_SESSION['full_name'] = $user['full_name'];
 $_SESSION['needs_setup'] = $needsSetup;
+$_SESSION['can_view_statistics'] = $canViewStatistics;
 
 echo json_encode([
     'success' => true,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
@@ -86,7 +87,7 @@ function OccupiedIcon() {
 
 function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
   return (
-    <article className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <article className="flex h-full min-h-[220px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}>
@@ -98,18 +99,18 @@ function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
       </div>
 
       {items.length ? (
-        <ul className="m-0 space-y-2 p-0 text-sm text-neutral-700">
+        <ul className="m-0 flex-1 list-none overflow-y-auto pr-1 text-sm text-neutral-700">
           {items.map((item, index) => (
-            <li key={`${title}-${index}`} className="flex items-center justify-between gap-3 border-b border-neutral-100 pb-2 last:border-b-0 last:pb-0">
-              <span className="font-medium text-neutral-800">{item.unit_name}</span>
-              <span className="text-right text-neutral-600">
+            <li key={`${title}-${index}`} className="flex min-h-[36px] items-center justify-between gap-3 border-b border-neutral-100 py-2 last:border-b-0">
+              <span className="truncate pr-2 font-medium text-neutral-800">{item.unit_name}</span>
+              <span className="shrink-0 text-right text-neutral-600">
                 {item.guest_name ? item.guest_name : item.check_in_time || item.check_out_time || '—'}
               </span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="m-0 text-sm text-neutral-500">{emptyText}</p>
+        <p className="m-0 mt-2 text-sm text-neutral-500">{emptyText}</p>
       )}
     </article>
   );
@@ -119,9 +120,21 @@ export default function DashboardOverview() {
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [canViewStatistics, setCanViewStatistics] = useState(false);
 
   useEffect(() => {
     let isCurrent = true;
+
+    fetch(`${API_BASE_URL}/check_auth.php`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (isCurrent) {
+          setCanViewStatistics(Boolean(data.user?.can_view_statistics) || data.user?.role === 'super_admin');
+        }
+      })
+      .catch(() => {
+        if (isCurrent) setCanViewStatistics(false);
+      });
 
     fetch(`${API_BASE_URL}/dashboard_overview.php`, { credentials: 'include' })
       .then(async (response) => {
@@ -163,7 +176,24 @@ export default function DashboardOverview() {
           <p className="py-12 text-center text-sm text-neutral-500">Loading overview...</p>
         ) : dashboard && (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5" aria-label="Daily operations summary">
+            {canViewStatistics && (
+              <section className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 shadow-sm">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Performance</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-neutral-900">Statistics</h2>
+                  </div>
+                  <Link
+                    to="/host/statistics"
+                    className="inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-neutral-100"
+                  >
+                    Open statistics page
+                  </Link>
+                </div>
+              </section>
+            )}
+
+            <section className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-5" aria-label="Daily operations summary">
               <DailyOperationsCard
                 title="Today's Check-ins"
                 count={dailyOps.checkIns.count}

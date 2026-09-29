@@ -9,6 +9,7 @@ export default function HostHeader({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canViewStatistics, setCanViewStatistics] = useState(false);
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
@@ -26,9 +27,11 @@ export default function HostHeader({
         }
 
         setIsAdmin(data.user?.role === 'super_admin');
+        setCanViewStatistics(Boolean(data.user?.can_view_statistics) || data.user?.role === 'super_admin');
       })
       .catch(() => {
         setIsAdmin(false);
+        setCanViewStatistics(false);
       });
   }, []);
 
@@ -135,6 +138,7 @@ export default function HostHeader({
               Listing
             </Link>
           </li>
+
         </ul>
       </nav>
 

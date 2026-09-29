@@ -32,6 +32,7 @@ export default function UserManagement() {
     contact_num: '',
     password: '',
     role: 'customer',
+    statistics_access: false,
   });
 
   const fetchCurrentUser = async () => {
@@ -94,6 +95,7 @@ export default function UserManagement() {
       contact_num: '',
       password: '',
       role: 'customer',
+      statistics_access: false,
     });
 
     setModal('add');
@@ -113,6 +115,7 @@ export default function UserManagement() {
       contact_num: user.contact_num,
       password: '',
       role: user.role,
+      statistics_access: Boolean(user.can_view_statistics),
     });
 
     setModal('edit');
@@ -162,6 +165,7 @@ export default function UserManagement() {
         email: form.email,
         contact_num: form.contact_num,
         role: isEditingCurrentUser ? 'super_admin' : form.role,
+        statistics_access: form.role !== 'customer' && form.statistics_access,
       };
 
       if (isEditing) {
@@ -443,6 +447,21 @@ export default function UserManagement() {
                 </select>
               </div>
 
+              {form.role !== 'customer' && (
+                <label className="flex items-center gap-3 rounded-md border border-neutral-300 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={form.statistics_access}
+                    onChange={(event) => setForm((current) => ({
+                      ...current,
+                      statistics_access: event.target.checked,
+                    }))}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm font-medium">Allow access to Statistics/KPIs</span>
+                </label>
+              )}
+
               {error && (
                 <p className="text-red-600 text-sm">{error}</p>
               )}
@@ -540,6 +559,21 @@ export default function UserManagement() {
                   </p>
                 )}
               </div>
+
+              {form.role !== 'customer' && (
+                <label className="flex items-center gap-3 rounded-md border border-neutral-300 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={form.statistics_access}
+                    onChange={(event) => setForm((current) => ({
+                      ...current,
+                      statistics_access: event.target.checked,
+                    }))}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm font-medium">Allow access to Statistics/KPIs</span>
+                </label>
+              )}
 
               {error && (
                 <p className="text-red-600 text-sm">{error}</p>

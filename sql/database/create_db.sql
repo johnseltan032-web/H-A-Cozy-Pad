@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS admin_profiles (
     admin_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
     position ENUM('super_admin', 'admin') NOT NULL,
+    can_view_statistics BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_admin_profile_user
         FOREIGN KEY (user_id)
