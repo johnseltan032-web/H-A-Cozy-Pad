@@ -3,10 +3,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 function sendAppMail(string $toEmail, string $toName, string $subject, string $htmlBody, string $altBody = ''): bool
 {
-    global $GMAIL_USER, $GMAIL_APP_PASSWORD, $SMTP_HOST, $SMTP_PORT, $SMTP_SECURE;
+    global $SMTP_USERNAME, $SMTP_PASSWORD, $SMTP_HOST, $SMTP_PORT, $SMTP_SECURE;
+    global $EMAIL_FROM, $EMAIL_FROM_NAME;
 
-    if (empty($GMAIL_USER) || empty($GMAIL_APP_PASSWORD)) {
-        error_log('Gmail SMTP settings are not configured for ' . $toEmail);
+    if (empty($SMTP_USERNAME) || empty($SMTP_PASSWORD) || empty($EMAIL_FROM)) {
+        error_log('SMTP credentials or sender address are not configured for ' . $toEmail);
         return false;
     }
 
@@ -15,15 +16,20 @@ function sendAppMail(string $toEmail, string $toName, string $subject, string $h
         $mail->isSMTP();
         $mail->Host = $SMTP_HOST;
         $mail->SMTPAuth = true;
-        $mail->Username = $GMAIL_USER;
-        $mail->Password = $GMAIL_APP_PASSWORD;
+        $mail->Username = $SMTP_USERNAME;
+        $mail->Password = $SMTP_PASSWORD;
         $mail->Port = $SMTP_PORT;
-        $mail->SMTPSecure = $SMTP_SECURE === 'tls'
-            ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS
-            : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+        if ($SMTP_SECURE === 'tls') {
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        } elseif ($SMTP_SECURE === 'ssl') {
+            $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
         $mail->Timeout = 12;
         $mail->CharSet = PHPMailer\PHPMailer\PHPMailer::CHARSET_UTF8;
-        $mail->setFrom($GMAIL_USER, 'H&A Cozy Pad');
+        $mail->setFrom($EMAIL_FROM, $EMAIL_FROM_NAME);
         $mail->addAddress($toEmail, $toName);
         $mail->isHTML(true);
         $mail->Subject = $subject;
