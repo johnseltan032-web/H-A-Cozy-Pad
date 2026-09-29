@@ -58,13 +58,18 @@ try {
     $adminId = $admin->fetchColumn();
 
     if (!$adminId) {
-        $pdo->rollBack();
+        $createAdminProfile = $pdo->prepare(
+            "INSERT IGNORE INTO admin_profiles (user_id, position)
+             VALUES (?, 'admin')"
+        );
+        $createAdminProfile->execute([$_SESSION['user_id']]);
 
-        http_response_code(403);
-        echo json_encode([
-            'error' => 'Admin profile not found'
-        ]);
-        exit;
+        $admin->execute([$_SESSION['user_id']]);
+        $adminId = $admin->fetchColumn();
+
+        if (!$adminId) {
+            throw new RuntimeException('Unable to create admin profile for authenticated admin');
+        }
     }
 
     $payment = $pdo->prepare(

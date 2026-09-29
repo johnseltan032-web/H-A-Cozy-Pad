@@ -87,6 +87,18 @@ export default function HostHeader({
         <ul className="flex gap-10 list-none m-0 p-0">
           <li>
             <Link
+              to="/host/overview"
+              className={`text-lg ${
+                activeNav === 'Overview'
+                  ? 'font-semibold border-b-2 border-black pb-1 text-black'
+                  : 'text-neutral-600 hover:text-black'
+              }`}
+            >
+              Overview
+            </Link>
+          </li>
+          <li>
+            <Link
               to="/host/reservations"
               className={`text-lg ${
                 activeNav === 'Today'
