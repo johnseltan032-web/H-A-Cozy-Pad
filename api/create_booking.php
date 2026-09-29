@@ -43,6 +43,7 @@ if ($isGuestCheckout && (!filter_var($guestEmail, FILTER_VALIDATE_EMAIL) || strl
     exit;
 }
 
+$bookingId = null;
 $checkInDate = DateTime::createFromFormat('Y-m-d', $checkIn);
 $checkOutDate = DateTime::createFromFormat('Y-m-d', $checkOut);
 
@@ -388,6 +389,36 @@ try {
 } catch (Throwable $error) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
+    }
+
+    error_log('Booking creation failed: ' . $error->getMessage());
+
+    if ($bookingId) {
+        try {
+            $savedBooking = $pdo->prepare(
+                'SELECT b.booking_id, b.status, p.proof_of_payment
+                 FROM bookings b
+                 INNER JOIN booking_details bd ON bd.booking_id = b.booking_id
+                 INNER JOIN payments p ON p.booking_id = b.booking_id
+                 WHERE b.booking_id = ?
+                 LIMIT 1'
+            );
+            $savedBooking->execute([$bookingId]);
+            $savedBookingData = $savedBooking->fetch(PDO::FETCH_ASSOC);
+
+            if ($savedBookingData) {
+                echo json_encode([
+                    'success' => true,
+                    'bookingId' => (int) $savedBookingData['booking_id'],
+                    'status' => $savedBookingData['status'],
+                    'proofOfPaymentPath' => $savedBookingData['proof_of_payment'],
+                    'guestBooking' => $isGuestCheckout
+                ]);
+                exit;
+            }
+        } catch (Throwable $recoveryError) {
+            error_log('Booking success recovery failed: ' . $recoveryError->getMessage());
+        }
     }
 
     http_response_code(500);
