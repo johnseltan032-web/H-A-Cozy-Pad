@@ -46,7 +46,7 @@ try {
         "SELECT b.booking_id, b.check_in_date, b.check_out_date, b.status,
                 u.unit_name, bu.building_name,
                 COALESCE(bd.guest_name, cu.full_name, 'Guest') AS guest_name,
-                COALESCE(b.check_in_time, '02:00 PM') AS check_in_time
+                '02:00 PM' AS check_in_time
          FROM bookings b
          INNER JOIN units u ON b.unit_id = u.unit_id
          INNER JOIN buildings bu ON u.building_id = bu.building_id
@@ -62,7 +62,7 @@ try {
         "SELECT b.booking_id, b.check_in_date, b.check_out_date, b.status,
                 u.unit_name, bu.building_name,
                 COALESCE(bd.guest_name, cu.full_name, 'Guest') AS guest_name,
-                COALESCE(b.check_out_time, '12:00 PM') AS check_out_time
+                '12:00 PM' AS check_out_time
          FROM bookings b
          INNER JOIN units u ON b.unit_id = u.unit_id
          INNER JOIN buildings bu ON u.building_id = bu.building_id
@@ -76,7 +76,7 @@ try {
 
     $cleaningRows = $pdo->query(
         "SELECT DISTINCT b.unit_id, u.unit_name,
-                COALESCE(b.check_out_time, '12:00 PM') AS check_out_time
+                '12:00 PM' AS check_out_time
          FROM bookings b
          INNER JOIN units u ON u.unit_id = b.unit_id
          WHERE b.check_out_date = CURDATE()
