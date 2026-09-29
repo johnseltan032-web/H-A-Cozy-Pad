@@ -14,7 +14,13 @@ $tokenResponse = @file_get_contents(
     'https://oauth2.googleapis.com/tokeninfo?id_token=' . rawurlencode($credential)
 );
 $token = $tokenResponse ? json_decode($tokenResponse, true) : null;
-$googleClientId = '333193552236-5sgea3ut93896koqvums6jjl6ildej90.apps.googleusercontent.com';
+$googleClientId = getenv('GOOGLE_CLIENT_ID') ?: getenv('VITE_GOOGLE_CLIENT_ID') ?: '';
+
+if (!$googleClientId) {
+    http_response_code(503);
+    echo json_encode(['error' => 'Google sign-in is not configured on this server.']);
+    exit;
+}
 
 if (!$token || ($token['aud'] ?? '') !== $googleClientId || empty($token['email'])) {
     http_response_code(401);
