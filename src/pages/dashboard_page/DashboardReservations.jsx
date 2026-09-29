@@ -9,6 +9,7 @@ export default function DashboardReservations() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingBookingId, setUpdatingBookingId] = useState(null);
+  const [deletingBookingId, setDeletingBookingId] = useState(null);
   const [statusChange, setStatusChange] = useState(null);
   const [customerInfo, setCustomerInfo] = useState(null);
   const [isCustomerLoading, setIsCustomerLoading] = useState(false);
@@ -89,6 +90,41 @@ export default function DashboardReservations() {
       setError(statusError.message);
     } finally {
       setUpdatingBookingId(null);
+    }
+  };
+
+  const handleDeleteBooking = async (bookingId) => {
+    setError('');
+    setDeletingBookingId(bookingId);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/delete_booking.php`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ bookingId }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to remove booking');
+      }
+
+      setReservations((currentReservations) =>
+        currentReservations.filter(
+          (reservation) => reservation.booking_id !== bookingId
+        )
+      );
+    } catch (deleteError) {
+      setError(deleteError.message);
+    } finally {
+      setDeletingBookingId(null);
     }
   };
 
@@ -597,6 +633,25 @@ export default function DashboardReservations() {
                               {isUpdating
                                 ? 'Updating...'
                                 : 'Reject'}
+                            </button>
+                          )}
+
+                          {['confirmed', 'rejected'].includes(
+                            reservation.status
+                          ) && (
+                            <button
+                              type="button"
+                              disabled={deletingBookingId === reservation.booking_id}
+                              onClick={() =>
+                                handleDeleteBooking(
+                                  reservation.booking_id
+                                )
+                              }
+                              className="min-w-[96px] flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                            >
+                              {deletingBookingId === reservation.booking_id
+                                ? 'Removing...'
+                                : 'Remove'}
                             </button>
                           )}
                         </>

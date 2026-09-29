@@ -638,9 +638,12 @@ export default function AdditionalInformation({
         }
       }
 
-      if (data.success && data.bookingId) {
+      const bookingId = data.bookingId ?? data.booking_id;
+      const isBookingCreated = Boolean(data.success && bookingId);
+
+      if (isBookingCreated) {
         setIsGuestBooking(Boolean(data.guestBooking));
-        setSavedBookingId(data.bookingId);
+        setSavedBookingId(bookingId);
         return;
       }
 
@@ -650,7 +653,9 @@ export default function AdditionalInformation({
         );
       }
 
-      throw new Error(data.error || 'Unable to confirm that the booking was saved.');
+      throw new Error(
+        data.error || 'Unable to confirm that the booking was saved.'
+      );
     } catch (error) {
       setSubmitError(
         error.message ||
