@@ -519,13 +519,13 @@ export default function DashboardReservations() {
                   )}
 
                   {canViewCustomer && (
-                    <div className="mt-5 flex justify-end gap-3 border-t border-neutral-100 pt-4">
+                    <div className="mt-5 grid w-full grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
                       <button
                         type="button"
                         onClick={() =>
                           handleViewCustomer(reservation)
                         }
-                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                        className="col-span-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
                       >
                         View Customer
                       </button>
@@ -558,7 +558,7 @@ export default function DashboardReservations() {
                                   });
                                 }
                               }}
-                              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {isUpdating
                                 ? 'Updating...'
@@ -592,7 +592,7 @@ export default function DashboardReservations() {
                                   });
                                 }
                               }}
-                              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               {isUpdating
                                 ? 'Updating...'
