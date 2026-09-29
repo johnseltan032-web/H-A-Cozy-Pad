@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 import noReservationsImage from '../../images/no-reservations.svg';
 
+const buildAssetUrl = (path) => {
+  if (!path) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  const cleanPath = String(path).replace(/^\/+/, '');
+  return `${API_BASE_URL.replace(/\/+$/, '')}/${cleanPath}`;
+};
+
 export default function DashboardReservations() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('soon');
   const [reservations, setReservations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -254,9 +269,7 @@ export default function DashboardReservations() {
       return;
     }
 
-    setPaymentProof(
-      `${API_BASE_URL}/${customerInfo.proofOfPaymentPath}`
-    );
+    setPaymentProof(buildAssetUrl(customerInfo.proofOfPaymentPath));
 
     setIsPaymentProofOpen(true);
   };
@@ -300,7 +313,7 @@ export default function DashboardReservations() {
       modificationProof: proofPath,
     });
 
-    setPaymentProof(`${API_BASE_URL}/${proofPath}`);
+    setPaymentProof(buildAssetUrl(proofPath));
     setIsPaymentProofOpen(true);
   };
 
@@ -375,38 +388,51 @@ export default function DashboardReservations() {
       <HostHeader activeNav="Today" />
 
       <main className="flex flex-col items-center px-5 pt-6 pb-28 md:pt-10 md:pb-10 grow">
-        <div className="mb-10 flex flex-wrap gap-3">
-          <button
-            onClick={() => setActiveTab('today')}
-            className={`px-6 py-2.5 rounded-full text-base cursor-pointer border-0 ${
-              activeTab === 'today'
-                ? 'font-semibold bg-neutral-800 text-white'
-                : 'font-medium bg-neutral-100 text-neutral-400'
-            }`}
-          >
-            Today
-          </button>
+        <div className="relative mb-10 w-full max-w-5xl">
+          <div className="flex items-center justify-center">
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => setActiveTab('today')}
+                className={`px-6 py-2.5 rounded-full text-base cursor-pointer border-0 ${
+                  activeTab === 'today'
+                    ? 'font-semibold bg-neutral-800 text-white'
+                    : 'font-medium bg-neutral-100 text-neutral-400'
+                }`}
+              >
+                Today
+              </button>
+
+              <button
+                onClick={() => setActiveTab('soon')}
+                className={`px-6 py-2.5 rounded-full text-base cursor-pointer border-0 ${
+                  activeTab === 'soon'
+                    ? 'font-semibold bg-neutral-800 text-white'
+                    : 'font-medium bg-neutral-100 text-neutral-400'
+                }`}
+              >
+                Soon
+              </button>
+
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`px-6 py-2.5 rounded-full text-base cursor-pointer border-0 ${
+                  activeTab === 'all'
+                    ? 'font-semibold bg-neutral-800 text-white'
+                    : 'font-medium bg-neutral-100 text-neutral-400'
+                }`}
+              >
+                All
+              </button>
+            </div>
+          </div>
 
           <button
-            onClick={() => setActiveTab('soon')}
-            className={`px-6 py-2.5 rounded-full text-base cursor-pointer border-0 ${
-              activeTab === 'soon'
-                ? 'font-semibold bg-neutral-800 text-white'
-                : 'font-medium bg-neutral-100 text-neutral-400'
-            }`}
+            type="button"
+            onClick={() => navigate('/host/overview')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-2.5 text-base font-medium text-neutral-700 transition hover:bg-neutral-50"
           >
-            Soon
-          </button>
-
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`px-6 py-2.5 rounded-full text-base cursor-pointer border-0 ${
-              activeTab === 'all'
-                ? 'font-semibold bg-neutral-800 text-white'
-                : 'font-medium bg-neutral-100 text-neutral-400'
-            }`}
-          >
-            All
+            <span aria-hidden="true">←</span>
+            Back to overview
           </button>
         </div>
 

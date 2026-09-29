@@ -40,7 +40,6 @@ CREATE TABLE IF NOT EXISTS customer_profiles (
 CREATE TABLE IF NOT EXISTS buildings (
     building_id INT AUTO_INCREMENT PRIMARY KEY,
     building_name VARCHAR(100) NOT NULL,
-    property_category VARCHAR(100) NOT NULL DEFAULT 'Home-type property',
     location VARCHAR(150) NOT NULL,
     location_search VARCHAR(255) NULL,
     country VARCHAR(100) NULL,

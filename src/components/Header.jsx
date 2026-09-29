@@ -134,7 +134,7 @@ export default function Header({
         >
           {user && ['super_admin', 'admin'].includes(String(user.role || '').toLowerCase()) && (
             <Link
-              to="/host/listings"
+              to="/host/overview"
               onClick={() => setIsMenuOpen(false)}
               className="header-menu-item flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
             >

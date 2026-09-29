@@ -5,7 +5,13 @@ export default function PropertySection({ title, properties = [] }) {
   const getImageUrl = (imagePath) => {
     if (!imagePath) return null;
 
-    return `${API_BASE_URL.replace(/\/$/, '')}/${imagePath.replace(/^\/+/, '')}`;
+    const normalizedPath = String(imagePath)
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .replace(/^api\//i, '');
+
+    return `${API_BASE_URL.replace(/\/$/, '')}/${normalizedPath}`;
   };
 
   return (

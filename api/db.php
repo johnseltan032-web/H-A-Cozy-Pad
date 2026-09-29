@@ -30,6 +30,14 @@
             $DB_PASS,
             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
         );
+
+        $adminProfilesTable = $pdo->query("SHOW TABLES LIKE 'admin_profiles'");
+        if ($adminProfilesTable && $adminProfilesTable->fetch()) {
+            $statsColumn = $pdo->query("SHOW COLUMNS FROM admin_profiles LIKE 'can_view_statistics'");
+            if (!$statsColumn || !$statsColumn->fetch()) {
+                $pdo->exec("ALTER TABLE admin_profiles ADD COLUMN can_view_statistics BOOLEAN NOT NULL DEFAULT FALSE");
+            }
+        }
     } catch (PDOException $e) {
         http_response_code(500);
         error_log('Database connection failed: ' . $e->getMessage());

@@ -11,10 +11,6 @@ $buildingName = trim(
     $data['buildingName'] ?? ''
 );
 
-$propertyCategory = trim(
-    $data['propertyCategory'] ?? ''
-);
-
 $location = trim(
     $data['location'] ?? ''
 );
@@ -32,6 +28,14 @@ $longitude = $data['longitude'] ?? null;
 
 $unitName = trim(
     $data['unitName'] ?? 'Entire place'
+);
+
+$tower = trim(
+    $data['tower'] ?? ''
+);
+
+$unitNumber = trim(
+    $data['unitNumber'] ?? ''
 );
 
 $description = trim(
@@ -73,28 +77,6 @@ $availableUntil = trim(
 $amenities = $data['amenities'] ?? [];
 
 
-$allowedPropertyCategories = [
-    'home',
-    'hotel',
-    'unique',
-];
-
-if (
-    !in_array(
-        $propertyCategory,
-        $allowedPropertyCategories,
-        true
-    )
-) {
-    http_response_code(400);
-
-    echo json_encode([
-        'error' => 'Invalid property category'
-    ]);
-
-    exit;
-}
-
 $allowedUnitNames = [
     'Entire place',
     'Room',
@@ -121,6 +103,8 @@ if (
     !$buildingName ||
     !$location ||
     !$description ||
+    !$tower ||
+    !$unitNumber ||
     $maxGuests < 1 ||
     $maxGuests > 4 ||
     $ratePerNight <= 0
@@ -128,7 +112,7 @@ if (
     http_response_code(400);
 
     echo json_encode([
-        'error' => 'Complete the required listing fields. Maximum 4 guests per unit.'
+        'error' => 'Complete the required listing fields, including tower and unit number. Maximum 4 guests per unit.'
     ]);
 
     exit;
@@ -262,7 +246,6 @@ try {
         'INSERT INTO buildings
         (
             building_name,
-            property_category,
             location,
             location_search,
             country,
@@ -274,12 +257,11 @@ try {
             latitude,
             longitude
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     $building->execute([
         $buildingName,
-        $propertyCategory,
         $location,
         $locationSearch,
         $country,
@@ -294,11 +276,15 @@ try {
 
     $buildingId = $pdo->lastInsertId();
 
+    $unitDisplayName = trim(($tower !== '' ? $tower : $unitName) . ' ' . $unitNumber);
+
     $unit = $pdo->prepare(
         'INSERT INTO units
         (
             building_id,
             unit_name,
+            tower,
+            unit_number,
             description,
             property_size,
             max_guests,
@@ -310,12 +296,14 @@ try {
             available_from,
             available_until
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     $unit->execute([
         $buildingId,
-        $unitName,
+        $unitDisplayName ?: $unitName,
+        $tower,
+        $unitNumber,
         $description,
         $propertySize ?: null,
         $maxGuests,
@@ -548,7 +536,6 @@ try {
         'success' => true,
         'buildingId' => (int) $buildingId,
         'unitId' => (int) $unitId,
-        'propertyCategory' => $propertyCategory,
         'unitName' => $unitName,
         'availableFrom' => $availableFrom,
         'availableUntil' => $availableUntil,

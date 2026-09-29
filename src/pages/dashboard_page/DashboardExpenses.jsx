@@ -269,7 +269,7 @@ export default function DashboardExpenses() {
                   <option value="">Select a unit</option>
                   {units.map((unit) => (
                     <option key={unit.unit_id} value={unit.unit_id}>
-                      {unit.unit_name} {unit.building_name ? `- ${unit.building_name}` : ''}
+                      {unit.building_name ? `${unit.building_name} - ${unit.unit_name || 'Unit'}` : unit.unit_name || 'Unit'}
                     </option>
                   ))}
                 </select>
@@ -389,8 +389,8 @@ export default function DashboardExpenses() {
                       return (
                         <tr key={expense.expense_id} className="border-t border-neutral-200 align-top">
                           <td className="px-5 py-3">
-                            <div className="font-medium text-neutral-900">{unit?.unit_name || 'Unit'} </div>
-                            <div className="text-xs text-neutral-500">{unit?.building_name || 'Property'}</div>
+                            <div className="font-medium text-neutral-900">{unit?.building_name || 'Property'}</div>
+                            <div className="text-xs text-neutral-500">{unit?.unit_name || 'Unit'}</div>
                           </td>
                           <td className="px-5 py-3">
                             {new Date(`${expense.expense_date}T00:00:00`).toLocaleDateString('en-PH', {

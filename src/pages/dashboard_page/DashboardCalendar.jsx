@@ -55,14 +55,33 @@ function reservationEvents(reservations) {
     .map((reservation) => {
       const bookerName = reservation.booked_guest_name || reservation.guest_name || 'Guest';
       const shortName = bookerName.length > 12 ? `${bookerName.slice(0, 11)}...` : bookerName;
-      const shortUnit = (reservation.unit_name || reservation.building_name || 'Booking').slice(0, 12);
+      const shortProperty = (reservation.building_name || reservation.unit_name || 'Booking').slice(0, 12);
       return {
         id: `booking-${reservation.booking_id}`,
-        summary: `${shortUnit} · ${shortName}`,
+        summary: `${shortProperty} · ${shortName}`,
         startDate: reservation.check_in_date,
         endDateExclusive: reservation.check_out_date,
         detail: reservation.unit_name || '',
         source: 'booking',
+        unit_id: reservation.unit_id,
+      };
+    });
+}
+
+function modificationRequestEvents(reservations) {
+  return reservations
+    .filter((reservation) => reservation.modification_request_id && reservation.requested_check_in && reservation.requested_check_out)
+    .map((reservation) => {
+      const bookerName = reservation.booked_guest_name || reservation.guest_name || 'Guest';
+      const shortName = bookerName.length > 12 ? `${bookerName.slice(0, 11)}...` : bookerName;
+      const shortProperty = (reservation.building_name || reservation.unit_name || 'Request').slice(0, 12);
+      return {
+        id: `modification-${reservation.modification_request_id}`,
+        summary: `Modify • ${shortProperty} · ${shortName}`,
+        startDate: reservation.requested_check_in,
+        endDateExclusive: reservation.requested_check_out,
+        detail: reservation.modification_reason || 'Customer modification request',
+        source: 'modification',
         unit_id: reservation.unit_id,
       };
     });
@@ -99,6 +118,25 @@ function googleCalendarEvents(events) {
       source: 'google',
     };
   }).filter((event) => event.startDate && event.endDateExclusive);
+}
+
+function buildAssetUrl(path) {
+  if (!path) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(path) || /^data:/i.test(path)) {
+    return path;
+  }
+
+  const normalizedPath = String(path)
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/^api\//i, '');
+
+  const cleanPath = normalizedPath.replace(/^\/+/, '');
+  return `${API_BASE_URL.replace(/\/+$/, '')}/${cleanPath}`;
 }
 
 function dateEvents(events, date) {
@@ -148,6 +186,9 @@ export default function DashboardCalendar() {
   const [unitOptions, setUnitOptions] = useState([]);
   const [editingBooking, setEditingBooking] = useState(null);
   const [savingBooking, setSavingBooking] = useState(false);
+  const [selectedCalendarModification, setSelectedCalendarModification] = useState(null);
+  const [updatingCalendarModification, setUpdatingCalendarModification] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState(null);
 
   const reservationById = useMemo(() => Object.fromEntries(
     reservations.map((reservation) => [reservation.booking_id, reservation])
@@ -167,7 +208,7 @@ export default function DashboardCalendar() {
       if (unitsResponse.ok && Array.isArray(unitsData)) {
         setUnitOptions(unitsData.filter((unit) => unit && unit.unit_id).map((unit) => ({
           value: Number(unit.unit_id),
-          label: `${unit.unit_name || 'Unit'} · ${unit.building_name || 'Property'}`,
+          label: `${unit.building_name || 'Property'} · ${unit.unit_name || 'Unit'}`,
         })));
       }
 
@@ -256,7 +297,12 @@ export default function DashboardCalendar() {
     }
   };
 
-  const calendarEvents = [...reservationEvents(reservations), ...blockedDatesEvents(blockedDates), ...googleCalendarEvents(events)];
+  const calendarEvents = [
+    ...reservationEvents(reservations),
+    ...modificationRequestEvents(reservations),
+    ...blockedDatesEvents(blockedDates),
+    ...googleCalendarEvents(events),
+  ];
   const range = calendarRange(currentDate, viewMode);
   const visibleEvents = calendarEvents
     .filter((event) => event.startDate < range.endExclusive && event.endDateExclusive > range.start)
@@ -342,6 +388,49 @@ export default function DashboardCalendar() {
       : new Date(date.getFullYear(), date.getMonth() + amount, 1));
   };
 
+  const openModificationDialog = (event) => {
+    if (!event || event.source !== 'modification') {
+      return;
+    }
+
+    const requestId = Number(String(event.id).replace('modification-', ''));
+    const reservation = reservations.find((item) => Number(item.modification_request_id) === requestId);
+
+    if (!reservation) {
+      return;
+    }
+
+    setSelectedCalendarModification(reservation);
+  };
+
+  const handleCalendarModificationUpdate = async (requestId, action) => {
+    setError('');
+    setUpdatingCalendarModification(requestId);
+    setSelectedCalendarModification(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/modify_request.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: Number(requestId), action }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to process modification request');
+      }
+
+      await loadEvents();
+    } catch (modificationError) {
+      setError(modificationError.message || 'Unable to process modification request');
+    } finally {
+      setUpdatingCalendarModification(null);
+      setSelectedCalendarModification(null);
+    }
+  };
+
   const openBookingEditor = async (bookingId) => {
     const reservation = reservationById[bookingId];
     if (!reservation) return;
@@ -363,8 +452,11 @@ export default function DashboardCalendar() {
         paymentAmount: customer.paymentAmount ?? '',
         paymentMethod: customer.paymentMethod || 'cash',
         paymentStatus: customer.paymentStatus || 'pending',
+        bookingStatus: reservation.status || customer.bookingStatus || 'pending',
         bookingSource: reservation.booking_source || customer.bookingSource || 'direct',
         notes: reservation.notes || customer.notes || reservation.special_requests || '',
+        validIdPath: customer.validIdPath || '',
+        proofOfPaymentPath: customer.proofOfPaymentPath || '',
       });
     } catch {
       setEditingBooking({
@@ -379,8 +471,11 @@ export default function DashboardCalendar() {
         paymentAmount: '',
         paymentMethod: 'cash',
         paymentStatus: 'pending',
+        bookingStatus: reservation.status || 'pending',
         bookingSource: reservation.booking_source || 'direct',
         notes: reservation.notes || reservation.special_requests || '',
+        validIdPath: '',
+        proofOfPaymentPath: '',
       });
     }
   };
@@ -409,6 +504,7 @@ export default function DashboardCalendar() {
           paymentAmount: editingBooking.paymentAmount,
           paymentMethod: editingBooking.paymentMethod,
           paymentStatus: editingBooking.paymentStatus,
+          bookingStatus: editingBooking.bookingStatus,
           bookingSource: editingBooking.bookingSource,
           notes: editingBooking.notes,
         }),
@@ -578,7 +674,7 @@ export default function DashboardCalendar() {
             <p className="px-5 py-12 text-center text-sm text-neutral-500">Loading calendar...</p>
           ) : (
             viewMode === 'agenda' ? (
-              <AgendaView events={visibleEvents} />
+              <AgendaView events={visibleEvents} onModificationClick={openModificationDialog} />
             ) : (
               <div className="overflow-x-auto p-4">
                 <CalendarGrid
@@ -590,6 +686,7 @@ export default function DashboardCalendar() {
                   visibleMonth={viewMode === 'month' ? currentDate.getMonth() : null}
                   onSelectDate={setSelectedDate}
                   onBookingClick={openBookingEditor}
+                  onModificationClick={openModificationDialog}
                   units={viewMode === 'month' ? unitRows : []}
                   monthDays={viewMode === 'month' ? monthDays(currentDate) : []}
                   layout={calendarLayout}
@@ -598,6 +695,129 @@ export default function DashboardCalendar() {
             )
           )}
         </section>
+        {zoomedImage && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 px-4 py-6" onClick={() => setZoomedImage(null)}>
+            <div className="relative max-h-[90vh] max-w-4xl overflow-hidden rounded-2xl bg-white p-2 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => setZoomedImage(null)}
+                className="absolute right-3 top-3 z-10 rounded-full bg-black/70 px-2 py-1 text-sm text-white hover:bg-black"
+              >
+                ×
+              </button>
+              <img src={zoomedImage} alt="Zoomed document preview" className="max-h-[82vh] max-w-full rounded-xl object-contain" />
+            </div>
+          </div>
+        )}
+
+        {selectedCalendarModification && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+            <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">Modification request</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-neutral-900">Customer booking change</h2>
+                </div>
+                <button type="button" onClick={() => setSelectedCalendarModification(null)} className="text-2xl leading-none text-neutral-400 hover:text-neutral-700">×</button>
+              </div>
+
+              <div className="space-y-4 text-sm text-neutral-700">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Guest</p>
+                    <p className="mt-1 font-medium text-neutral-900">{selectedCalendarModification.booked_guest_name || selectedCalendarModification.guest_name || 'Guest'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Property</p>
+                    <p className="mt-1 font-medium text-neutral-900">{selectedCalendarModification.building_name || selectedCalendarModification.unit_name || 'Property'}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Current stay</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.check_in_date} → {selectedCalendarModification.check_out_date}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Requested stay</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.requested_check_in} → {selectedCalendarModification.requested_check_out}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Current guests</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.num_of_guests || 1}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Requested guests</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.requested_guests || 1}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">Reason</p>
+                  <p className="mt-1 font-medium text-neutral-900">{selectedCalendarModification.modification_reason || selectedCalendarModification.request_reason || 'No reason provided'}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">Special requests</p>
+                  <p className="mt-1 whitespace-pre-wrap">{selectedCalendarModification.requested_special_requests || selectedCalendarModification.special_requests || 'None'}</p>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Additional payment</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.modification_payment_amount ? `₱${Number(selectedCalendarModification.modification_payment_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '₱0.00'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Refund</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.modification_refund_amount ? `₱${Number(selectedCalendarModification.modification_refund_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '₱0.00'}</p>
+                  </div>
+                </div>
+
+                {selectedCalendarModification.modification_proof_of_payment ? (
+                  <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-violet-700">Proof of payment</p>
+                    <button
+                      type="button"
+                      onClick={() => setZoomedImage(buildAssetUrl(selectedCalendarModification.modification_proof_of_payment))}
+                      className="mt-3 block w-full overflow-hidden rounded-lg border border-violet-200 bg-white"
+                    >
+                      <img
+                        src={buildAssetUrl(selectedCalendarModification.modification_proof_of_payment)}
+                        alt="Modification proof of payment"
+                        className="h-44 w-full object-cover"
+                      />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-neutral-500">No payment proof uploaded for this modification request.</p>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleCalendarModificationUpdate(selectedCalendarModification.modification_request_id, 'reject')}
+                  disabled={updatingCalendarModification === Number(selectedCalendarModification.modification_request_id)}
+                  className="rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 disabled:opacity-60"
+                >
+                  {updatingCalendarModification === Number(selectedCalendarModification.modification_request_id) ? 'Rejecting...' : 'Reject'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCalendarModificationUpdate(selectedCalendarModification.modification_request_id, 'approve')}
+                  disabled={updatingCalendarModification === Number(selectedCalendarModification.modification_request_id)}
+                  className="rounded-full bg-violet-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-800 disabled:opacity-60"
+                >
+                  {updatingCalendarModification === Number(selectedCalendarModification.modification_request_id) ? 'Approving...' : 'Approve'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {editingBooking && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
             <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
@@ -727,6 +947,24 @@ export default function DashboardCalendar() {
                 </label>
 
                 <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Booking status
+                  <select
+                    value={editingBooking.bookingStatus}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, bookingStatus: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="awaiting_payment">Awaiting payment</option>
+                    <option value="payment_review">Payment review</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="checked_in">Checked in</option>
+                    <option value="checked_out">Checked out</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
                   Booking source
                   <select
                     value={editingBooking.bookingSource}
@@ -752,6 +990,44 @@ export default function DashboardCalendar() {
                   />
                 </label>
 
+                {(editingBooking.validIdPath || editingBooking.proofOfPaymentPath) && (
+                  <div className="md:col-span-2 grid gap-4 sm:grid-cols-2">
+                    {editingBooking.validIdPath && (
+                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Government ID</p>
+                        <button
+                          type="button"
+                          onClick={() => setZoomedImage(buildAssetUrl(editingBooking.validIdPath))}
+                          className="block w-full text-left"
+                        >
+                          <img
+                            src={buildAssetUrl(editingBooking.validIdPath)}
+                            alt="Government ID"
+                            className="h-40 w-full rounded-lg border border-neutral-200 object-cover transition hover:opacity-90"
+                          />
+                        </button>
+                      </div>
+                    )}
+
+                    {editingBooking.proofOfPaymentPath && (
+                      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Proof of payment</p>
+                        <button
+                          type="button"
+                          onClick={() => setZoomedImage(buildAssetUrl(editingBooking.proofOfPaymentPath))}
+                          className="block w-full text-left"
+                        >
+                          <img
+                            src={buildAssetUrl(editingBooking.proofOfPaymentPath)}
+                            alt="Proof of payment"
+                            className="h-40 w-full rounded-lg border border-neutral-200 object-cover transition hover:opacity-90"
+                          />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="md:col-span-2 flex justify-end gap-3 pt-2">
                   <button type="button" onClick={() => setEditingBooking(null)} className="rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100">Cancel</button>
                   <button type="submit" disabled={savingBooking} className="rounded-full bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-60">
@@ -776,11 +1052,20 @@ export default function DashboardCalendar() {
               <ul className="m-0 divide-y divide-neutral-200 border-y border-neutral-200 p-0">
                 {selectedEvents.map((event) => {
                   const bookingId = event.source === 'booking' ? Number((event.id || '').replace('booking-', '')) : null;
+                  const isModification = event.source === 'modification';
                   return (
                     <li
                       key={event.id}
-                      onClick={() => bookingId ? openBookingEditor(bookingId) : undefined}
-                      className={`flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 ${bookingId ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+                      onClick={() => {
+                        if (isModification) {
+                          openModificationDialog(event);
+                          return;
+                        }
+                        if (bookingId) {
+                          openBookingEditor(bookingId);
+                        }
+                      }}
+                      className={`flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 ${bookingId || isModification ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
                     >
                       <span className="font-medium">{event.summary}</span>
                       <span className="text-sm text-neutral-600">{event.detail || (event.source === 'google' ? 'Google Calendar' : '')}</span>
@@ -799,7 +1084,7 @@ export default function DashboardCalendar() {
   );
 }
 
-function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate, onBookingClick, units = [], monthDays: monthDayList = [], layout = 'classic' }) {
+function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate, onBookingClick, onModificationClick, units = [], monthDays: monthDayList = [], layout = 'classic' }) {
   if (layout === 'units' && units.length && monthDayList.length) {
     const monthStart = monthDayList[0];
     const monthEnd = addDays(monthDayList[monthDayList.length - 1], 1);
@@ -867,13 +1152,17 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                         key={`${unit.id}-${event.id}`}
                         type="button"
                         onClick={() => {
+                          if (event.source === 'modification' && onModificationClick) {
+                            onModificationClick(event);
+                            return;
+                          }
                           if (event.source === 'booking' && onBookingClick) {
                             onBookingClick(Number(String(event.id).replace('booking-', '')));
                             return;
                           }
                           onSelectDate(event.startDate);
                         }}
-                        className={`absolute top-2 z-10 overflow-hidden rounded-md border border-emerald-700 bg-emerald-700/90 px-2 py-1 text-left text-[10px] font-semibold text-white shadow-sm hover:bg-emerald-700 ${event.source === 'google' ? 'bg-slate-800/90 border-slate-800' : ''}`}
+                        className={`absolute top-2 z-10 overflow-hidden rounded-md border px-2 py-1 text-left text-[10px] font-semibold text-white shadow-sm ${event.source === 'google' ? 'border-slate-800 bg-slate-800/90 hover:bg-slate-800' : event.source === 'blocked' ? 'border-amber-700 bg-amber-700/90 hover:bg-amber-700' : event.source === 'modification' ? 'border-violet-700 bg-violet-700/90 hover:bg-violet-700' : 'border-emerald-700 bg-emerald-700/90 hover:bg-emerald-700'}`}
                         style={{
                           left: `${leftPercent}%`,
                           width: `${widthPercent}%`,
@@ -950,13 +1239,17 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                 type="button"
                 title={`${event.summary}${event.detail ? `: ${event.detail}` : ''}`}
                 onClick={() => {
+                  if (event.source === 'modification' && onModificationClick) {
+                    onModificationClick(event);
+                    return;
+                  }
                   if (event.source === 'booking' && onBookingClick) {
                     onBookingClick(Number(String(event.id).replace('booking-', '')));
                     return;
                   }
                   onSelectDate(event.startDate < weekStartKey ? weekStartKey : event.startDate);
                 }}
-                className={`mx-0.5 my-0.5 min-w-0 overflow-hidden rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+                className={`mx-0.5 my-0.5 min-w-0 overflow-hidden rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : event.source === 'modification' ? 'bg-violet-700 hover:bg-violet-800' : 'bg-emerald-700 hover:bg-emerald-800'}`}
                 style={{
                   gridColumn: `${startColumn + 1} / ${endColumn + 1}`,
                   gridRow: lane + 2,
@@ -975,7 +1268,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
   );
 }
 
-function AgendaView({ events }) {
+function AgendaView({ events, onModificationClick }) {
   if (!events.length) {
     return <p className="px-5 py-12 text-center text-sm text-neutral-500">No bookings in this period.</p>;
   }
@@ -983,7 +1276,15 @@ function AgendaView({ events }) {
   return (
     <ul className="m-0 divide-y divide-neutral-200 p-0">
       {events.map((event) => (
-        <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-5 py-4">
+        <li
+          key={event.id}
+          onClick={() => {
+            if (event.source === 'modification' && onModificationClick) {
+              onModificationClick(event);
+            }
+          }}
+          className={`flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-5 py-4 ${event.source === 'modification' ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+        >
           <div>
             <p className="m-0 font-semibold">{event.summary}</p>
             {event.detail && <p className="mt-1 text-sm text-neutral-500">{event.detail}</p>}

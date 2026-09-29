@@ -49,7 +49,8 @@ try {
             bd.vehicle_type,
             bd.special_requests,
 
-            u.unit_name
+            u.unit_name,
+            u.rate_per_night
 
          FROM bookings b
 
@@ -74,6 +75,7 @@ try {
                 'bookingId' => (int) $booking['booking_id'],
                 'unitId' => (int) $booking['unit_id'],
                 'unitName' => $booking['unit_name'],
+                'ratePerNight' => (float) ($booking['rate_per_night'] ?? 0),
 
                 'checkIn' => $booking['check_in_date'],
                 'checkOut' => $booking['check_out_date'],

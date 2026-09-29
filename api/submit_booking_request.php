@@ -33,6 +33,8 @@ $requestedCheckIn = trim($_POST['requestedCheckIn'] ?? '');
 $requestedCheckOut = trim($_POST['requestedCheckOut'] ?? '');
 $requestedGuests = (int) ($_POST['requestedGuests'] ?? 0);
 $requestedSpecialRequests = trim($_POST['requestedSpecialRequests'] ?? '');
+$requestedPaymentAmount = isset($_POST['paymentAmount']) && $_POST['paymentAmount'] !== '' ? (float) $_POST['paymentAmount'] : null;
+$requestedRefundAmount = isset($_POST['refundAmount']) && $_POST['refundAmount'] !== '' ? (float) $_POST['refundAmount'] : null;
 
 if ($bookingId <= 0) {
     http_response_code(400);
@@ -267,13 +269,15 @@ try {
         $newTotal = $newNights * $ratePerNight;
         $difference = $newTotal - $oldTotal;
 
-        $paymentAmount = null;
-        $refundAmount = null;
+        $paymentAmount = $requestedPaymentAmount !== null ? max(0, (float) $requestedPaymentAmount) : null;
+        $refundAmount = $requestedRefundAmount !== null ? max(0, (float) $requestedRefundAmount) : null;
         $paymentStatus = 'not_required';
         $proofPath = null;
 
         if ($difference > 0) {
-            $paymentAmount = $difference;
+            $paymentAmount = $requestedPaymentAmount !== null
+                ? max(0, (float) $requestedPaymentAmount)
+                : $difference;
             $paymentStatus = 'pending';
 
             if (
@@ -298,18 +302,28 @@ try {
             }
 
             $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mimeType = $finfo->file($file['tmp_name']);
+            $mimeType = strtolower((string) $finfo->file($file['tmp_name']));
+            $fileExtension = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
 
-            $allowedTypes = [
-                'image/jpeg' => 'jpg',
-                'image/png' => 'png',
-                'image/webp' => 'webp'
+            $allowedMimeTypes = [
+                'image/jpeg',
+                'image/jpg',
+                'image/pjpeg',
+                'image/png',
+                'image/webp',
+                'image/heic',
+                'image/heif',
             ];
 
-            if (!isset($allowedTypes[$mimeType])) {
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'];
+
+            $isAllowedMimeType = in_array($mimeType, $allowedMimeTypes, true);
+            $isAllowedExtension = in_array($fileExtension, $allowedExtensions, true);
+
+            if (!$isAllowedMimeType && !$isAllowedExtension) {
                 http_response_code(400);
                 echo json_encode([
-                    'error' => 'Proof of payment must be a JPG, PNG, or WEBP image'
+                    'error' => 'Proof of payment must be a JPG, PNG, WEBP, HEIC, or HEIF image'
                 ]);
                 exit;
             }
@@ -322,7 +336,24 @@ try {
                 }
             }
 
-            $fileName = 'proof_' . $bookingId . '_' . bin2hex(random_bytes(8)) . '.' . $allowedTypes[$mimeType];
+            if (
+                in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/pjpeg'], true) ||
+                in_array($fileExtension, ['jpg', 'jpeg'], true)
+            ) {
+                $extension = 'jpg';
+            } elseif ($mimeType === 'image/png' || $fileExtension === 'png') {
+                $extension = 'png';
+            } elseif ($mimeType === 'image/webp' || $fileExtension === 'webp') {
+                $extension = 'webp';
+            } elseif ($mimeType === 'image/heic' || $fileExtension === 'heic') {
+                $extension = 'heic';
+            } elseif ($mimeType === 'image/heif' || $fileExtension === 'heif') {
+                $extension = 'heif';
+            } else {
+                $extension = 'jpg';
+            }
+
+            $fileName = 'proof_' . $bookingId . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
 
             $filePath = $uploadDirectory . $fileName;
 
@@ -332,7 +363,9 @@ try {
 
             $proofPath = 'uploads/payment_proofs/' . $fileName;
         } elseif ($difference < 0) {
-            $refundAmount = abs($difference);
+            $refundAmount = $requestedRefundAmount !== null
+                ? max(0, (float) $requestedRefundAmount)
+                : abs($difference);
             $paymentStatus = 'not_required';
         }
 

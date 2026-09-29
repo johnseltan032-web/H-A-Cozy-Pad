@@ -57,6 +57,10 @@ try {
             br.requested_check_out,
             br.requested_guests,
             br.requested_special_requests,
+            br.payment_amount,
+            br.refund_amount,
+            br.proof_of_payment,
+            br.payment_status,
 
             b.unit_id,
             b.status AS booking_status,

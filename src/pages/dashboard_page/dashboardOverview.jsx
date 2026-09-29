@@ -4,15 +4,87 @@ import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
 const statCards = [
-  ['totalBookings', 'Total bookings'],
-  ['activeStays', 'Active stays'],
-  ['pendingBookings', 'Pending bookings'],
-  ['paymentReviews', 'Payment reviews'],
-  ['availableUnits', 'Available units'],
-  ['occupiedUnits', 'Occupied units'],
-  ['totalProperties', 'Properties'],
-  ['totalCustomers', 'Customers'],
+  ['totalBookings', 'Total bookings', 'bookings'],
+  ['activeStays', 'Active stays', 'active'],
+  ['pendingBookings', 'Pending bookings', 'pending'],
+  ['paymentReviews', 'Payment reviews', 'payment'],
+  ['availableUnits', 'Available units', 'available'],
+  ['occupiedUnits', 'Occupied units', 'occupied'],
+  ['totalProperties', 'Properties', 'properties'],
+  ['totalCustomers', 'Customers', 'customers'],
 ];
+
+function MetricIcon({ type }) {
+  const common = 'h-4 w-4 text-neutral-600';
+
+  switch (type) {
+    case 'bookings':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M8 3v4M16 3v4M3 10h18" />
+          <path d="M8 14h3M13 14h3M8 18h2" />
+        </svg>
+      );
+    case 'active':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <path d="M4 12.5 9.5 18l10-12" />
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+        </svg>
+      );
+    case 'pending':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
+    case 'payment':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
+          <path d="M4 10h16" />
+          <path d="M8 15h3" />
+        </svg>
+      );
+    case 'available':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <path d="M4 12h16" />
+          <path d="M12 4v16" />
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+      );
+    case 'occupied':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <path d="M3 11.5 12 4l9 7.5" />
+          <path d="M5 9.5V20h14V9.5" />
+          <path d="M9 20v-6h6v6" />
+        </svg>
+      );
+    case 'properties':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <path d="M3 10.5 12 4l9 6.5" />
+          <path d="M5 9.5V19h14v-9.5" />
+          <path d="M9 19v-7h6v7" />
+        </svg>
+      );
+    case 'customers':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={common}>
+          <path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" />
+          <circle cx="10" cy="7" r="3.5" />
+          <path d="M20 19v-1a4 4 0 0 0-3-3.87" />
+          <path d="M16 4.13a3.5 3.5 0 0 1 0 6.74" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 function readableStatus(status) {
   return status ? status.replaceAll('_', ' ') : '';
@@ -100,14 +172,23 @@ function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
 
       {items.length ? (
         <ul className="m-0 flex-1 list-none overflow-y-auto pr-1 text-sm text-neutral-700">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`} className="flex min-h-[36px] items-center justify-between gap-3 border-b border-neutral-100 py-2 last:border-b-0">
-              <span className="truncate pr-2 font-medium text-neutral-800">{item.unit_name}</span>
-              <span className="shrink-0 text-right text-neutral-600">
-                {item.guest_name ? item.guest_name : item.check_in_time || item.check_out_time || '—'}
-              </span>
-            </li>
-          ))}
+          {items.map((item, index) => {
+            const primaryLabel = item.property_name || item.unit_name || '—';
+            const fallbackLabel = item.unit_name && item.property_name && item.unit_name !== item.property_name
+              ? `${item.property_name} · ${item.unit_name}`
+              : primaryLabel;
+
+            return (
+              <li key={`${title}-${index}`} className="flex min-h-[36px] items-center justify-between gap-3 border-b border-neutral-100 py-2 last:border-b-0">
+                <span className="min-w-0 flex-1 truncate pr-2 font-medium text-neutral-800">
+                  {fallbackLabel}
+                </span>
+                <span className="shrink-0 text-right text-neutral-600">
+                  {item.guest_name ? item.guest_name : item.check_in_time || item.check_out_time || '—'}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p className="m-0 mt-2 text-sm text-neutral-500">{emptyText}</p>
@@ -184,10 +265,10 @@ export default function DashboardOverview() {
             <p className="mt-1 text-sm text-neutral-600">Approve, reject, and review all guest reservations.</p>
           </Link>
 
-          <Link to="/host/expenses" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Expenses</p>
-            <h2 className="mt-2 text-lg font-semibold text-neutral-900">Track costs</h2>
-            <p className="mt-1 text-sm text-neutral-600">Log cleaning, repairs, utilities, and unit-level spend.</p>
+          <Link to="/host/listings" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Listings</p>
+            <h2 className="mt-2 text-lg font-semibold text-neutral-900">Manage listings</h2>
+            <p className="mt-1 text-sm text-neutral-600">Review, edit, and update unit details, pricing, and availability.</p>
           </Link>
 
           {canViewStatistics ? (
@@ -254,6 +335,7 @@ export default function DashboardOverview() {
                 title="Today's Check-ins"
                 count={dailyOps.checkIns.count}
                 items={dailyOps.checkIns.items.map((item) => ({
+                  property_name: item.property_name || item.unit_name,
                   unit_name: item.unit_name,
                   guest_name: `${item.guest_name} — ${item.check_in_time}`,
                 }))}
@@ -265,6 +347,7 @@ export default function DashboardOverview() {
                 title="Today's Check-outs"
                 count={dailyOps.checkOuts.count}
                 items={dailyOps.checkOuts.items.map((item) => ({
+                  property_name: item.property_name || item.unit_name,
                   unit_name: item.unit_name,
                   guest_name: item.check_out_time,
                 }))}
@@ -276,6 +359,7 @@ export default function DashboardOverview() {
                 title="Cleaning"
                 count={dailyOps.cleaning.count}
                 items={dailyOps.cleaning.items.map((item) => ({
+                  property_name: item.property_name || item.unit_name,
                   unit_name: item.unit_name,
                   guest_name: item.check_out_time,
                 }))}
@@ -286,7 +370,10 @@ export default function DashboardOverview() {
               <DailyOperationsCard
                 title="Vacant Units"
                 count={dailyOps.vacantUnits.count}
-                items={dailyOps.vacantUnits.units.map((unit) => ({ unit_name: unit }))}
+                items={dailyOps.vacantUnits.units.map((unit) => ({
+                  property_name: unit.property_name || unit.unit_name,
+                  unit_name: unit.unit_name,
+                }))}
                 icon={<VacantIcon />}
                 accent="bg-violet-100 text-violet-700"
                 emptyText="No vacant units."
@@ -294,7 +381,10 @@ export default function DashboardOverview() {
               <DailyOperationsCard
                 title="Occupied / Booked"
                 count={dailyOps.occupiedUnits.count}
-                items={dailyOps.occupiedUnits.units.map((unit) => ({ unit_name: unit }))}
+                items={dailyOps.occupiedUnits.units.map((unit) => ({
+                  property_name: unit.property_name || unit.unit_name,
+                  unit_name: unit.unit_name,
+                }))}
                 icon={<OccupiedIcon />}
                 accent="bg-rose-100 text-rose-700"
                 emptyText="No occupied units."
@@ -302,14 +392,23 @@ export default function DashboardOverview() {
             </section>
 
             <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key metrics">
-              {statCards.map(([key, label]) => (
+              {statCards.map(([key, label, iconType]) => (
                 <article key={key} className="border-b border-neutral-200 px-1 py-4">
-                  <p className="m-0 text-sm text-neutral-500">{label}</p>
+                  <div className="flex items-center gap-2 text-sm text-neutral-500">
+                    <MetricIcon type={iconType} />
+                    <p className="m-0">{label}</p>
+                  </div>
                   <p className="mb-0 mt-2 text-3xl font-semibold tabular-nums">{dashboard.stats[key]}</p>
                 </article>
               ))}
               <article className="border-b border-neutral-200 px-1 py-4">
-                <p className="m-0 text-sm text-neutral-500">Verified revenue</p>
+                <div className="flex items-center gap-2 text-sm text-neutral-500">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-neutral-600">
+                    <path d="M12 1v22" />
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14.5a3.5 3.5 0 0 1 0 7H6" />
+                  </svg>
+                  <p className="m-0">Verified revenue</p>
+                </div>
                 <p className="mb-0 mt-2 text-2xl font-semibold tabular-nums">₱{formatAmount(dashboard.stats.verifiedRevenue)}</p>
               </article>
             </section>

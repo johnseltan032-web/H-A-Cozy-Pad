@@ -75,35 +75,38 @@ try {
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $cleaningRows = $pdo->query(
-        "SELECT DISTINCT b.unit_id, u.unit_name,
+        "SELECT DISTINCT b.unit_id, u.unit_name, bu.building_name,
                 '12:00 PM' AS check_out_time
          FROM bookings b
          INNER JOIN units u ON u.unit_id = b.unit_id
+         INNER JOIN buildings bu ON bu.building_id = u.building_id
          WHERE b.check_out_date = CURDATE()
            AND b.status NOT IN ('cancelled', 'rejected')
-         ORDER BY u.unit_name ASC"
+         ORDER BY bu.building_name ASC, u.unit_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $occupiedToday = $pdo->query(
-        "SELECT DISTINCT u.unit_id, u.unit_name
+        "SELECT DISTINCT u.unit_id, u.unit_name, bu.building_name
          FROM bookings b
          INNER JOIN units u ON u.unit_id = b.unit_id
+         INNER JOIN buildings bu ON bu.building_id = u.building_id
          WHERE b.check_in_date <= CURDATE()
            AND b.check_out_date > CURDATE()
            AND b.status NOT IN ('cancelled', 'rejected')
-         ORDER BY u.unit_name ASC"
+         ORDER BY bu.building_name ASC, u.unit_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $vacantUnits = $pdo->query(
-        "SELECT u.unit_id, u.unit_name
+        "SELECT u.unit_id, u.unit_name, bu.building_name
          FROM units u
+         INNER JOIN buildings bu ON bu.building_id = u.building_id
          LEFT JOIN bookings b
            ON b.unit_id = u.unit_id
           AND b.check_in_date <= CURDATE()
           AND b.check_out_date > CURDATE()
           AND b.status NOT IN ('cancelled', 'rejected')
          WHERE b.booking_id IS NULL
-         ORDER BY u.unit_name ASC"
+         ORDER BY bu.building_name ASC, u.unit_name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 
     $upcoming = $pdo->query("
@@ -247,6 +250,7 @@ try {
             'count' => count($checkInRows),
             'items' => array_map(function ($row) {
                 return [
+                    'property_name' => $row['building_name'] ?? $row['unit_name'],
                     'unit_name' => $row['unit_name'],
                     'guest_name' => $row['guest_name'],
                     'check_in_time' => $row['check_in_time'],
@@ -257,6 +261,7 @@ try {
             'count' => count($checkOutRows),
             'items' => array_map(function ($row) {
                 return [
+                    'property_name' => $row['building_name'] ?? $row['unit_name'],
                     'unit_name' => $row['unit_name'],
                     'guest_name' => $row['guest_name'],
                     'check_out_time' => $row['check_out_time'],
@@ -267,6 +272,7 @@ try {
             'count' => count($cleaningRows),
             'items' => array_map(function ($row) {
                 return [
+                    'property_name' => $row['building_name'] ?? $row['unit_name'],
                     'unit_name' => $row['unit_name'],
                     'check_out_time' => $row['check_out_time'],
                 ];
@@ -275,13 +281,19 @@ try {
         'vacantUnits' => [
             'count' => count($vacantUnits),
             'units' => array_map(function ($row) {
-                return $row['unit_name'];
+                return [
+                    'property_name' => $row['building_name'] ?? $row['unit_name'],
+                    'unit_name' => $row['unit_name'],
+                ];
             }, $vacantUnits),
         ],
         'occupiedUnits' => [
             'count' => count($occupiedToday),
             'units' => array_map(function ($row) {
-                return $row['unit_name'];
+                return [
+                    'property_name' => $row['building_name'] ?? $row['unit_name'],
+                    'unit_name' => $row['unit_name'],
+                ];
             }, $occupiedToday),
         ],
     ];

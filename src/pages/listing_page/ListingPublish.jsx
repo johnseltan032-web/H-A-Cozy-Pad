@@ -62,6 +62,11 @@ export default function ListingPublish() {
     'Entire place';
 
   const images = location.state?.images || [];
+  const firstImage =
+    images[0]?.preview ||
+    (images[0]?.file instanceof File
+      ? URL.createObjectURL(images[0].file)
+      : null);
 
   const isEditing = !!draft.editingBuildingId;
 
@@ -146,11 +151,6 @@ export default function ListingPublish() {
       );
 
       formData.append(
-        'propertyCategory',
-        draft.propertyCategory || 'home'
-      );
-
-      formData.append(
         'location',
         fullLocation
       );
@@ -191,6 +191,16 @@ export default function ListingPublish() {
       formData.append(
         'unitName',
         propertyType
+      );
+
+      formData.append(
+        'tower',
+        draft.tower || ''
+      );
+
+      formData.append(
+        'unitNumber',
+        draft.unitNumber || ''
       );
 
       formData.append(
@@ -237,10 +247,14 @@ export default function ListingPublish() {
        * Images
        */
       images.forEach((image) => {
-        formData.append(
-          'images[]',
-          image
-        );
+        const file = image?.file ?? image;
+
+        if (file instanceof File) {
+          formData.append(
+            'images[]',
+            file
+          );
+        }
       });
 
       const response = await fetch(
@@ -306,8 +320,18 @@ export default function ListingPublish() {
           {/* Summary card */}
           <div className="flex items-center gap-4 border border-black rounded-[19px] px-5 py-4 mb-7">
 
-            <div className="w-14 h-14 rounded-xl bg-neutral-200 flex items-center justify-center shrink-0">
-              <ImagePlaceholderIcon />
+            <div className="w-14 h-14 rounded-xl bg-neutral-200 overflow-hidden shrink-0">
+              {firstImage ? (
+                <img
+                  src={firstImage}
+                  alt="Listing preview"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <ImagePlaceholderIcon />
+                </div>
+              )}
             </div>
 
             <div>

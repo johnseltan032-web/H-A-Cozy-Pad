@@ -75,6 +75,7 @@ try {
             b.cancelled_at,
 
             br.request_id AS modification_request_id,
+            br.request_status AS modification_request_status,
             br.request_reason AS modification_reason,
             br.requested_check_in,
             br.requested_check_out,

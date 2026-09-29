@@ -22,6 +22,39 @@ function GuestIcon() {
   );
 }
 
+const allowedProofImageTypes = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "image/pjpeg",
+]);
+
+function validateProofImage(file) {
+  if (!file) {
+    return "Please upload a proof of payment image.";
+  }
+
+  const mimeType = (file.type || "").toLowerCase();
+  const extension = (file.name || "").split(".").pop()?.toLowerCase() || "";
+  const allowedExtensions = new Set(["jpg", "jpeg", "png", "webp", "heic", "heif"]);
+
+  const isAllowedMime = allowedProofImageTypes.has(mimeType);
+  const isAllowedExtension = allowedExtensions.has(extension);
+
+  if (!isAllowedMime && !isAllowedExtension) {
+    return "Proof of payment must be a JPG, PNG, WEBP, HEIC, or HEIF image.";
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    return "Proof of payment must not exceed 10MB.";
+  }
+
+  return "";
+}
+
 export default function Trips({ onOpenSignIn }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -50,6 +83,21 @@ export default function Trips({ onOpenSignIn }) {
   const [requiresSignIn, setRequiresSignIn] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  const GUEST_BOOKINGS_KEY = "guest_bookings_cache";
+
+  const readGuestBookings = () => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
+    try {
+      const raw = localStorage.getItem(GUEST_BOOKINGS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
   useEffect(() => {
     function handleAuthChange(event) {
       if (event.detail?.loggedIn && event.detail?.user) {
@@ -71,6 +119,20 @@ export default function Trips({ onOpenSignIn }) {
         setIsLoading(true);
         setError("");
 
+        const authResponse = await fetch(`${API_BASE_URL}/check_auth.php`, {
+          credentials: "include",
+        });
+
+        const authData = await authResponse.json().catch(() => ({}));
+        const isAuthenticated = Boolean(authData.authenticated || authData.user);
+
+        if (!isAuthenticated) {
+          const cachedGuestBookings = readGuestBookings();
+          setBookings(cachedGuestBookings);
+          setRequiresSignIn(cachedGuestBookings.length === 0);
+          return;
+        }
+
         const response = await fetch(
           `${API_BASE_URL}/get_booking.php`,
           {
@@ -82,8 +144,9 @@ export default function Trips({ onOpenSignIn }) {
         const data = await response.json();
 
         if (response.status === 401) {
-          setBookings([]);
-          setRequiresSignIn(true);
+          const cachedGuestBookings = readGuestBookings();
+          setBookings(cachedGuestBookings);
+          setRequiresSignIn(cachedGuestBookings.length === 0);
           return;
         }
 
@@ -212,19 +275,10 @@ async function handleModificationRequest() {
   }
 
   if (proofOfPayment) {
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ];
+    const validationError = validateProofImage(proofOfPayment);
 
-    if (!allowedTypes.includes(proofOfPayment.type)) {
-      setError("Proof of payment must be a JPG, PNG, or WEBP image.");
-      return;
-    }
-
-    if (proofOfPayment.size > 10 * 1024 * 1024) {
-      setError("Proof of payment must not exceed 10MB.");
+    if (validationError) {
+      setError(validationError);
       return;
     }
   }
@@ -258,6 +312,12 @@ async function handleModificationRequest() {
       "requestedSpecialRequests",
       modificationForm.specialRequests.trim()
     );
+
+    const computedPaymentAmount = difference > 0 ? Number(Math.abs(difference).toFixed(2)) : 0;
+    const computedRefundAmount = difference < 0 ? Number(Math.abs(difference).toFixed(2)) : 0;
+
+    formData.append("paymentAmount", String(computedPaymentAmount));
+    formData.append("refundAmount", String(computedRefundAmount));
 
     if (proofOfPayment) {
       formData.append("proofOfPayment", proofOfPayment);
@@ -767,10 +827,27 @@ const modificationDifference =
 
     <input
       type="file"
-      accept="image/jpeg,image/png,image/webp"
-      onChange={(e) =>
-        setProofOfPayment(e.target.files?.[0] || null)
-      }
+      accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+      onChange={(e) => {
+        const selectedFile = e.target.files?.[0] || null;
+
+        if (!selectedFile) {
+          setProofOfPayment(null);
+          return;
+        }
+
+        const validationError = validateProofImage(selectedFile);
+
+        if (validationError) {
+          setProofOfPayment(null);
+          setError(validationError);
+          e.target.value = "";
+          return;
+        }
+
+        setError("");
+        setProofOfPayment(selectedFile);
+      }}
       disabled={isSubmittingModification}
       className="mt-2 block w-full rounded-lg border border-gray-300 p-3 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-medium"
     />

@@ -35,6 +35,7 @@ $guests = max(1, (int) ($data['guests'] ?? 1));
 $paymentAmount = isset($data['paymentAmount']) && $data['paymentAmount'] !== '' ? (float) $data['paymentAmount'] : null;
 $paymentMethod = trim((string) ($data['paymentMethod'] ?? 'cash'));
 $paymentStatus = trim((string) ($data['paymentStatus'] ?? 'pending'));
+$bookingStatus = trim((string) ($data['bookingStatus'] ?? 'pending'));
 $bookingSource = trim((string) ($data['bookingSource'] ?? 'direct'));
 $notes = trim((string) ($data['notes'] ?? ''));
 
@@ -78,6 +79,11 @@ if (!in_array($paymentMethod, $allowedPaymentMethods, true)) {
 $allowedPaymentStatus = ['pending', 'verified', 'rejected', 'refunded'];
 if (!in_array($paymentStatus, $allowedPaymentStatus, true)) {
     $paymentStatus = 'pending';
+}
+
+$allowedBookingStatus = ['pending', 'awaiting_payment', 'payment_review', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'rejected'];
+if (!in_array($bookingStatus, $allowedBookingStatus, true)) {
+    $bookingStatus = 'pending';
 }
 
 try {
@@ -176,6 +182,7 @@ try {
              check_in_date = ?,
              check_out_date = ?,
              num_of_guests = ?,
+             status = ?,
              booking_source = ?,
              notes = ?
          WHERE booking_id = ?'
@@ -185,6 +192,7 @@ try {
         $checkIn,
         $checkOut,
         $guests,
+        $bookingStatus,
         $bookingSource !== '' ? $bookingSource : 'direct',
         $notes !== '' ? $notes : null,
         $bookingId,

@@ -73,7 +73,10 @@ export default function PlaceImages() {
 
     navigate('/host/listing/ListingPublish', {
       state: {
-        images: images.map((image) => image.file),
+        images: images.map((image) => ({
+          file: image.file,
+          preview: image.preview,
+        })),
       },
     });
   };

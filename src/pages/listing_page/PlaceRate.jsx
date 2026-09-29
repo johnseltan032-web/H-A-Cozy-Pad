@@ -380,9 +380,8 @@ export default function RoomsRates() {
           {/* Divider */}
           <hr className="border-neutral-300 my-7" />
 
-          {/* Bathrooms / Guests */}
-          <div className="flex items-start justify-between mb-8">
-
+          {/* Bathrooms */}
+          <div className="mb-8 flex items-start justify-center">
             <Counter
               label="Number of Bathrooms"
               value={bathrooms}
@@ -395,25 +394,6 @@ export default function RoomsRates() {
                 });
               }}
             />
-
-            <Counter
-              label="Max guests allowed"
-              value={maxGuests}
-              min={1}
-              max={4}
-              onChange={(value) => {
-                setMaxGuests(value);
-
-                updateListingDraft({
-                  maxGuests: value,
-                });
-              }}
-            />
-
-          </div>
-
-          <div className="mb-8 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-            Unit policy: maximum 4 guests per unit. Default check-in is 2:00 PM and default check-out is 12:00 PM.
           </div>
 
           {/* Rate */}

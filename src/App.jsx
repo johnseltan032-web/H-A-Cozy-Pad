@@ -3,6 +3,7 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useNavigate,
 } from 'react-router-dom';
 
@@ -39,7 +40,7 @@ import MobileTabBar from './components/MobileTabBar';
 
 // listing pages
 import PlaceOffer from './pages/listing_page/PlaceOffer';
-import UnitListing from './pages/listing_page/UnitListing';
+import UnitSelection from './pages/listing_page/UnitSelection';
 import PlaceDescription from './pages/listing_page/PlaceDescription';
 import PlaceLocation from './pages/listing_page/PlaceLocation';
 import PlaceRate from './pages/listing_page/PlaceRate';
@@ -152,12 +153,20 @@ function AppContent() {
           }
         />
 
-        <Route
-          path="/host/FaqManagement"
-          element={<FaqManagement />}
-        />
-
         <Route path="/verify-email" element={<VerifyEmail />} />
+
+        <Route
+          element={
+            <ProtectedRoute
+              user={user}
+              isLoading={isLoading}
+              allowedRoles={['super_admin', 'admin']}
+            />
+          }
+        >
+          <Route path="/host/faqs" element={<FaqManagement />} />
+          <Route path="/host/FaqManagement" element={<FaqManagement />} />
+        </Route>
 
         <Route
           path="/profile"
@@ -188,7 +197,14 @@ function AppContent() {
           <Route path="/host/listings" element={<DashboardListings />} />
           <Route path="/host/reservations" element={<DashboardReservations />} />
           <Route path="/host/calendar" element={<DashboardCalendar />} />
-          <Route path="/host/listing" element={<UnitListing />} />
+          <Route
+            path="/host/listing"
+            element={<Navigate to="/host/listing/UnitSelection" replace />}
+          />
+          <Route
+            path="/host/listing/UnitSelection"
+            element={<UnitSelection />}
+          />
           <Route
             path="/host/listing/PlaceDescription"
             element={<PlaceDescription />}
@@ -220,55 +236,6 @@ function AppContent() {
           <Route
             path="/host/listing/PlaceImages"
             element={<PlaceImages />}
-          />
-        </Route>
-
-        <Route
-          element={
-            <ProtectedRoute
-              user={user}
-              isLoading={isLoading}
-              allowedRoles={['super_admin', 'admin']}
-            />
-          }
-        >
-          <Route path="/host/statistics" element={<DashboardStatistics />} />
-          <Route path="/host/listings" element={<DashboardListings />} />
-          <Route
-            path="/host/reservations"
-            element={<DashboardReservations />}
-          />
-          <Route path="/host/calendar" element={<DashboardCalendar />} />
-          <Route path="/host/faqs" element={<FaqManagement />} />
-          <Route path="/host/listing" element={<UnitListing />} />
-
-          <Route
-            path="/host/listing/PlaceDescription"
-            element={<PlaceDescription />}
-          />
-          <Route
-            path="/host/listing/PlaceOffer"
-            element={<PlaceOffer />}
-          />
-          <Route
-            path="/host/listing/PlaceLocation"
-            element={<PlaceLocation />}
-          />
-          <Route
-            path="/host/listing/PlaceRate"
-            element={<PlaceRate />}
-          />
-          <Route
-            path="/host/listing/PlaceDiscount"
-            element={<PlaceDiscount />}
-          />
-          <Route
-            path="/host/listing/PlaceDetail"
-            element={<PlaceDetail />}
-          />
-          <Route
-            path="/host/listing/ListingPublish"
-            element={<ListingPublish />}
           />
         </Route>
 

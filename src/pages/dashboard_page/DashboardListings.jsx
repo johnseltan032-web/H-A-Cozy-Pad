@@ -34,9 +34,11 @@ export default function DashboardListings() {
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
   const [editForm, setEditForm] = useState({
     buildingName: '',
-    propertyCategory: 'home',
+    tower: '',
+    unitNumber: '',
     unitName: 'Entire place',
     location: '',
     description: '',
@@ -55,19 +57,30 @@ export default function DashboardListings() {
   const [newImages, setNewImages] = useState([]);
   const [removeImageIds, setRemoveImageIds] = useState([]);
 
-  const getPropertyCategoryLabel = (propertyCategory) => {
-    switch (propertyCategory) {
-      case 'home':
-        return 'Home-type property';
+  const loadListings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/available_listings.php`, {
+        cache: 'no-store',
+      });
+      const data = await response.json();
 
-      case 'hotel':
-        return 'Hotel-type property';
+      if (!response.ok) {
+        throw new Error(data.error || `Unable to load listings (${response.status})`);
+      }
 
-      case 'unique':
-        return 'Unique-type property';
+      if (!Array.isArray(data)) {
+        throw new Error(data.error || 'Unable to load listings');
+      }
 
-      default:
-        return 'Unknown';
+      setListings(data);
+      setError('');
+      return data;
+    } catch (loadError) {
+      console.error('Error fetching listings:', loadError);
+      setError(loadError.message);
+      throw loadError;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,15 +109,11 @@ export default function DashboardListings() {
         throw new Error(data.error || 'Unable to delete listing');
       }
 
-      setListings((currentListings) =>
-        currentListings.filter(
-          (listing) => listing.building_id !== selectedBuildingId
-        )
-      );
-
+      await loadListings();
       setSelectedBuildingId(null);
       setSelectedListing(null);
       setIsDeleteConfirmOpen(false);
+      setToastMessage('Listing deleted successfully');
     } catch (deleteError) {
       setError(deleteError.message);
     } finally {
@@ -113,33 +122,19 @@ export default function DashboardListings() {
   };
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/available_listings.php`, {
-      cache: 'no-store',
-    })
-      .then(async (response) => {
-        const data = await response.json();
+    if (!toastMessage) {
+      return undefined;
+    }
 
-        if (!response.ok) {
-          throw new Error(
-            data.error || `Unable to load listings (${response.status})`
-          );
-        }
+    const timeoutId = window.setTimeout(() => {
+      setToastMessage('');
+    }, 3000);
 
-        return data;
-      })
-      .then((data) => {
-        if (!Array.isArray(data)) {
-          throw new Error(data.error || 'Unable to load listings');
-        }
+    return () => window.clearTimeout(timeoutId);
+  }, [toastMessage]);
 
-        setListings(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error('Error fetching listings:', error);
-        setError(error.message);
-        setLoading(false);
-      });
+  useEffect(() => {
+    loadListings().catch(() => undefined);
   }, []);
 
   const handleAddListing = () => {
@@ -149,7 +144,7 @@ export default function DashboardListings() {
 
     setSelectedBuildingId(null);
 
-    navigate('/host/listing');
+    navigate('/host/listing/UnitSelection');
   };
 
   const openEditModal = async () => {
@@ -174,7 +169,8 @@ export default function DashboardListings() {
 
       setEditForm({
         buildingName: data.building_name || '',
-        propertyCategory: data.property_category || 'home',
+        tower: data.tower || '',
+        unitNumber: data.unit_number || '',
         unitName: data.unit_name || 'Entire place',
         location: data.location || '',
         description: data.description || '',
@@ -201,12 +197,25 @@ export default function DashboardListings() {
 
   const getListingImageUrl = (imagePath) => {
     if (!imagePath) return null;
-    return `${API_BASE_URL.replace(/\/$/, '')}/${imagePath.replace(/^\/+/, '')}`;
+
+    const normalizedPath = String(imagePath)
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .replace(/^api\//i, '');
+
+    return `${API_BASE_URL.replace(/\/$/, '')}/${normalizedPath}`;
   };
 
   const openListingDetails = (listing) => {
     setSelectedListing(listing);
     setSelectedBuildingId(listing.building_id);
+  };
+
+  const openDeleteConfirm = (listing) => {
+    setSelectedListing(listing);
+    setSelectedBuildingId(listing.building_id);
+    setIsDeleteConfirmOpen(true);
   };
 
   const closeEditModal = () => {
@@ -336,21 +345,24 @@ export default function DashboardListings() {
         throw new Error(data.error || 'Unable to update listing');
       }
 
-      setListings((currentListings) =>
-        currentListings.map((listing) =>
-          listing.building_id === selectedBuildingId
-            ? {
-                ...listing,
-                building_name: editForm.buildingName,
-                property_category: editForm.propertyCategory,
-                unit_name: editForm.unitName,
-                location: editForm.location,
-                available_from: editForm.availableFrom,
-                available_until: editForm.availableUntil,
-              }
-            : listing
-        )
+      await loadListings();
+      setSelectedListing((currentListing) =>
+        currentListing && currentListing.building_id === selectedBuildingId
+          ? {
+              ...currentListing,
+              building_name: editForm.buildingName,
+              tower: editForm.tower,
+              unit_name: editForm.unitName,
+              unit_number: editForm.unitNumber,
+              location: editForm.location,
+              max_guests: editForm.maxGuests,
+              rate_per_night: editForm.ratePerNight,
+              available_from: editForm.availableFrom,
+              available_until: editForm.availableUntil,
+            }
+          : currentListing
       );
+      setToastMessage('Listing edited successfully');
       setIsEditOpen(false);
     } catch (editSaveError) {
       setEditError(editSaveError.message);
@@ -364,52 +376,25 @@ export default function DashboardListings() {
       <HostHeader activeNav="Listing" />
 
       <main className="px-5 md:px-10 lg:px-13 py-10">
-        <div className="mb-5 flex items-center justify-between gap-2 sm:mb-10 md:gap-4">
+        {toastMessage && (
+          <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            {toastMessage}
+          </div>
+        )}
+
+        <div className="relative mb-5 sm:mb-10">
           <h1 className="text-xl font-bold sm:text-2xl md:text-4xl">
             Your Listing
           </h1>
 
-          <div className="flex w-auto shrink-0 flex-wrap justify-end gap-1.5 sm:gap-2 md:gap-3">
-            <button
-              type="button"
-              disabled={!selectedBuildingId || isDeleting}
-              onClick={() => {
-                if (selectedBuildingId && window.confirm('Delete this listing?')) {
-                  deleteListing();
-                }
-              }}
-              title="Delete listing"
-              aria-label="Delete listing"
-              className="hidden h-10 w-10 items-center justify-center gap-2 border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:flex md:h-auto md:w-auto md:px-4 md:py-2.5"
-            >
-              {isDeleting ? <span className="sr-only">Deleting...</span> : null}
-              <svg aria-hidden="true" className="h-5 w-5 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m4 4v6m6-6v6" /></svg>
-              <span className="hidden md:inline">{isDeleting ? 'Deleting...' : 'Delete'}</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={!selectedBuildingId}
-              onClick={openEditModal}
-              title="Edit listing"
-              aria-label="Edit listing"
-              className="hidden h-10 w-10 items-center justify-center gap-2 border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed md:flex md:h-auto md:w-auto md:px-4 md:py-2.5"
-            >
-              <svg aria-hidden="true" className="h-5 w-5 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m14 5 5 5M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16l-1 4Z" /></svg>
-              <span className="hidden md:inline">Edit</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleAddListing}
-              title="Add listing"
-              aria-label="Add listing"
-              className="flex h-10 w-10 items-center justify-center gap-2 border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer md:h-auto md:w-auto md:px-4 md:py-2.5"
-            >
-              <svg aria-hidden="true" className="h-5 w-5 md:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-              <span className="hidden md:inline">Add</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/host/overview')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 sm:px-5 sm:text-base"
+          >
+            <span aria-hidden="true">←</span>
+            Back to overview
+          </button>
         </div>
 
         {loading ? (
@@ -427,130 +412,36 @@ export default function DashboardListings() {
             </p>
           </div>
         ) : (
-          <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[680px] border-collapse">
-            <thead>
-              <tr className="text-left border-b border-neutral-200">
-                <th className="pb-3 font-semibold text-base w-2/5">
-                  Listing
-                </th>
-
-                <th className="pb-3 font-semibold text-base">
-                  Type
-                </th>
-
-                <th className="pb-3 font-semibold text-base">
-                  Location
-                </th>
-
-                <th className="pb-3 font-semibold text-base">
-                  Status
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {listings.map((listing) => (
-                <tr
-                  key={listing.unit_id}
-                  onClick={() => setSelectedBuildingId(listing.building_id)}
-                  className={`border-b border-neutral-100 cursor-pointer transition-colors ${
-                    selectedBuildingId === listing.building_id
-                      ? 'bg-neutral-100'
-                      : ''
-                  }`}
-                >
-                  <td className="py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 shrink-0 rounded-lg bg-neutral-300 flex items-center justify-center">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="w-6 h-6 text-neutral-400"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <rect
-                            x="3"
-                            y="3"
-                            width="18"
-                            height="18"
-                            rx="2"
-                          />
-
-                          <circle
-                            cx="9"
-                            cy="9"
-                            r="2"
-                          />
-
-                          <path d="M21 15l-5-5L5 21" />
-                        </svg>
-                      </div>
-
-                      <span className="text-base">
-                        {listing.building_name} - {listing.unit_name}
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="py-4 text-base align-middle">
-                    {getPropertyCategoryLabel(
-                      listing.property_category
-                    )}
-                  </td>
-
-                  <td className="py-4 text-base align-middle">
-                    {listing.location}
-                  </td>
-
-                  <td className="py-4 text-base align-middle">
-                    <span className="inline-flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
-
-                      {listing.status
-                        ? listing.status.charAt(0).toUpperCase() +
-                          listing.status.slice(1)
-                        : ''}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        )}
-
-        {!loading && !error && listings.length > 0 && (
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-3">
             {listings.map((listing) => {
               const imagePath = Array.isArray(listing.images) ? listing.images[0] : null;
               const imageUrl = getListingImageUrl(imagePath);
 
               return (
-                <div key={listing.unit_id} className="flex items-center gap-3 border-b border-neutral-200 pb-3">
-                  <div className="h-20 w-24 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+                <div
+                  key={listing.unit_id}
+                  className="flex items-center gap-5 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-neutral-100">
                     {imageUrl ? (
                       <img src={imageUrl} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-neutral-500">No photo</div>
+                      <div className="flex h-full items-center justify-center text-xs text-neutral-500">
+                        No photo
+                      </div>
                     )}
                   </div>
+
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 break-words text-sm font-medium text-neutral-900">
+                    <p className="line-clamp-2 break-words text-base font-semibold text-neutral-900">
                       {listing.building_name || listing.unit_name}
                     </p>
-                    {listing.unit_name && listing.building_name && (
-                      <p className="mt-1 line-clamp-1 text-xs text-neutral-500">{listing.unit_name}</p>
-                    )}
                   </div>
+
                   <button
                     type="button"
                     onClick={() => openListingDetails(listing)}
-                    className="shrink-0 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900"
+                    className="shrink-0 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-neutral-50"
                   >
                     Detail
                   </button>
@@ -562,7 +453,7 @@ export default function DashboardListings() {
       </main>
 
       {selectedListing && !isEditOpen && (
-        <div className="fixed inset-0 z-[3200] flex items-end justify-center bg-black/40 sm:items-center sm:px-5 sm:py-8 md:hidden" onClick={() => setSelectedListing(null)}>
+        <div className="fixed inset-0 z-[3200] flex items-end justify-center bg-black/40 sm:items-center sm:px-5 sm:py-8" onClick={() => setSelectedListing(null)}>
           <section
             role="dialog"
             aria-modal="true"
@@ -586,8 +477,10 @@ export default function DashboardListings() {
               )}
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-                <div><dt className="text-neutral-500">Unit</dt><dd className="mt-1 font-medium">{selectedListing.unit_name || 'Not specified'}</dd></div>
-                <div><dt className="text-neutral-500">Type</dt><dd className="mt-1 font-medium">{getPropertyCategoryLabel(selectedListing.property_category)}</dd></div>
+                <div><dt className="text-neutral-500">Building</dt><dd className="mt-1 font-medium">{selectedListing.building_name || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Tower</dt><dd className="mt-1 font-medium">{selectedListing.tower || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Unit</dt><dd className="mt-1 font-medium">{selectedListing.unit_name || selectedListing.unit_number || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Unit number</dt><dd className="mt-1 font-medium">{selectedListing.unit_number || 'Not specified'}</dd></div>
                 <div className="col-span-2"><dt className="text-neutral-500">Location</dt><dd className="mt-1 font-medium break-words">{selectedListing.location || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Guests</dt><dd className="mt-1 font-medium">{selectedListing.max_guests || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Rate per night</dt><dd className="mt-1 font-medium">{selectedListing.rate_per_night ? `₱${Number(selectedListing.rate_per_night).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : 'Not specified'}</dd></div>
@@ -641,7 +534,7 @@ export default function DashboardListings() {
             ) : (
               <form onSubmit={saveEdit} className="mt-6 space-y-4">
                 <label className="block text-sm font-medium">
-                  Listing name
+                  Building name
                   <input
                     name="buildingName"
                     value={editForm.buildingName}
@@ -653,19 +546,29 @@ export default function DashboardListings() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-medium">
-                    Property category
-                    <select
-                      name="propertyCategory"
-                      value={editForm.propertyCategory}
+                    Tower
+                    <input
+                      name="tower"
+                      value={editForm.tower}
                       onChange={handleEditChange}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 font-normal outline-none focus:border-black"
-                    >
-                      <option value="home">Home-type property</option>
-                      <option value="hotel">Hotel-type property</option>
-                      <option value="unique">Unique-type property</option>
-                    </select>
+                      placeholder="Tower code or name"
+                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
+                    />
                   </label>
 
+                  <label className="block text-sm font-medium">
+                    Unit number
+                    <input
+                      name="unitNumber"
+                      value={editForm.unitNumber}
+                      onChange={handleEditChange}
+                      placeholder="Unit number"
+                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-medium">
                     Property type
                     <select

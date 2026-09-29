@@ -79,14 +79,6 @@ function formatAvailabilityDate(dateString) {
   }).format(date);
 }
 
-function formatPropertyCategory(category) {
-  return {
-    home: 'Home-type property',
-    hotel: 'Hotel-type property',
-    unique: 'Unique-type property',
-  }[category] || category || 'Property';
-}
-
 const PLACEHOLDER_REVIEWS = Array.from(
   { length: 6 },
   (_, i) => ({
@@ -619,10 +611,6 @@ export default function PropertyDetail({
                     <div>
                       <p className="text-neutral-500">Property type</p>
                       <p className="mt-1 font-medium">{unit.unit_name || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-neutral-500">Category</p>
-                      <p className="mt-1 font-medium">{formatPropertyCategory(unit.property_category)}</p>
                     </div>
                     <div>
                       <p className="text-neutral-500">Property size</p>

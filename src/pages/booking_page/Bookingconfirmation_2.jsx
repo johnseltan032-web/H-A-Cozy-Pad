@@ -123,6 +123,34 @@ const VEHICLE_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 1024 * 1024;
+const GUEST_BOOKINGS_KEY = "guest_bookings_cache";
+
+function readGuestBookings() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = localStorage.getItem(GUEST_BOOKINGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistGuestBooking(booking) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const existing = readGuestBookings();
+  const next = [
+    ...existing.filter((item) => Number(item.bookingId) !== Number(booking.bookingId)),
+    booking,
+  ];
+
+  localStorage.setItem(GUEST_BOOKINGS_KEY, JSON.stringify(next));
+}
 
 export default function AdditionalInformation({
   isMenuOpen,
@@ -642,8 +670,27 @@ export default function AdditionalInformation({
       const isBookingCreated = Boolean(data.success && bookingId);
 
       if (isBookingCreated) {
-        setIsGuestBooking(Boolean(data.guestBooking));
+        const guestBooking = Boolean(data.guestBooking);
+        setIsGuestBooking(guestBooking);
         setSavedBookingId(bookingId);
+
+        if (guestBooking) {
+          const guestName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+          persistGuestBooking({
+            bookingId: Number(bookingId),
+            status: data.status || "payment_review",
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            guests: Number(booking.guests || 1),
+            guestName,
+            guestContactNum: phone.trim(),
+            unitName: property?.unitName || property?.unit_name || property?.name || "Property stay",
+            propertyName: property?.buildingName || property?.building_name || property?.title || "Property",
+            createdAt: new Date().toISOString(),
+          });
+        }
+
         return;
       }
 

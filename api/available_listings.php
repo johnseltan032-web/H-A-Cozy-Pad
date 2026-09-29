@@ -16,7 +16,6 @@ try {
         "SELECT
             b.building_id,
             b.building_name,
-            b.property_category,
             b.location,
             b.location_search,
             b.country,
@@ -30,6 +29,8 @@ try {
 
             u.unit_id,
             u.unit_name,
+            u.tower,
+            u.unit_number,
             u.description,
             u.property_size,
             u.max_guests,
@@ -73,7 +74,6 @@ try {
         GROUP BY
             b.building_id,
             b.building_name,
-            b.property_category,
             b.location,
             b.location_search,
             b.country,
@@ -87,6 +87,8 @@ try {
 
             u.unit_id,
             u.unit_name,
+            u.tower,
+            u.unit_number,
             u.description,
             u.property_size,
             u.max_guests,
