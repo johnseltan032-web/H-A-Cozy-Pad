@@ -6,8 +6,14 @@ function sendAppMail(string $toEmail, string $toName, string $subject, string $h
     global $SMTP_USERNAME, $SMTP_PASSWORD, $SMTP_HOST, $SMTP_PORT, $SMTP_SECURE;
     global $EMAIL_FROM, $EMAIL_FROM_NAME;
 
-    if (empty($SMTP_USERNAME) || empty($SMTP_PASSWORD) || empty($EMAIL_FROM)) {
-        error_log('SMTP credentials or sender address are not configured for ' . $toEmail);
+    $allowDebugLogging = filter_var(getenv('MAIL_LOG_ERRORS') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+
+    if (
+        empty($SMTP_USERNAME) ||
+        empty($SMTP_PASSWORD) ||
+        empty($SMTP_HOST) ||
+        empty($EMAIL_FROM)
+    ) {
         return false;
     }
 
@@ -38,7 +44,9 @@ function sendAppMail(string $toEmail, string $toName, string $subject, string $h
         $mail->send();
         return true;
     } catch (Throwable $e) {
-        error_log('PHPMailer send failed to ' . $toEmail . ': ' . $e->getMessage());
+        if ($allowDebugLogging) {
+            error_log('PHPMailer send failed to ' . $toEmail . ': ' . $e->getMessage());
+        }
         return false;
     }
 }
