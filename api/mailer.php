@@ -1,176 +1,38 @@
 <?php
-// Shared mail helper. Include this after db.php (so $GMAIL_USER /
-// $GMAIL_APP_PASSWORD from config.php are already in scope).
-
-function smtpReadResponse($socket) {
-    $lines = [];
-    $timeout = 30;
-    $start = microtime(true);
-
-    while (microtime(true) - $start < $timeout) {
-        $line = fgets($socket, 515);
-        if ($line === false) {
-            break;
-        }
-
-        $lines[] = trim($line);
-        if (strlen($line) >= 3 && is_numeric(substr($line, 0, 3))) {
-            $code = (int) substr($line, 0, 3);
-            if (strlen($line) < 4 || $line[3] !== '-') {
-                return ['code' => $code, 'lines' => $lines];
-            }
-        }
-    }
-
-    return ['code' => 0, 'lines' => $lines];
-}
-
-function smtpCommand($socket, $command) {
-    fwrite($socket, $command . "\r\n");
-    $response = smtpReadResponse($socket);
-
-    if ($response['code'] >= 400) {
-        throw new RuntimeException('SMTP error: ' . implode(' | ', $response['lines']) . ' (' . $command . ')');
-    }
-
-    return $response;
-}
-
-function sendResendMail(string $toEmail, string $subject, string $htmlBody, string $altBody = ''): bool
-{
-    $apiKey = getenv('RESEND_API_KEY') ?: '';
-    $from = getenv('EMAIL_FROM') ?: '';
-
-    if ($apiKey === '' || $from === '') {
-        error_log('Resend mail requires RESEND_API_KEY and EMAIL_FROM');
-        return false;
-    }
-
-    $payload = [
-        'from' => $from,
-        'to' => [$toEmail],
-        'subject' => $subject,
-        'html' => $htmlBody,
-    ];
-    if ($altBody !== '') {
-        $payload['text'] = $altBody;
-    }
-
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'POST',
-            'header' => "Authorization: Bearer $apiKey\r\nContent-Type: application/json\r\n",
-            'content' => json_encode($payload),
-            'timeout' => 30,
-            'ignore_errors' => true,
-        ],
-    ]);
-
-    $responseBody = @file_get_contents('https://api.resend.com/emails', false, $context);
-    $statusLine = $http_response_header[0] ?? '';
-    preg_match('/\s(\d{3})\s/', $statusLine, $matches);
-    $statusCode = (int) ($matches[1] ?? 0);
-
-    if ($responseBody === false || $statusCode < 200 || $statusCode >= 300) {
-        error_log('Resend email request failed with HTTP ' . $statusCode . ': ' . ($responseBody ?: 'No response body'));
-        return false;
-    }
-
-    return true;
-}
+require_once __DIR__ . '/vendor/autoload.php';
 
 function sendAppMail(string $toEmail, string $toName, string $subject, string $htmlBody, string $altBody = ''): bool
 {
-    if (getenv('RESEND_API_KEY')) {
-        return sendResendMail($toEmail, $subject, $htmlBody, $altBody);
-    }
-
-    global $GMAIL_USER, $GMAIL_APP_PASSWORD;
+    global $GMAIL_USER, $GMAIL_APP_PASSWORD, $SMTP_HOST, $SMTP_PORT, $SMTP_SECURE;
 
     if (empty($GMAIL_USER) || empty($GMAIL_APP_PASSWORD)) {
-        error_log('Mail settings are not configured for ' . $toEmail);
+        error_log('Gmail SMTP settings are not configured for ' . $toEmail);
         return false;
     }
 
     try {
-        $host = 'smtp.gmail.com';
-        $port = 587;
-        $username = $GMAIL_USER;
-        $password = $GMAIL_APP_PASSWORD;
-
-        $context = stream_context_create([
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true,
-            ],
-        ]);
-
-        $socket = stream_socket_client(
-            'tcp://' . $host . ':' . $port,
-            $errno,
-            $errstr,
-            30,
-            STREAM_CLIENT_CONNECT,
-            $context
-        );
-
-        if (!$socket) {
-            throw new RuntimeException('Unable to connect to SMTP server: ' . $errstr);
-        }
-
-        stream_set_timeout($socket, 30);
-        $banner = smtpReadResponse($socket);
-        if ($banner['code'] !== 220) {
-            fclose($socket);
-            throw new RuntimeException('SMTP connection failed: ' . implode(' | ', $banner['lines']));
-        }
-
-        smtpCommand($socket, 'EHLO localhost');
-        smtpCommand($socket, 'STARTTLS');
-
-        if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
-            fclose($socket);
-            throw new RuntimeException('Unable to enable TLS');
-        }
-
-        smtpCommand($socket, 'EHLO localhost');
-        smtpCommand($socket, 'AUTH LOGIN');
-        smtpCommand($socket, base64_encode($username));
-        smtpCommand($socket, base64_encode($password));
-        smtpCommand($socket, 'MAIL FROM:<' . $username . '>');
-        smtpCommand($socket, 'RCPT TO:<' . $toEmail . '>');
-        smtpCommand($socket, 'DATA');
-
-        $fromName = 'H&A Cozy Pad';
-        $escapedFrom = preg_replace('/[\r\n]+/', '', $fromName);
-        $escapedTo = preg_replace('/[\r\n]+/', '', $toName ?: $toEmail);
-
-        $headers = [
-            'From: ' . $escapedFrom . ' <' . $username . '>',
-            'To: ' . $escapedTo . ' <' . $toEmail . '>',
-            'Subject: ' . $subject,
-            'MIME-Version: 1.0',
-            'Content-Type: text/html; charset=UTF-8',
-            'Content-Transfer-Encoding: base64',
-            '',
-        ];
-
-        $encoded = chunk_split(base64_encode($htmlBody));
-        $body = implode("\r\n", $headers) . "\r\n" . $encoded . "\r\n.\r\n";
-        fwrite($socket, $body);
-
-        $sendResponse = smtpReadResponse($socket);
-        if ($sendResponse['code'] !== 250) {
-            fclose($socket);
-            throw new RuntimeException('SMTP DATA failed: ' . implode(' | ', $sendResponse['lines']));
-        }
-
-        smtpCommand($socket, 'QUIT');
-        fclose($socket);
+        $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host = $SMTP_HOST;
+        $mail->SMTPAuth = true;
+        $mail->Username = $GMAIL_USER;
+        $mail->Password = $GMAIL_APP_PASSWORD;
+        $mail->Port = $SMTP_PORT;
+        $mail->SMTPSecure = $SMTP_SECURE === 'tls'
+            ? PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS
+            : PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+        $mail->Timeout = 12;
+        $mail->CharSet = PHPMailer\PHPMailer\PHPMailer::CHARSET_UTF8;
+        $mail->setFrom($GMAIL_USER, 'H&A Cozy Pad');
+        $mail->addAddress($toEmail, $toName);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $htmlBody;
+        $mail->AltBody = $altBody;
+        $mail->send();
         return true;
     } catch (Throwable $e) {
-        error_log('Mail send failed to ' . $toEmail . ': ' . $e->getMessage());
+        error_log('PHPMailer send failed to ' . $toEmail . ': ' . $e->getMessage());
         return false;
     }
 }

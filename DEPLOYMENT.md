@@ -19,7 +19,17 @@ Netlify hosts the Vite frontend. Railway runs the PHP API and MySQL database. Th
 
    Replace `MySQL` in the references with the actual Railway MySQL service name. Add these to the PHP/API service, not only the MySQL service. Remove any `DB_HOST=localhost` override if present. Do not commit database credentials.
 4. Add `DIFY_API_KEY` to the API service variables. Optionally set `DIFY_API_URL` if using a Dify-compatible endpoint other than `https://api.dify.ai/v1`. Keep the API key server-side; never prefix it with `VITE_` or add it to Netlify.
-5. For verification emails and email notifications, set `RESEND_API_KEY` and `EMAIL_FROM` in the API service variables. `EMAIL_FROM` must be an address/domain verified in Resend, for example `H&A Cozy Pad <notifications@your-verified-domain.com>`. The API uses Resend when `RESEND_API_KEY` is present; otherwise it falls back to Gmail SMTP using `GMAIL_USER` and `GMAIL_APP_PASSWORD`. Keep these secrets only in Railway, never Netlify or the repository.
+5. For verification emails and email notifications, configure PHPMailer to use Gmail SMTP in the API service variables:
+
+   ```text
+   GMAIL_USER=hna.cozypad.service@gmail.com
+   GMAIL_APP_PASSWORD=<Google app password>
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=ssl
+   ```
+
+   Generate a new Google App Password with 2-Step Verification enabled; do not use the normal account password. PHPMailer is installed into the PHP image from `composer.json`. `RESEND_API_KEY` and `EMAIL_FROM` are not used by this mailer. Keep credentials only in Railway and redeploy the PHP/API service after changing them. Railway must permit outbound SMTP to `smtp.gmail.com:465`; if the service logs show a connection timeout, PHPMailer cannot bypass that network restriction and an HTTPS email provider API will be needed instead.
 6. Import the schema from `sql/database/create_db.sql` into the Railway database. It includes the `notifications` and email-verification tables. For an existing database, apply only migrations for schema changes that have not already been applied.
 7. Generate a public domain for the API service and note its origin, such as `https://your-api-service.up.railway.app`.
 8. Add a Railway Volume mounted at `/var/www/html/api/uploads` if listing images and booking uploads must survive redeploys. The container prepares this directory for PHP writes at startup.

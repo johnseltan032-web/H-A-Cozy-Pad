@@ -7,4 +7,7 @@
     $FRONTEND_ORIGIN = getenv('FRONTEND_ORIGIN') ?: 'http://localhost:5173';
     $GMAIL_USER = getenv('GMAIL_USER') ?: '';
     $GMAIL_APP_PASSWORD = getenv('GMAIL_APP_PASSWORD') ?: '';
+    $SMTP_HOST = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
+    $SMTP_PORT = (int) (getenv('SMTP_PORT') ?: 465);
+    $SMTP_SECURE = strtolower(getenv('SMTP_SECURE') ?: 'ssl');
 ?>
