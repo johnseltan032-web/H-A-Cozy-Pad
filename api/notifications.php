@@ -19,6 +19,13 @@ if (in_array($_SERVER['REQUEST_METHOD'], ['PATCH', 'PUT'], true)) {
         exit;
     }
 
+    if (!empty($data['clearAll'])) {
+        $stmt = $pdo->prepare('DELETE FROM notifications WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
     $notificationId = (int) ($data['notificationId'] ?? 0);
 
     if (!$notificationId) {

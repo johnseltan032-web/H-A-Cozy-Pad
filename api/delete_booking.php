@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if (!in_array(strtolower($_SESSION['role'] ?? ''), ['admin', 'assistant'], true)) {
+if (!in_array(strtolower($_SESSION['role'] ?? ''), ['super_admin', 'admin'], true)) {
     http_response_code(403);
     echo json_encode([
         'error' => 'Host access required'

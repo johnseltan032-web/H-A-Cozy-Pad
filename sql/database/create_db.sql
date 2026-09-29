@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     email_verified BOOLEAN NOT NULL DEFAULT FALSE,
     email_verified_at TIMESTAMP NULL DEFAULT NULL,
     email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
-    role ENUM('admin', 'assistant', 'customer') NOT NULL DEFAULT 'customer',
+    role ENUM('super_admin', 'admin', 'customer') NOT NULL DEFAULT 'customer',
     contact_num VARCHAR(11) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS admin_profiles (
     admin_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
-    position ENUM('admin', 'assistant') NOT NULL,
+    position ENUM('super_admin', 'admin') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_admin_profile_user
         FOREIGN KEY (user_id)

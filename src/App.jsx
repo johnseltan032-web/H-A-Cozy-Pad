@@ -176,7 +176,7 @@ function AppContent() {
             <ProtectedRoute
               user={user}
               isLoading={isLoading}
-              allowedRoles={['admin', 'assistant']}
+              allowedRoles={['super_admin', 'admin']}
             />
           }
         >
@@ -224,7 +224,7 @@ function AppContent() {
             <ProtectedRoute
               user={user}
               isLoading={isLoading}
-              allowedRoles={['admin', 'assistant']}
+              allowedRoles={['super_admin', 'admin']}
             />
           }
         >
@@ -272,7 +272,7 @@ function AppContent() {
             <ProtectedRoute
               user={user}
               isLoading={isLoading}
-              allowedRoles={['admin']}
+              allowedRoles={['super_admin']}
             />
           }
         >

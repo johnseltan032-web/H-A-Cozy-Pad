@@ -26,7 +26,7 @@ $customer->execute([$_SESSION['user_id']]);
 $customerId = $customer->fetchColumn();
 
 if (!$customerId) {
-    // Admin/assistant accounts can't leave reviews.
+    // Admin accounts can't leave reviews.
     echo json_encode(['eligible' => false]);
     exit;
 }

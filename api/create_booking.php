@@ -338,7 +338,7 @@ try {
     $pdo->commit();
 
     try {
-        $hosts = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role IN ('admin', 'assistant')");
+        $hosts = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role IN ('super_admin', 'admin')");
         $hostList = $hosts->fetchAll(PDO::FETCH_ASSOC);
 
         $notifyMessage = sprintf(

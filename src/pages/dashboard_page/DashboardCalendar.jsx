@@ -105,9 +105,22 @@ function monthWeeks(date) {
   return weeks;
 }
 
+function monthDays(date) {
+  const first = new Date(date.getFullYear(), date.getMonth(), 1);
+  const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  const days = [];
+
+  for (let current = new Date(first); current <= last; current = addDays(current, 1)) {
+    days.push(new Date(current));
+  }
+
+  return days;
+}
+
 export default function DashboardCalendar() {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState('month');
+  const [calendarLayout, setCalendarLayout] = useState('classic');
   const [selectedDate, setSelectedDate] = useState(null);
   const [events, setEvents] = useState([]);
   const [reservations, setReservations] = useState([]);
@@ -214,6 +227,15 @@ export default function DashboardCalendar() {
   const heading = viewMode === 'week'
     ? `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${addDays(weekStart, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
     : formatMonth(currentDate);
+  const unitRows = Array.from(new Map(
+    reservations
+      .filter((reservation) => reservation.unit_id)
+      .map((reservation) => [reservation.unit_id, {
+        id: reservation.unit_id,
+        name: reservation.unit_name || `Unit ${reservation.unit_id}`,
+        building: reservation.building_name || 'Property',
+      }])
+  ).values());
 
   const shiftPeriod = (amount) => {
     setSelectedDate(null);
@@ -266,22 +288,40 @@ export default function DashboardCalendar() {
               <button type="button" onClick={() => shiftPeriod(1)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 cursor-pointer" aria-label="Next period">Next</button>
               <h2 className="ml-2 m-0 text-base font-semibold">{heading}</h2>
             </div>
-            <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar view">
-              {[
-                ['month', 'Month'],
-                ['week', 'Week'],
-                ['agenda', 'Agenda'],
-              ].map(([mode, label]) => (
-                <button
-                  key={mode}
-                  type="button"
-                  aria-pressed={viewMode === mode}
-                  onClick={() => { setViewMode(mode); setSelectedDate(null); }}
-                  className={`rounded px-3 py-1.5 text-sm cursor-pointer ${viewMode === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar layout">
+                {[
+                  ['classic', 'Classic'],
+                  ['units', 'Units rows'],
+                ].map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={calendarLayout === mode}
+                    onClick={() => setCalendarLayout(mode)}
+                    className={`rounded px-3 py-1.5 text-sm cursor-pointer ${calendarLayout === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar view">
+                {[
+                  ['month', 'Month'],
+                  ['week', 'Week'],
+                  ['agenda', 'Agenda'],
+                ].map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={viewMode === mode}
+                    onClick={() => { setViewMode(mode); setSelectedDate(null); }}
+                    className={`rounded px-3 py-1.5 text-sm cursor-pointer ${viewMode === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           {isLoading ? (
@@ -299,6 +339,9 @@ export default function DashboardCalendar() {
                   selectedDate={selectedDate}
                   visibleMonth={viewMode === 'month' ? currentDate.getMonth() : null}
                   onSelectDate={setSelectedDate}
+                  units={viewMode === 'month' ? unitRows : []}
+                  monthDays={viewMode === 'month' ? monthDays(currentDate) : []}
+                  layout={calendarLayout}
                 />
               </div>
             )
@@ -333,7 +376,100 @@ export default function DashboardCalendar() {
   );
 }
 
-function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate }) {
+function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate, units = [], monthDays: monthDayList = [], layout = 'classic' }) {
+  if (layout === 'units' && units.length && monthDayList.length) {
+    const monthStart = monthDayList[0];
+    const monthEnd = addDays(monthDayList[monthDayList.length - 1], 1);
+    const monthStartKey = dateKey(monthStart);
+    const monthEndKey = dateKey(monthEnd);
+
+    return (
+      <div className="overflow-x-auto rounded-lg border border-neutral-200">
+        <div className="min-w-[920px]">
+          <div className="grid border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(36px, 1fr))' }}>
+            <div className="border-r border-neutral-200 px-3 py-3">Unit</div>
+            {monthDayList.map((day) => (
+              <div key={dateKey(day)} className={`border-r border-neutral-200 px-2 py-3 text-center ${day.getDate() === 1 ? 'font-bold text-neutral-700' : ''}`}>
+                <div>{day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                <div className={`mt-1 ${selectedDate === dateKey(day) ? 'rounded-full bg-emerald-600 px-1.5 py-0.5 text-white' : ''}`}>
+                  {day.getDate()}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {units.map((unit) => {
+            const unitBookings = events.filter((event) => {
+              if (!event.unit_id || event.unit_id !== unit.id) return false;
+              return event.startDate < monthEndKey && event.endDateExclusive > monthStartKey;
+            });
+
+            return (
+              <div key={unit.id} className="grid border-b border-neutral-200 last:border-b-0" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(36px, 1fr))' }}>
+                <button
+                  type="button"
+                  onClick={() => onSelectDate(null)}
+                  className="cursor-default border-r border-neutral-200 bg-white px-3 py-4 text-left text-sm font-medium text-neutral-800"
+                >
+                  <div>{unit.name}</div>
+                  <div className="mt-1 text-xs text-neutral-500">{unit.building}</div>
+                </button>
+
+                <div className="relative col-span-full grid bg-white" style={{ gridTemplateColumns: `repeat(${monthDayList.length}, minmax(36px, 1fr))`, gridColumn: `2 / ${monthDayList.length + 2}` }}>
+                  {monthDayList.map((day) => {
+                    const key = dateKey(day);
+                    const isToday = key === dateKey(new Date());
+                    const isSelected = selectedDate === key;
+                    return (
+                      <button
+                        key={`${unit.id}-${key}`}
+                        type="button"
+                        onClick={() => onSelectDate(key)}
+                        className={`min-h-[76px] border-r border-neutral-100 px-1 py-1 text-left ${isToday ? 'bg-amber-50' : 'bg-white'} ${isSelected ? 'ring-1 ring-inset ring-emerald-600' : ''}`}
+                        aria-label={`${unit.name} on ${key}`}
+                      >
+                        {unitBookings.some((event) => event.startDate <= key && key < event.endDateExclusive) && (
+                          <span className="inline-flex rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            Booked
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {unitBookings.map((event) => {
+                    const startDate = parseDateKey(event.startDate);
+                    const endDate = parseDateKey(event.endDateExclusive);
+                    const startOffset = Math.max(0, Math.round((startDate - monthStart) / 86400000));
+                    const endOffset = Math.min(monthDayList.length, Math.round((endDate - monthStart) / 86400000));
+                    const leftPercent = (startOffset / monthDayList.length) * 100;
+                    const widthPercent = Math.max(((endOffset - startOffset) / monthDayList.length) * 100, 8);
+
+                    return (
+                      <button
+                        key={`${unit.id}-${event.id}`}
+                        type="button"
+                        onClick={() => onSelectDate(event.startDate)}
+                        className={`absolute top-2 z-10 truncate rounded-md border border-emerald-700 bg-emerald-700/90 px-2 py-1 text-left text-[10px] font-semibold text-white shadow-sm hover:bg-emerald-700 ${event.source === 'google' ? 'bg-slate-800/90 border-slate-800' : ''}`}
+                        style={{
+                          left: `${leftPercent}%`,
+                          width: `${widthPercent}%`,
+                        }}
+                        title={`${event.summary} (${event.startDate} to ${event.endDateExclusive})`}
+                      >
+                        {event.summary}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-w-[680px] overflow-hidden rounded-lg border border-neutral-200">
       <div className="grid grid-cols-7 border-b border-neutral-200 bg-neutral-50 text-center text-xs font-semibold text-neutral-500">

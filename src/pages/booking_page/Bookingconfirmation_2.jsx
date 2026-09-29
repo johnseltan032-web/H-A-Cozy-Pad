@@ -1119,7 +1119,7 @@ export default function AdditionalInformation({
 
             <p className="mt-2 text-sm text-gray-500">
               {isGuestBooking
-                ? 'Your booking request is saved for review. No account was created.'
+                ? 'Your booking request is saved for review.'
                 : 'Your booking has been saved. What would you like to do next?'}
             </p>
 

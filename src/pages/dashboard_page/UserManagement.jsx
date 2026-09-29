@@ -2,6 +2,20 @@ import { useEffect, useState } from 'react';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
+const getRoleLabel = (role) => {
+  const normalizedRole = String(role || 'customer').toLowerCase();
+
+  if (normalizedRole === 'super_admin') {
+    return 'Super Admin';
+  }
+
+  if (normalizedRole === 'admin') {
+    return 'Admin';
+  }
+
+  return 'Customer';
+};
+
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +49,7 @@ export default function UserManagement() {
       }
 
       setCurrentUserId(Number(data.user.user_id));
-      setIsAdmin(data.user.role === 'admin');
+      setIsAdmin(data.user.role === 'super_admin');
     } catch (fetchError) {
       console.error('Error checking current user:', fetchError);
       setError('Unable to verify user session');
@@ -147,7 +161,7 @@ export default function UserManagement() {
         full_name: form.full_name,
         email: form.email,
         contact_num: form.contact_num,
-        role: isEditingCurrentUser ? 'admin' : form.role,
+        role: isEditingCurrentUser ? 'super_admin' : form.role,
       };
 
       if (isEditing) {
@@ -332,8 +346,7 @@ export default function UserManagement() {
                   <td className="py-4 text-base">
                     <span className="inline-flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                      {(user.role || 'customer').charAt(0).toUpperCase() +
-                        (user.role || 'customer').slice(1)}
+                      {getRoleLabel(user.role)}
                     </span>
                   </td>
 
@@ -425,8 +438,8 @@ export default function UserManagement() {
                   className="w-full border border-neutral-300 rounded-md px-3 py-2.5 outline-none focus:border-black bg-white"
                 >
                   <option value="customer">Customer</option>
-                  <option value="assistant">Assistant</option>
                   <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
                 </select>
               </div>
 
@@ -517,8 +530,8 @@ export default function UserManagement() {
                   className="w-full border border-neutral-300 rounded-md px-3 py-2.5 outline-none focus:border-black bg-white disabled:bg-neutral-100 disabled:text-neutral-500 disabled:cursor-not-allowed"
                 >
                   <option value="customer">Customer</option>
-                  <option value="assistant">Assistant</option>
                   <option value="admin">Admin</option>
+                  <option value="super_admin">Super Admin</option>
                 </select>
 
                 {isEditingCurrentUser && (

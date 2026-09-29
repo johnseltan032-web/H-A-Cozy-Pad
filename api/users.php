@@ -7,9 +7,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if ($_SESSION['role'] !== 'admin') {
+if ($_SESSION['role'] !== 'super_admin') {
     http_response_code(403);
-    echo json_encode(['error' => 'Admin access required']);
+    echo json_encode(['error' => 'Super admin access required']);
     exit;
 }
 
@@ -94,7 +94,7 @@ try {
             exit;
         }
 
-        if (!in_array($role, ['admin', 'assistant', 'customer'], true)) {
+        if (!in_array($role, ['super_admin', 'admin', 'customer'], true)) {
             http_response_code(400);
             echo json_encode(['error' => 'Invalid role']);
             exit;
@@ -166,7 +166,7 @@ try {
             exit;
         }
 
-        if (!in_array($role, ['admin', 'assistant', 'customer'], true)) {
+        if (!in_array($role, ['super_admin', 'admin', 'customer'], true)) {
             http_response_code(400);
             echo json_encode(['error' => 'Invalid role']);
             exit;
@@ -182,7 +182,7 @@ try {
             if ($bookingCount > 0) {
                 http_response_code(409);
                 echo json_encode([
-                    'error' => 'This customer cannot be changed to an admin or assistant because they have existing bookings.'
+                    'error' => 'This customer cannot be changed to a super admin or admin because they have existing bookings.'
                 ]);
                 exit;
             }
@@ -190,11 +190,11 @@ try {
 
         if (
             $userId === (int)$_SESSION['user_id'] &&
-            $role !== 'admin'
+            $role !== 'super_admin'
         ) {
             http_response_code(400);
             echo json_encode([
-                'error' => 'You cannot remove your own admin role'
+                'error' => 'You cannot remove your own super admin role'
             ]);
             exit;
         }

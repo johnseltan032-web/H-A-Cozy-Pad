@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if (strtolower($_SESSION['role'] ?? '') !== 'admin') {
+if (!in_array(strtolower($_SESSION['role'] ?? ''), ['super_admin', 'admin'], true)) {
     http_response_code(403);
     echo json_encode([
         'error' => 'Admin access required'
@@ -58,7 +58,7 @@ try {
 
     if (!$adminId) {
         $role = strtolower($_SESSION['role'] ?? 'admin');
-        $role = in_array($role, ['admin', 'assistant'], true) ? $role : 'admin';
+        $role = in_array($role, ['super_admin', 'admin'], true) ? $role : 'admin';
 
         $ensureAdminProfile = $pdo->prepare(
             'INSERT INTO admin_profiles (user_id, position)

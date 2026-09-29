@@ -25,7 +25,7 @@ export default function HostHeader({
           return;
         }
 
-        setIsAdmin(data.user?.role === 'admin');
+        setIsAdmin(data.user?.role === 'super_admin');
       })
       .catch(() => {
         setIsAdmin(false);

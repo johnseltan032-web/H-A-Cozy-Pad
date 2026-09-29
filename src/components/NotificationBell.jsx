@@ -78,6 +78,12 @@ export default function NotificationBell() {
     sendPatch({ markAllRead: true });
   };
 
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    sendPatch({ clearAll: true });
+  };
+
   return (
     <div className="relative">
       <button
@@ -116,17 +122,28 @@ export default function NotificationBell() {
           ref={popupRef}
           className="absolute right-0 top-12 z-[2100] max-h-[min(320px,45dvh)] w-[min(280px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-neutral-100 bg-white py-2 shadow-xl md:max-h-[420px] md:w-[min(340px,calc(100vw-2rem))]"
         >
-          <div className="flex items-center justify-between px-4 py-2">
+          <div className="flex items-center justify-between gap-2 px-4 py-2">
             <span className="text-base font-semibold text-neutral-900">Notifications</span>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={markAllRead}
-                className="cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500"
-              >
-                Mark all as read
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAllNotifications}
+                  className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500"
+                >
+                  Clear all
+                </button>
+              )}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
           </div>
 
           {notifications.length === 0 ? (

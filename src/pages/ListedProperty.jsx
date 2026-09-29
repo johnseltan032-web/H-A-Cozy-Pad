@@ -544,7 +544,7 @@ export default function PropertyDetail({
                   <button
                     type="button"
                     onClick={() => setSelectedImageIndex(0)}
-                    className="absolute bottom-3 right-3 z-10 rounded-lg bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-sm hover:bg-black/85 cursor-pointer"
+                    className="absolute bottom-3 right-3 z-10 rounded-lg bg-white/75 px-3 py-1.5 text-xs font-medium text-black shadow-md backdrop-blur-sm hover:bg-white/85 cursor-pointer"
                   >
                     Show all photos
                   </button>
