@@ -17,7 +17,6 @@ if (PHP_SAPI !== 'cli') {
 date_default_timezone_set('Asia/Manila');
 
 require __DIR__ . '/db.php';
-require __DIR__ . '/mailer.php';
 
 $tomorrow = (new DateTime('tomorrow'))->format('Y-m-d');
 
@@ -65,23 +64,8 @@ foreach ($bookings as $booking) {
         // script runs twice on the same day).
         $insertNotif->execute([$booking['user_id'], $booking['booking_id'], $message]);
 
-        $emailed = sendNotificationMail(
-            $pdo,
-            (int) $booking['user_id'],
-            $booking['email'],
-            $booking['full_name'],
-            'Reminder: your check-in is tomorrow',
-            '<p>Hi ' . htmlspecialchars($booking['full_name']) . ',</p>' .
-            '<p>This is a reminder that your check-in is <strong>tomorrow</strong>.</p>' .
-            '<p><strong>Stay:</strong> ' . htmlspecialchars($stay) . '<br>' .
-            '<strong>Guest name:</strong> ' . htmlspecialchars($booking['guest_name'] ?? '') . '<br>' .
-            '<strong>Contact number:</strong> ' . htmlspecialchars($booking['guest_contact_num'] ?? '') . '</p>' .
-            '<p>See you soon!</p>'
-        );
-
-        if ($emailed) {
-            $sent++;
-        }
+        // Email delivery has been disabled; the in-app reminder is still stored.
+        $sent++;
     } catch (Throwable $error) {
         error_log('Reminder failed for booking ' . $booking['booking_id'] . ': ' . $error->getMessage());
     }

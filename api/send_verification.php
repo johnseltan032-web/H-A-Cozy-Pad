@@ -1,6 +1,5 @@
 <?php
 require 'db.php';
-require_once 'mailer.php';
 
 $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $isLocalFrontend = preg_match(
@@ -69,18 +68,12 @@ $stmt = $pdo->prepare(
 $stmt->execute([$user['user_id'], $tokenHash, $expiresAt]);
 
 $verifyLink = rtrim($FRONTEND_ORIGIN, '/') . '/verify-email?token=' . $token;
-$htmlBody =
-    '<p>Hi ' . htmlspecialchars($user['full_name']) . ',</p>' .
-    '<p>Please confirm your email address for your H&amp;A Cozy Pad account. This link expires in 1 hour.</p>' .
-    '<p><a href="' . htmlspecialchars($verifyLink) . '">Verify my email</a></p>' .
-    '<p>If you did not request this, you can safely ignore this email.</p>';
-$textBody = "Verify your email by visiting this link (expires in 1 hour): $verifyLink";
 
-if (!sendAppMail($user['email'], $user['full_name'], 'Verify your email address', $htmlBody, $textBody)) {
-    http_response_code(502);
-    echo json_encode(['error' => 'Unable to send verification email. Check the email provider configuration and Railway API logs.']);
-    exit;
-}
-
-echo json_encode(['success' => true, 'message' => 'Verification email sent']);
+// Email delivery is disabled. The verification token is still created and the
+// user can continue through the in-app verification flow.
+echo json_encode([
+    'success' => true,
+    'message' => 'Verification email skipped because email delivery is disabled.',
+    'verifyLink' => $verifyLink,
+]);
 ?>

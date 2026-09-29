@@ -1,6 +1,5 @@
 <?php
 require 'db.php';
-require __DIR__ . '/mailer.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -358,18 +357,6 @@ try {
 
         foreach ($hostList as $host) {
             $insertNotif->execute([$host['user_id'], $bookingId, $notifyMessage]);
-
-            sendNotificationMail(
-                $pdo,
-                (int) $host['user_id'],
-                $host['email'],
-                $host['full_name'],
-                'New booking request',
-                '<p>Hi ' . htmlspecialchars($host['full_name']) . ',</p>' .
-                '<p>' . htmlspecialchars($notifyMessage) . '</p>' .
-                '<p>Guest contact number: ' . htmlspecialchars($guestContactNum) . '</p>' .
-                '<p>Review it in your dashboard.</p>'
-            );
         }
     } catch (Throwable $notifyError) {
         error_log('Booking notification/email failed: ' . $notifyError->getMessage());

@@ -1,6 +1,5 @@
 <?php
 require 'db.php';
-require __DIR__ . '/mailer.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -185,32 +184,9 @@ try {
                 )->execute([$booking['user_id'], $bookingId, $notifyMessage]);
             }
 
+            // Email delivery has been disabled; notifications remain in-app only.
             if ($status === 'confirmed') {
-                $confirmationBody =
-                    '<p>Hi ' . htmlspecialchars($booking['full_name']) . ',</p>' .
-                    '<p>Good news! Your booking has been confirmed.</p>' .
-                    '<p><strong>Stay:</strong> ' . htmlspecialchars($stay) . '<br>' .
-                    '<strong>Guest name:</strong> ' . htmlspecialchars($booking['guest_name'] ?? '') . '<br>' .
-                    '<strong>Contact number:</strong> ' . htmlspecialchars($booking['guest_contact_num'] ?? '') . '</p>' .
-                    '<p>We look forward to hosting you.</p>';
-
-                if ($booking['user_id'] !== null) {
-                    sendNotificationMail(
-                        $pdo,
-                        (int) $booking['user_id'],
-                        $booking['email'],
-                        $booking['full_name'],
-                        'Your booking is confirmed',
-                        $confirmationBody
-                    );
-                } elseif (!empty($booking['email'])) {
-                    sendAppMail(
-                        $booking['email'],
-                        $booking['full_name'],
-                        'Your booking is confirmed',
-                        $confirmationBody
-                    );
-                }
+                // No external email sending here.
             }
         }
     } catch (Throwable $notifyError) {
