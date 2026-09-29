@@ -55,14 +55,38 @@ try {
     );
 
     $admin->execute([$_SESSION['user_id']]);
-    $adminId = $admin->fetchColumn();
+    $adminId = (int) $admin->fetchColumn();
+
+    if (!$adminId) {
+        $role = strtolower($_SESSION['role'] ?? 'admin');
+        $role = in_array($role, ['admin', 'assistant'], true) ? $role : 'admin';
+
+        $ensureAdminProfile = $pdo->prepare(
+            'INSERT INTO admin_profiles (user_id, position)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE position = VALUES(position)'
+        );
+
+        $ensureAdminProfile->execute([
+            $_SESSION['user_id'],
+            $role,
+        ]);
+
+        $admin = $pdo->prepare(
+            'SELECT admin_id
+             FROM admin_profiles
+             WHERE user_id = ?'
+        );
+        $admin->execute([$_SESSION['user_id']]);
+        $adminId = (int) $admin->fetchColumn();
+    }
 
     if (!$adminId) {
         $pdo->rollBack();
 
-        http_response_code(403);
+        http_response_code(500);
         echo json_encode([
-            'error' => 'Admin profile not found'
+            'error' => 'Unable to create an admin profile for this account.'
         ]);
         exit;
     }
