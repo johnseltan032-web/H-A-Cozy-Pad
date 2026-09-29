@@ -19,8 +19,30 @@ Netlify hosts the Vite frontend. Railway runs the PHP API and MySQL database. Th
 
    Replace `MySQL` in the references with the actual Railway MySQL service name. Add these to the PHP/API service, not only the MySQL service. Remove any `DB_HOST=localhost` override if present. Do not commit database credentials.
 4. Add `DIFY_API_KEY` to the API service variables. Optionally set `DIFY_API_URL` if using a Dify-compatible endpoint other than `https://api.dify.ai/v1`. Keep the API key server-side; never prefix it with `VITE_` or add it to Netlify.
-5. For verification emails and email notifications, set `RESEND_API_KEY` and `EMAIL_FROM` in the API service variables. `EMAIL_FROM` must be an address/domain verified in Resend, for example `H&A Cozy Pad <notifications@your-verified-domain.com>`. The API uses Resend when `RESEND_API_KEY` is present; otherwise it falls back to Gmail SMTP using `GMAIL_USER` and `GMAIL_APP_PASSWORD`. Keep these secrets only in Railway, never Netlify or the repository.
-6. Import the schema from `sql/database/create_db.sql` into the Railway database. It includes the `notifications` and email-verification tables. For an existing database, apply only migrations for schema changes that have not already been applied.
+5. For verification emails and email notifications, configure PHPMailer to use Gmail SMTP in the API service. This setup does not use a provider API key:
+
+   ```text
+   GMAIL_USER=hna.cozypad.service@gmail.com
+   GMAIL_APP_PASSWORD=<Google App Password>
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=ssl
+   ```
+
+   Or use the equivalent generic PHPMailer settings instead:
+
+   ```text
+   SMTP_USERNAME=hna.cozypad.service@gmail.com
+   SMTP_PASSWORD=<Google App Password>
+   EMAIL_FROM=hna.cozypad.service@gmail.com
+   EMAIL_FROM_NAME=H&A Cozy Pad
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=ssl
+   ```
+
+   Create the App Password in Google after enabling 2-Step Verification; do not use your normal Google password. Set these values only on Railway's PHP/API service. PHPMailer is installed into the PHP image from `composer.json`; `RESEND_API_KEY` is not used. Redeploy after changing variables. Railway previously timed out connecting to Gmail SMTP, so this configuration can send only if Railway permits outbound SMTP to `smtp.gmail.com:465`. PHPMailer is the mail library, not an SMTP server, and cannot send mail if that network connection is blocked.
+6. For a new Railway database, import `sql/database/create_db.sql`; it includes the `notifications`, email-verification, and guest-booking schema. For an existing database, apply `sql/migrations/allow_guest_bookings.sql` before deploying guest checkout. In Railway's database query editor, run each semicolon-terminated `ALTER TABLE` statement as a separate query; the editor may reject a pasted multi-statement script. If an attempt fails partway through, inspect `SHOW CREATE TABLE bookings;` and `SHOW COLUMNS FROM booking_details LIKE 'guest_email';` before retrying, and skip any change that is already present. The migration makes `bookings.customer_id` nullable with `ON DELETE SET NULL` and adds `booking_details.guest_email`. Apply other pending migrations only when their schema changes are not already present.
 7. Generate a public domain for the API service and note its origin, such as `https://your-api-service.up.railway.app`.
 8. Add a Railway Volume mounted at `/var/www/html/api/uploads` if listing images and booking uploads must survive redeploys. The container prepares this directory for PHP writes at startup.
 

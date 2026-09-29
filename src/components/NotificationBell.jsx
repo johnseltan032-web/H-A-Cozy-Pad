@@ -114,7 +114,7 @@ export default function NotificationBell() {
       {isOpen && (
         <div
           ref={popupRef}
-          className="absolute right-0 top-12 z-[2100] max-h-[420px] w-[min(340px,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-neutral-100 bg-white py-2 shadow-xl"
+          className="absolute right-0 top-12 z-[2100] max-h-[min(320px,45dvh)] w-[min(280px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-neutral-100 bg-white py-2 shadow-xl md:max-h-[420px] md:w-[min(340px,calc(100vw-2rem))]"
         >
           <div className="flex items-center justify-between px-4 py-2">
             <span className="text-base font-semibold text-neutral-900">Notifications</span>

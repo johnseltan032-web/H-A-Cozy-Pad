@@ -8,6 +8,11 @@ ARG VITE_API_URL=/api
 ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
+FROM composer:2 AS php-dependencies
+WORKDIR /app
+COPY composer.json ./
+RUN composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative
+
 FROM php:8.3-apache
 
 RUN docker-php-ext-install pdo_mysql \
@@ -22,6 +27,7 @@ RUN chmod +x /usr/local/bin/start-apache
 COPY .htaccess /var/www/html/.htaccess
 COPY --from=frontend-build /app/dist/ /var/www/html/
 COPY api/ /var/www/html/api/
+COPY --from=php-dependencies /app/vendor/ /var/www/html/api/vendor/
 RUN mkdir -p /var/www/html/api/uploads && chown -R www-data:www-data /var/www/html/api/uploads
 
 ENV PORT=8080

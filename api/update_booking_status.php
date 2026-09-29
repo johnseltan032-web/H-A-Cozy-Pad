@@ -82,13 +82,18 @@ try {
     }
 
     if (!$adminId) {
-        $pdo->rollBack();
+        $createAdminProfile = $pdo->prepare(
+            "INSERT IGNORE INTO admin_profiles (user_id, position)
+             VALUES (?, 'admin')"
+        );
+        $createAdminProfile->execute([$_SESSION['user_id']]);
 
-        http_response_code(500);
-        echo json_encode([
-            'error' => 'Unable to create an admin profile for this account.'
-        ]);
-        exit;
+        $admin->execute([$_SESSION['user_id']]);
+        $adminId = $admin->fetchColumn();
+
+        if (!$adminId) {
+            throw new RuntimeException('Unable to create admin profile for authenticated admin');
+        }
     }
 
     $payment = $pdo->prepare(
@@ -167,13 +172,15 @@ try {
     // only sent on approval, and only if the customer has emails enabled.
     try {
         $info = $pdo->prepare(
-            'SELECT bk.check_in_date, bk.check_out_date,
-                    u.user_id, u.full_name, u.email,
+                'SELECT bk.check_in_date, bk.check_out_date,
+                    u.user_id,
+                    COALESCE(u.full_name, bd.guest_name) AS full_name,
+                    COALESCE(u.email, bd.guest_email) AS email,
                     un.unit_name, bl.building_name,
                     bd.guest_name, bd.guest_contact_num
              FROM bookings bk
-             JOIN customer_profiles cp ON cp.customer_id = bk.customer_id
-             JOIN users u ON u.user_id = cp.user_id
+             LEFT JOIN customer_profiles cp ON cp.customer_id = bk.customer_id
+             LEFT JOIN users u ON u.user_id = cp.user_id
              JOIN units un ON un.unit_id = bk.unit_id
              JOIN buildings bl ON bl.building_id = un.building_id
              LEFT JOIN booking_details bd ON bd.booking_id = bk.booking_id
@@ -195,25 +202,39 @@ try {
                 ? 'Your booking has been confirmed: ' . $stay . '.'
                 : 'Your booking was not approved: ' . $stay . '.';
 
-            $pdo->prepare(
-                "INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
-                 VALUES (?, ?, 'booking', ?, 0, NOW())"
-            )->execute([$booking['user_id'], $bookingId, $notifyMessage]);
+            if ($booking['user_id'] !== null) {
+                $pdo->prepare(
+                    "INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
+                     VALUES (?, ?, 'booking', ?, 0, NOW())"
+                )->execute([$booking['user_id'], $bookingId, $notifyMessage]);
+            }
 
             if ($status === 'confirmed') {
-                sendNotificationMail(
-                    $pdo,
-                    (int) $booking['user_id'],
-                    $booking['email'],
-                    $booking['full_name'],
-                    'Your booking is confirmed',
+                $confirmationBody =
                     '<p>Hi ' . htmlspecialchars($booking['full_name']) . ',</p>' .
                     '<p>Good news! Your booking has been confirmed.</p>' .
                     '<p><strong>Stay:</strong> ' . htmlspecialchars($stay) . '<br>' .
                     '<strong>Guest name:</strong> ' . htmlspecialchars($booking['guest_name'] ?? '') . '<br>' .
                     '<strong>Contact number:</strong> ' . htmlspecialchars($booking['guest_contact_num'] ?? '') . '</p>' .
-                    '<p>We look forward to hosting you.</p>'
-                );
+                    '<p>We look forward to hosting you.</p>';
+
+                if ($booking['user_id'] !== null) {
+                    sendNotificationMail(
+                        $pdo,
+                        (int) $booking['user_id'],
+                        $booking['email'],
+                        $booking['full_name'],
+                        'Your booking is confirmed',
+                        $confirmationBody
+                    );
+                } elseif (!empty($booking['email'])) {
+                    sendAppMail(
+                        $booking['email'],
+                        $booking['full_name'],
+                        'Your booking is confirmed',
+                        $confirmationBody
+                    );
+                }
             }
         }
     } catch (Throwable $notifyError) {

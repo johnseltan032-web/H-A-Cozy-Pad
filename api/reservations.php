@@ -49,9 +49,9 @@ try {
             bu.building_name,
             bu.location,
 
-            usr.full_name AS guest_name,
-            usr.email AS guest_email,
-            usr.contact_num AS guest_contact_num,
+            COALESCE(usr.full_name, bd.guest_name) AS guest_name,
+            COALESCE(usr.email, bd.guest_email) AS guest_email,
+            COALESCE(usr.contact_num, bd.guest_contact_num) AS guest_contact_num,
 
             bd.guest_name AS booked_guest_name,
             bd.guest_contact_num AS booked_guest_contact_num,
@@ -75,10 +75,10 @@ try {
 
          FROM bookings b
 
-         JOIN customer_profiles cp
+            LEFT JOIN customer_profiles cp
             ON cp.customer_id = b.customer_id
 
-         JOIN users usr
+            LEFT JOIN users usr
             ON usr.user_id = cp.user_id
 
          JOIN units u

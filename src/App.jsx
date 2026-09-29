@@ -22,6 +22,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import DashboardListings from './pages/dashboard_page/DashboardListings';
 import DashboardReservations from './pages/dashboard_page/DashboardReservations';
 import DashboardCalendar from './pages/dashboard_page/DashboardCalendar';
+import DashboardOverview from './pages/dashboard_page/dashboardOverview';
 import UserManagement from './pages/dashboard_page/UserManagement';
 
 // home page
@@ -156,26 +157,19 @@ function AppContent() {
 
         <Route path="/verify-email" element={<VerifyEmail />} />
 
-        <Route element={
-            <ProtectedRoute
+        <Route
+          path="/profile"
+          element={
+            <Profile
               user={user}
-              isLoading={isLoading}
+              isMenuOpen={isMenuOpen}
+              setIsMenuOpen={setIsMenuOpen}
+              onLogout={() => setUser(null)}
+              onOpenSignIn={() => handleOpenAuth('/profile')}
+              onOpenRegister={handleOpenRegister}
             />
-          }>
-          <Route
-            path="/profile"
-            element={
-              <Profile
-                user={user}
-                isMenuOpen={isMenuOpen}
-                setIsMenuOpen={setIsMenuOpen}
-                onLogout={() => setUser(null)}
-                onOpenSignIn={() => handleOpenAuth('/')}
-                onOpenRegister={handleOpenRegister}
-              />
-            }
-          />
-        </Route>
+          }
+        />
 
         <Route
           element={
@@ -186,6 +180,7 @@ function AppContent() {
             />
           }
         >
+          <Route path="/host/overview" element={<DashboardOverview />} />
           <Route path="/host/listings" element={<DashboardListings />} />
           <Route path="/host/reservations" element={<DashboardReservations />} />
           <Route path="/host/calendar" element={<DashboardCalendar />} />
@@ -303,44 +298,37 @@ function AppContent() {
         />
 
         <Route
+          path="/trips"
+          element={<Trips onOpenSignIn={() => handleOpenAuth('/trips')} />}
+        />
+
+        <Route
+          path="/booking-confirmation"
           element={
-            <ProtectedRoute
+            <BookingConfirmation
               user={user}
-              isLoading={isLoading}
-              allowedRoles={['customer', 'admin', 'assistant']}
+              onLogout={() => setUser(null)}
+              isMenuOpen={isMenuOpen}
+              setIsMenuOpen={setIsMenuOpen}
+              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenRegister={handleOpenRegister}
             />
           }
-        >
-          <Route path="/trips" element={<Trips />} />
+        />
 
-          <Route
-            path="/booking-confirmation"
-            element={
-              <BookingConfirmation
-                user={user}
-                onLogout={() => setUser(null)}
-                isMenuOpen={isMenuOpen}
-                setIsMenuOpen={setIsMenuOpen}
-                onOpenSignIn={() => handleOpenAuth('/')}
-                onOpenRegister={handleOpenRegister}
-              />
-            }
-          />
-
-          <Route
-            path="/booking-confirmation-2"
-            element={
-              <BookingConfirmation2
-                user={user}
-                onLogout={() => setUser(null)}
-                isMenuOpen={isMenuOpen}
-                setIsMenuOpen={setIsMenuOpen}
-                onOpenSignIn={() => handleOpenAuth('/')}
-                onOpenRegister={handleOpenRegister}
-              />
-            }
-          />
-        </Route>
+        <Route
+          path="/booking-confirmation-2"
+          element={
+            <BookingConfirmation2
+              user={user}
+              onLogout={() => setUser(null)}
+              isMenuOpen={isMenuOpen}
+              setIsMenuOpen={setIsMenuOpen}
+              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenRegister={handleOpenRegister}
+            />
+          }
+        />
       </Routes>
 
       <MobileTabBar onOpenChat={() => setIsChatOpen(true)} />

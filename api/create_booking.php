@@ -8,12 +8,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Authentication required']);
-    exit;
-}
-
 $data = $_POST ?: (json_decode(file_get_contents('php://input'), true) ?? []);
 
 $unitId = (int) ($data['unitId'] ?? 0);
@@ -22,6 +16,7 @@ $checkOut = trim($data['checkOut'] ?? '');
 $guests = (int) ($data['guests'] ?? 1);
 $guestName = trim($data['guestName'] ?? '');
 $guestContactNum = trim($data['guestContactNum'] ?? '');
+$guestEmail = strtolower(trim($data['guestEmail'] ?? ''));
 $vehicleType = trim($data['vehicleType'] ?? '');
 $specialRequests = trim($data['specialRequests'] ?? '');
 
@@ -41,6 +36,14 @@ if (strlen($guestName) > 50 || !preg_match('/^[0-9]{11}$/', $guestContactNum)) {
     exit;
 }
 
+$isGuestCheckout = !isset($_SESSION['user_id']);
+if ($isGuestCheckout && (!filter_var($guestEmail, FILTER_VALIDATE_EMAIL) || strlen($guestEmail) > 50)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'A valid email address of 50 characters or fewer is required for guest checkout']);
+    exit;
+}
+
+$bookingId = null;
 $checkInDate = DateTime::createFromFormat('Y-m-d', $checkIn);
 $checkOutDate = DateTime::createFromFormat('Y-m-d', $checkOut);
 
@@ -63,20 +66,25 @@ if ($checkInDate < $today) {
 }
 
 try {
-    $customer = $pdo->prepare(
-        'SELECT customer_id
-         FROM customer_profiles
-         WHERE user_id = ?'
-    );
-    $customer->execute([$_SESSION['user_id']]);
-    $customerId = $customer->fetchColumn();
+    $customerId = null;
+    if (!$isGuestCheckout) {
+        if (strtolower($_SESSION['role'] ?? '') !== 'customer') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Only customer accounts can make bookings']);
+            exit;
+        }
 
-    if (!$customerId) {
-        http_response_code(400);
-        echo json_encode([
-            'error' => 'Only customer accounts can make bookings'
-        ]);
-        exit;
+        $customer = $pdo->prepare(
+            'SELECT customer_id FROM customer_profiles WHERE user_id = ?'
+        );
+        $customer->execute([$_SESSION['user_id']]);
+        $customerId = $customer->fetchColumn();
+
+        if (!$customerId) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Customer profile not found']);
+            exit;
+        }
     }
 
     $unit = $pdo->prepare(
@@ -298,14 +306,15 @@ try {
 
     $details = $pdo->prepare(
         'INSERT INTO booking_details
-            (booking_id, guest_name, guest_contact_num, valid_id_path, vehicle_type, special_requests)
-         VALUES (?, ?, ?, ?, ?, ?)'
+            (booking_id, guest_name, guest_contact_num, guest_email, valid_id_path, vehicle_type, special_requests)
+         VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
 
     $details->execute([
         $bookingId,
         $guestName,
         $guestContactNum,
+        $guestEmail ?: null,
         $validIdPath,
         $vehicleType ?: null,
         $specialRequests ?: null
@@ -330,8 +339,8 @@ try {
     $pdo->commit();
 
     try {
-        $admins = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role = 'admin'");
-        $adminList = $admins->fetchAll(PDO::FETCH_ASSOC);
+        $hosts = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role IN ('admin', 'assistant')");
+        $hostList = $hosts->fetchAll(PDO::FETCH_ASSOC);
 
         $notifyMessage = sprintf(
             '%s requested a booking at %s (%s) for %s to %s.',
@@ -347,16 +356,16 @@ try {
              VALUES (?, ?, 'booking', ?, 0, NOW())"
         );
 
-        foreach ($adminList as $admin) {
-            $insertNotif->execute([$admin['user_id'], $bookingId, $notifyMessage]);
+        foreach ($hostList as $host) {
+            $insertNotif->execute([$host['user_id'], $bookingId, $notifyMessage]);
 
             sendNotificationMail(
                 $pdo,
-                (int) $admin['user_id'],
-                $admin['email'],
-                $admin['full_name'],
+                (int) $host['user_id'],
+                $host['email'],
+                $host['full_name'],
                 'New booking request',
-                '<p>Hi ' . htmlspecialchars($admin['full_name']) . ',</p>' .
+                '<p>Hi ' . htmlspecialchars($host['full_name']) . ',</p>' .
                 '<p>' . htmlspecialchars($notifyMessage) . '</p>' .
                 '<p>Guest contact number: ' . htmlspecialchars($guestContactNum) . '</p>' .
                 '<p>Review it in your dashboard.</p>'
@@ -366,16 +375,50 @@ try {
         error_log('Booking notification/email failed: ' . $notifyError->getMessage());
     }
 
-    echo json_encode([
+    $responseData = [
         'success' => true,
         'bookingId' => $bookingId,
         'status' => 'payment_review',
         'proofOfPaymentPath' => $proofOfPaymentPath
-    ]);
+    ];
+
+    $responseData['guestBooking'] = $isGuestCheckout;
+
+    echo json_encode($responseData);
 
 } catch (Throwable $error) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
+    }
+
+    error_log('Booking creation failed: ' . $error->getMessage());
+
+    if ($bookingId) {
+        try {
+            $savedBooking = $pdo->prepare(
+                'SELECT b.booking_id, b.status, p.proof_of_payment
+                 FROM bookings b
+                 INNER JOIN booking_details bd ON bd.booking_id = b.booking_id
+                 INNER JOIN payments p ON p.booking_id = b.booking_id
+                 WHERE b.booking_id = ?
+                 LIMIT 1'
+            );
+            $savedBooking->execute([$bookingId]);
+            $savedBookingData = $savedBooking->fetch(PDO::FETCH_ASSOC);
+
+            if ($savedBookingData) {
+                echo json_encode([
+                    'success' => true,
+                    'bookingId' => (int) $savedBookingData['booking_id'],
+                    'status' => $savedBookingData['status'],
+                    'proofOfPaymentPath' => $savedBookingData['proof_of_payment'],
+                    'guestBooking' => $isGuestCheckout
+                ]);
+                exit;
+            }
+        } catch (Throwable $recoveryError) {
+            error_log('Booking success recovery failed: ' . $recoveryError->getMessage());
+        }
     }
 
     http_response_code(500);
