@@ -34,12 +34,24 @@ if (!$bookingId || !ctype_digit((string) $bookingId)) {
 }
 
 try {
+    $bookingColumns = $pdo->query("SHOW COLUMNS FROM bookings")->fetchAll(PDO::FETCH_COLUMN);
+    $bookingMetaFields = [];
+    if (in_array('booking_source', $bookingColumns, true)) {
+        $bookingMetaFields[] = 'b.booking_source';
+    }
+    if (in_array('notes', $bookingColumns, true)) {
+        $bookingMetaFields[] = 'b.notes';
+    }
+
+    $metaSelect = $bookingMetaFields ? ', ' . implode(', ', $bookingMetaFields) : '';
+
     $stmt = $pdo->prepare(
         'SELECT
             b.booking_id,
             b.status,
             b.cancellation_reason,
-            b.cancelled_at,
+            b.cancelled_at
+            ' . $metaSelect . ',
             cp.customer_id,
             usr.user_id,
             COALESCE(usr.full_name, bd.guest_name) AS full_name,
@@ -93,6 +105,8 @@ try {
         'customer' => [
             'bookingId' => (int) $customer['booking_id'],
             'bookingStatus' => $customer['status'],
+            'bookingSource' => $customer['booking_source'] ?? null,
+            'notes' => $customer['notes'] ?? null,
             'cancellationReason' => $customer['cancellation_reason'],
             'cancelledAt' => $customer['cancelled_at'],
             'customerId' => $customer['customer_id'] !== null ? (int) $customer['customer_id'] : null,

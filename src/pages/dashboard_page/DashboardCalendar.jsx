@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
@@ -54,9 +54,11 @@ function reservationEvents(reservations) {
     .filter((reservation) => !['cancelled', 'rejected'].includes(reservation.status))
     .map((reservation) => {
       const bookerName = reservation.booked_guest_name || reservation.guest_name || 'Guest';
+      const shortName = bookerName.length > 12 ? `${bookerName.slice(0, 11)}...` : bookerName;
+      const shortUnit = (reservation.unit_name || reservation.building_name || 'Booking').slice(0, 12);
       return {
         id: `booking-${reservation.booking_id}`,
-        summary: `${reservation.building_name || 'Booking'} · ${bookerName}`,
+        summary: `${shortUnit} · ${shortName}`,
         startDate: reservation.check_in_date,
         endDateExclusive: reservation.check_out_date,
         detail: reservation.unit_name || '',
@@ -143,6 +145,13 @@ export default function DashboardCalendar() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [unitOptions, setUnitOptions] = useState([]);
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [savingBooking, setSavingBooking] = useState(false);
+
+  const reservationById = useMemo(() => Object.fromEntries(
+    reservations.map((reservation) => [reservation.booking_id, reservation])
+  ), [reservations]);
 
   const loadEvents = async () => {
     setIsLoading(true);
@@ -152,6 +161,15 @@ export default function DashboardCalendar() {
       const reservationsData = await reservationsResponse.json();
       if (!reservationsResponse.ok) throw new Error(reservationsData.error || 'Unable to load bookings');
       setReservations(reservationsData.reservations || []);
+
+      const unitsResponse = await fetch(`${API_BASE_URL}/listings.php`, { credentials: 'include' });
+      const unitsData = await unitsResponse.json();
+      if (unitsResponse.ok && Array.isArray(unitsData)) {
+        setUnitOptions(unitsData.filter((unit) => unit && unit.unit_id).map((unit) => ({
+          value: Number(unit.unit_id),
+          label: `${unit.unit_name || 'Unit'} · ${unit.building_name || 'Property'}`,
+        })));
+      }
 
       const blockedResponse = await fetch(`${API_BASE_URL}/blocked_dates.php`, { credentials: 'include' });
       const blockedData = await blockedResponse.json();
@@ -324,6 +342,90 @@ export default function DashboardCalendar() {
       : new Date(date.getFullYear(), date.getMonth() + amount, 1));
   };
 
+  const openBookingEditor = async (bookingId) => {
+    const reservation = reservationById[bookingId];
+    if (!reservation) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/get_customer.php?bookingId=${bookingId}`, { credentials: 'include' });
+      const data = await response.json();
+      const customer = data.customer || {};
+
+      setEditingBooking({
+        bookingId,
+        guestName: customer.fullName || reservation.booked_guest_name || reservation.guest_name || '',
+        guestContactNum: customer.contactNum || reservation.booked_guest_contact_num || reservation.guest_contact_num || '',
+        guestEmail: customer.email || '',
+        unitId: Number(reservation.unit_id || 0),
+        checkIn: reservation.check_in_date || '',
+        checkOut: reservation.check_out_date || '',
+        guests: Number(reservation.num_of_guests || 1),
+        paymentAmount: customer.paymentAmount ?? '',
+        paymentMethod: customer.paymentMethod || 'cash',
+        paymentStatus: customer.paymentStatus || 'pending',
+        bookingSource: reservation.booking_source || customer.bookingSource || 'direct',
+        notes: reservation.notes || customer.notes || reservation.special_requests || '',
+      });
+    } catch {
+      setEditingBooking({
+        bookingId,
+        guestName: reservation.booked_guest_name || reservation.guest_name || '',
+        guestContactNum: reservation.booked_guest_contact_num || reservation.guest_contact_num || '',
+        guestEmail: '',
+        unitId: Number(reservation.unit_id || 0),
+        checkIn: reservation.check_in_date || '',
+        checkOut: reservation.check_out_date || '',
+        guests: Number(reservation.num_of_guests || 1),
+        paymentAmount: '',
+        paymentMethod: 'cash',
+        paymentStatus: 'pending',
+        bookingSource: reservation.booking_source || 'direct',
+        notes: reservation.notes || reservation.special_requests || '',
+      });
+    }
+  };
+
+  const handleEditBookingSave = async (event) => {
+    event.preventDefault();
+    if (!editingBooking) return;
+
+    setSavingBooking(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin_update_booking.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: editingBooking.bookingId,
+          guestName: editingBooking.guestName,
+          guestContactNum: editingBooking.guestContactNum,
+          guestEmail: editingBooking.guestEmail,
+          unitId: Number(editingBooking.unitId),
+          checkIn: editingBooking.checkIn,
+          checkOut: editingBooking.checkOut,
+          guests: Number(editingBooking.guests || 1),
+          paymentAmount: editingBooking.paymentAmount,
+          paymentMethod: editingBooking.paymentMethod,
+          paymentStatus: editingBooking.paymentStatus,
+          bookingSource: editingBooking.bookingSource,
+          notes: editingBooking.notes,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to update booking');
+
+      setEditingBooking(null);
+      await loadEvents();
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to update booking');
+    } finally {
+      setSavingBooking(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-black font-sans">
       <HostHeader activeNav="Calendar" />
@@ -487,6 +589,7 @@ export default function DashboardCalendar() {
                   selectedDate={selectedDate}
                   visibleMonth={viewMode === 'month' ? currentDate.getMonth() : null}
                   onSelectDate={setSelectedDate}
+                  onBookingClick={openBookingEditor}
                   units={viewMode === 'month' ? unitRows : []}
                   monthDays={viewMode === 'month' ? monthDays(currentDate) : []}
                   layout={calendarLayout}
@@ -495,6 +598,171 @@ export default function DashboardCalendar() {
             )
           )}
         </section>
+        {editingBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Booking editor</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-neutral-900">Update booking</h2>
+                </div>
+                <button type="button" onClick={() => setEditingBooking(null)} className="text-2xl leading-none text-neutral-400 hover:text-neutral-700">×</button>
+              </div>
+
+              <form onSubmit={handleEditBookingSave} className="grid gap-4 md:grid-cols-2">
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Guest name
+                  <input
+                    type="text"
+                    value={editingBooking.guestName}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, guestName: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Contact number
+                  <input
+                    type="tel"
+                    value={editingBooking.guestContactNum}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, guestContactNum: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Guest email
+                  <input
+                    type="email"
+                    value={editingBooking.guestEmail}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, guestEmail: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Unit
+                  <select
+                    value={editingBooking.unitId}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, unitId: Number(event.target.value) }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  >
+                    <option value="">Select unit</option>
+                    {unitOptions.map((unit) => (
+                      <option key={unit.value} value={unit.value}>{unit.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Check-in
+                  <input
+                    type="date"
+                    value={editingBooking.checkIn}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, checkIn: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Check-out
+                  <input
+                    type="date"
+                    value={editingBooking.checkOut}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, checkOut: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Pax
+                  <input
+                    type="number"
+                    min="1"
+                    max="4"
+                    value={editingBooking.guests}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, guests: Number(event.target.value) }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Payment amount
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingBooking.paymentAmount}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, paymentAmount: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Payment method
+                  <select
+                    value={editingBooking.paymentMethod}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, paymentMethod: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="e-wallet">E-wallet</option>
+                    <option value="bank_transfer">Bank transfer</option>
+                    <option value="card">Card</option>
+                  </select>
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Payment status
+                  <select
+                    value={editingBooking.paymentStatus}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, paymentStatus: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="verified">Verified</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="refunded">Refunded</option>
+                  </select>
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-1">
+                  Booking source
+                  <select
+                    value={editingBooking.bookingSource}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, bookingSource: event.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  >
+                    <option value="direct">Direct</option>
+                    <option value="website">Website</option>
+                    <option value="airbnb">Airbnb</option>
+                    <option value="booking_com">Booking.com</option>
+                    <option value="walk_in">Walk-in</option>
+                    <option value="referral">Referral</option>
+                  </select>
+                </label>
+
+                <label className="block text-sm font-medium text-neutral-700 md:col-span-2">
+                  Notes
+                  <textarea
+                    value={editingBooking.notes}
+                    onChange={(event) => setEditingBooking((current) => ({ ...current, notes: event.target.value }))}
+                    rows="3"
+                    className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
+                  />
+                </label>
+
+                <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={() => setEditingBooking(null)} className="rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100">Cancel</button>
+                  <button type="submit" disabled={savingBooking} className="rounded-full bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-700 disabled:cursor-not-allowed disabled:opacity-60">
+                    {savingBooking ? 'Saving...' : 'Save changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {selectedDate && !isLoading && (
           <section className="mt-6 border-t border-neutral-200 pt-5" aria-live="polite">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -506,15 +774,22 @@ export default function DashboardCalendar() {
             </div>
             {selectedEvents.length ? (
               <ul className="m-0 divide-y divide-neutral-200 border-y border-neutral-200 p-0">
-                {selectedEvents.map((event) => (
-                  <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3">
-                    <span className="font-medium">{event.summary}</span>
-                    <span className="text-sm text-neutral-600">{event.detail || (event.source === 'google' ? 'Google Calendar' : '')}</span>
-                    <span className="w-full text-xs text-neutral-500">
-                      {event.startDate} to {dateKey(addDays(parseDateKey(event.endDateExclusive), -1))}
-                    </span>
-                  </li>
-                ))}
+                {selectedEvents.map((event) => {
+                  const bookingId = event.source === 'booking' ? Number((event.id || '').replace('booking-', '')) : null;
+                  return (
+                    <li
+                      key={event.id}
+                      onClick={() => bookingId ? openBookingEditor(bookingId) : undefined}
+                      className={`flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 ${bookingId ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+                    >
+                      <span className="font-medium">{event.summary}</span>
+                      <span className="text-sm text-neutral-600">{event.detail || (event.source === 'google' ? 'Google Calendar' : '')}</span>
+                      <span className="w-full text-xs text-neutral-500">
+                        {event.startDate} to {dateKey(addDays(parseDateKey(event.endDateExclusive), -1))}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             ) : <p className="text-sm text-neutral-500">No bookings on this date.</p>}
           </section>
@@ -524,7 +799,7 @@ export default function DashboardCalendar() {
   );
 }
 
-function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate, units = [], monthDays: monthDayList = [], layout = 'classic' }) {
+function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate, onBookingClick, units = [], monthDays: monthDayList = [], layout = 'classic' }) {
   if (layout === 'units' && units.length && monthDayList.length) {
     const monthStart = monthDayList[0];
     const monthEnd = addDays(monthDayList[monthDayList.length - 1], 1);
@@ -575,16 +850,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                         onClick={() => onSelectDate(key)}
                         className={`min-h-[76px] border-r border-neutral-100 px-1 py-1 text-left ${isToday ? 'bg-amber-50' : 'bg-white'} ${isSelected ? 'ring-1 ring-inset ring-emerald-600' : ''}`}
                         aria-label={`${unit.name} on ${key}`}
-                      >
-                        {unitBookings.filter((event) => event.startDate <= key && key < event.endDateExclusive).map((event) => (
-                          <span
-                            key={`${event.id}-${key}`}
-                            className={`mt-1 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${event.source === 'blocked' ? 'bg-amber-600' : 'bg-emerald-700'}`}
-                          >
-                            {event.source === 'blocked' ? 'Blocked' : 'Booked'}
-                          </span>
-                        ))}
-                      </button>
+                      />
                     );
                   })}
 
@@ -600,11 +866,20 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                       <button
                         key={`${unit.id}-${event.id}`}
                         type="button"
-                        onClick={() => onSelectDate(event.startDate)}
-                        className={`absolute top-2 z-10 truncate rounded-md border border-emerald-700 bg-emerald-700/90 px-2 py-1 text-left text-[10px] font-semibold text-white shadow-sm hover:bg-emerald-700 ${event.source === 'google' ? 'bg-slate-800/90 border-slate-800' : ''}`}
+                        onClick={() => {
+                          if (event.source === 'booking' && onBookingClick) {
+                            onBookingClick(Number(String(event.id).replace('booking-', '')));
+                            return;
+                          }
+                          onSelectDate(event.startDate);
+                        }}
+                        className={`absolute top-2 z-10 overflow-hidden rounded-md border border-emerald-700 bg-emerald-700/90 px-2 py-1 text-left text-[10px] font-semibold text-white shadow-sm hover:bg-emerald-700 ${event.source === 'google' ? 'bg-slate-800/90 border-slate-800' : ''}`}
                         style={{
                           left: `${leftPercent}%`,
                           width: `${widthPercent}%`,
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
                         }}
                         title={`${event.summary} (${event.startDate} to ${event.endDateExclusive})`}
                       >
@@ -674,9 +949,21 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                 key={`${event.id}-${weekStartKey}`}
                 type="button"
                 title={`${event.summary}${event.detail ? `: ${event.detail}` : ''}`}
-                onClick={() => onSelectDate(event.startDate < weekStartKey ? weekStartKey : event.startDate)}
-                className={`mx-0.5 my-0.5 min-w-0 truncate rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
-                style={{ gridColumn: `${startColumn + 1} / ${endColumn + 1}`, gridRow: lane + 2 }}
+                onClick={() => {
+                  if (event.source === 'booking' && onBookingClick) {
+                    onBookingClick(Number(String(event.id).replace('booking-', '')));
+                    return;
+                  }
+                  onSelectDate(event.startDate < weekStartKey ? weekStartKey : event.startDate);
+                }}
+                className={`mx-0.5 my-0.5 min-w-0 overflow-hidden rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+                style={{
+                  gridColumn: `${startColumn + 1} / ${endColumn + 1}`,
+                  gridRow: lane + 2,
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                }}
               >
                 {event.summary}
               </button>

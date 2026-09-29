@@ -7,6 +7,8 @@ create table bookings(
     num_of_guests int not null default 1,
     status enum('pending', 'awaiting_payment', 'payment_review', 'confirmed', 'checked_in', 'checked_out', 
                 'cancelled', 'rejected') not null default 'pending',
+    booking_source varchar(50) not null default 'direct',
+    notes text null,
     created_at timestamp default current_timestamp,
     updated_at timestamp default current_timestamp on update current_timestamp,
     constraint fk_booking_customer

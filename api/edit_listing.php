@@ -82,9 +82,9 @@ $basePrice = array_key_exists('basePrice', $data) ? $basePrice : $existing['base
 $discounts = array_key_exists('discounts', $data)
     ? $discounts : (json_decode($existing['discounts'] ?? '[]', true) ?: []);
 
-if (!$buildingId || !$buildingName || !$location || !$description || $maxGuests < 1 || $ratePerNight <= 0 || !$availableFrom || !$availableUntil) {
+if (!$buildingId || !$buildingName || !$location || !$description || $maxGuests < 1 || $maxGuests > 4 || $ratePerNight <= 0 || !$availableFrom || !$availableUntil) {
     http_response_code(400);
-    echo json_encode(['error' => 'Complete the required listing fields']);
+    echo json_encode(['error' => 'Complete the required listing fields. Maximum 4 guests per unit.']);
     exit;
 }
 

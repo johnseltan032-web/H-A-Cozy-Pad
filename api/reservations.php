@@ -34,13 +34,25 @@ try {
 
     $expireBookings->execute();
 
+    $bookingColumns = $pdo->query("SHOW COLUMNS FROM bookings")->fetchAll(PDO::FETCH_COLUMN);
+    $bookingMetaFields = [];
+    if (in_array('booking_source', $bookingColumns, true)) {
+        $bookingMetaFields[] = 'b.booking_source';
+    }
+    if (in_array('notes', $bookingColumns, true)) {
+        $bookingMetaFields[] = 'b.notes';
+    }
+
+    $metaSelect = $bookingMetaFields ? ', ' . implode(', ', $bookingMetaFields) : '';
+
     $stmt = $pdo->query(
         "SELECT
             b.booking_id,
             b.check_in_date,
             b.check_out_date,
             b.num_of_guests,
-            b.status,
+            b.status
+            {$metaSelect},
 
             u.unit_id,
             u.unit_name,

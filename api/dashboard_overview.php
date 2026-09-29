@@ -122,6 +122,98 @@ try {
         LIMIT 5
     ")->fetchAll(PDO::FETCH_ASSOC);
 
+    $conflictRows = $pdo->query("
+        SELECT DISTINCT b1.unit_id, u.unit_name, b1.booking_id, b2.booking_id AS overlap_booking_id,
+               b1.check_in_date, b1.check_out_date, b2.check_in_date AS overlap_check_in,
+               b2.check_out_date AS overlap_check_out
+        FROM bookings b1
+        INNER JOIN bookings b2
+          ON b1.unit_id = b2.unit_id
+         AND b1.booking_id < b2.booking_id
+         AND b1.status NOT IN ('cancelled', 'rejected')
+         AND b2.status NOT IN ('cancelled', 'rejected')
+         AND b1.check_in_date < b2.check_out_date
+         AND b1.check_out_date > b2.check_in_date
+        INNER JOIN units u ON u.unit_id = b1.unit_id
+        ORDER BY b1.check_in_date ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $arrivalTomorrowRows = $pdo->query("
+        SELECT b.booking_id, b.check_in_date, u.unit_name, bu.building_name,
+               COALESCE(bd.guest_name, cu.full_name, 'Guest') AS guest_name
+        FROM bookings b
+        INNER JOIN units u ON b.unit_id = u.unit_id
+        INNER JOIN buildings bu ON u.building_id = bu.building_id
+        LEFT JOIN customer_profiles cp ON b.customer_id = cp.customer_id
+        LEFT JOIN users cu ON cp.user_id = cu.user_id
+        LEFT JOIN booking_details bd ON b.booking_id = bd.booking_id
+        WHERE b.check_in_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+          AND b.status NOT IN ('cancelled', 'rejected', 'checked_out')
+        ORDER BY b.check_in_date ASC, u.unit_name ASC
+        LIMIT 6
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $upcomingBlocks = $pdo->query("
+        SELECT u.unit_name, b.blocked_from, b.blocked_until, b.reason
+        FROM unit_blocked_dates b
+        INNER JOIN units u ON u.unit_id = b.unit_id
+        WHERE b.blocked_from BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+        ORDER BY b.blocked_from ASC
+        LIMIT 5
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $alerts = [];
+
+    foreach ($conflictRows as $conflict) {
+        $alerts[] = [
+            'type' => 'conflict',
+            'severity' => 'high',
+            'title' => 'Booking conflict detected',
+            'message' => sprintf(
+                '%s has overlapping bookings from %s to %s and %s to %s.',
+                $conflict['unit_name'],
+                $conflict['check_in_date'],
+                $conflict['check_out_date'],
+                $conflict['overlap_check_in'],
+                $conflict['overlap_check_out']
+            ),
+        ];
+    }
+
+    foreach ($arrivalTomorrowRows as $arrival) {
+        $alerts[] = [
+            'type' => 'arrival',
+            'severity' => 'medium',
+            'title' => 'Guest arrival tomorrow',
+            'message' => sprintf(
+                '%s is arriving tomorrow for %s in %s (%s).',
+                $arrival['guest_name'],
+                $arrival['unit_name'],
+                $arrival['building_name'],
+                $arrival['check_in_date']
+            ),
+        ];
+    }
+
+    foreach ($upcomingBlocks as $block) {
+        $alerts[] = [
+            'type' => 'blocked',
+            'severity' => 'medium',
+            'title' => 'Unit blocked',
+            'message' => sprintf(
+                '%s is blocked from %s to %s (%s).',
+                $block['unit_name'],
+                $block['blocked_from'],
+                $block['blocked_until'],
+                str_replace('_', ' ', $block['reason'])
+            ),
+        ];
+    }
+
+    if (empty($alerts)) {
+        $alerts = [];
+    }
+
     foreach ($upcoming as &$booking) {
         $booking['booking_id'] = (int) $booking['booking_id'];
         $booking['num_of_guests'] = (int) $booking['num_of_guests'];
@@ -210,6 +302,7 @@ try {
         'bookingSummary' => $summary,
         'upcomingReservations' => $upcoming,
         'recentPayments' => $payments,
+        'alerts' => $alerts,
         'today' => $today,
     ]);
 } catch (PDOException $error) {

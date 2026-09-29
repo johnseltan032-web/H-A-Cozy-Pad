@@ -120,7 +120,7 @@ export default function HostHeader({
         <button
           type="button"
           onClick={() => {
-            window.location.href = '/host/reservations?new_booking=1';
+            window.location.href = '/host/listing';
           }}
           className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-700"
         >

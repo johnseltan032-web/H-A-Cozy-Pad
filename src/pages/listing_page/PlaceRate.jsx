@@ -30,7 +30,7 @@ const BED_TYPES = [
   'Sofa Bed',
 ];
 
-function Counter({ label, value, onChange, min = 0 }) {
+function Counter({ label, value, onChange, min = 0, max = Number.MAX_SAFE_INTEGER }) {
   return (
     <div className="flex flex-col items-center text-center">
       <p className="text-[15px] font-medium mb-2">{label}</p>
@@ -53,8 +53,9 @@ function Counter({ label, value, onChange, min = 0 }) {
         <button
           type="button"
           aria-label={`Increase ${label}`}
-          onClick={() => onChange(value + 1)}
-          className="w-9 h-9 rounded-full border border-black flex items-center justify-center text-lg hover:bg-neutral-100 transition"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="w-9 h-9 rounded-full border border-black flex items-center justify-center text-lg hover:bg-neutral-100 transition disabled:opacity-30 disabled:hover:bg-transparent"
+          disabled={value >= max}
         >
           +
         </button>
@@ -398,7 +399,8 @@ export default function RoomsRates() {
             <Counter
               label="Max guests allowed"
               value={maxGuests}
-              min={0}
+              min={1}
+              max={4}
               onChange={(value) => {
                 setMaxGuests(value);
 
@@ -408,6 +410,10 @@ export default function RoomsRates() {
               }}
             />
 
+          </div>
+
+          <div className="mb-8 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+            Unit policy: maximum 4 guests per unit. Default check-in is 2:00 PM and default check-out is 12:00 PM.
           </div>
 
           {/* Rate */}

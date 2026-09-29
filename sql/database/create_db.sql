@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     cancellation_reason TEXT NULL,
     cancelled_at DATETIME NULL,
     status ENUM('pending', 'awaiting_payment', 'payment_review', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'rejected') NOT NULL DEFAULT 'pending',
+    booking_source VARCHAR(50) NOT NULL DEFAULT 'direct',
+    notes TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_booking_customer

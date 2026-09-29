@@ -171,24 +171,80 @@ export default function DashboardOverview() {
           <p className="mb-0 mt-2 text-sm text-neutral-500">Daily property operations and booking activity.</p>
         </header>
 
+        <section className="mb-7 grid gap-3 md:grid-cols-2 xl:grid-cols-5" aria-label="Operations shortcuts">
+          <Link to="/host/calendar" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Calendar</p>
+            <h2 className="mt-2 text-lg font-semibold text-neutral-900">Unit calendar</h2>
+            <p className="mt-1 text-sm text-neutral-600">See bookings, check-ins, and occupancy in one place.</p>
+          </Link>
+
+          <Link to="/host/reservations" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Reservations</p>
+            <h2 className="mt-2 text-lg font-semibold text-neutral-900">Manage stays</h2>
+            <p className="mt-1 text-sm text-neutral-600">Approve, reject, and review all guest reservations.</p>
+          </Link>
+
+          <Link to="/host/expenses" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Expenses</p>
+            <h2 className="mt-2 text-lg font-semibold text-neutral-900">Track costs</h2>
+            <p className="mt-1 text-sm text-neutral-600">Log cleaning, repairs, utilities, and unit-level spend.</p>
+          </Link>
+
+          {canViewStatistics ? (
+            <Link to="/host/statistics" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Statistics</p>
+              <h2 className="mt-2 text-lg font-semibold text-neutral-900">KPI view</h2>
+              <p className="mt-1 text-sm text-neutral-600">Review occupancy, revenue, and performance metrics.</p>
+            </Link>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-neutral-500 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Statistics</p>
+              <h2 className="mt-2 text-lg font-semibold text-neutral-700">Restricted</h2>
+              <p className="mt-1 text-sm text-neutral-600">Statistics are hidden for this admin profile.</p>
+            </div>
+          )}
+
+          <Link to="/host/listing" className="rounded-2xl border border-neutral-200 bg-neutral-900 p-4 text-white shadow-sm transition hover:bg-neutral-800">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-300">Create</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">New listing</h2>
+            <p className="mt-1 text-sm text-neutral-200">Add a new unit or property to the calendar.</p>
+          </Link>
+        </section>
+
         {error && <p role="alert" className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         {isLoading ? (
           <p className="py-12 text-center text-sm text-neutral-500">Loading overview...</p>
         ) : dashboard && (
           <>
-            {canViewStatistics && (
-              <section className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 shadow-sm">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            {dashboard?.alerts?.length > 0 && (
+              <section className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Performance</p>
-                    <h2 className="mt-2 text-2xl font-semibold text-neutral-900">Statistics</h2>
+                    <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Alerts</p>
+                    <h2 className="mt-2 text-xl font-semibold text-neutral-900">Operational highlights</h2>
                   </div>
-                  <Link
-                    to="/host/statistics"
-                    className="inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-neutral-100"
-                  >
-                    Open statistics page
-                  </Link>
+                  <span className="rounded-full bg-amber-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-amber-900">
+                    {dashboard.alerts.length} active
+                  </span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {dashboard.alerts.map((alert, index) => (
+                    <div
+                      key={`${alert.type}-${index}`}
+                      className={`rounded-xl border p-3 ${
+                        alert.severity === 'high'
+                          ? 'border-red-200 bg-red-50'
+                          : 'border-amber-200 bg-white'
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className={`inline-flex h-2.5 w-2.5 rounded-full ${alert.severity === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                        <span className="text-sm font-semibold text-neutral-900">{alert.title}</span>
+                      </div>
+                      <p className="m-0 text-sm text-neutral-700">{alert.message}</p>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}
