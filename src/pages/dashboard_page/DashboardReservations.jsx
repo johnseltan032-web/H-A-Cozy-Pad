@@ -519,13 +519,13 @@ export default function DashboardReservations() {
                   )}
 
                   {canViewCustomer && (
-                    <div className="mt-5 grid w-full grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
+                    <div className="mt-5 grid w-full grid-cols-1 gap-2 border-t border-neutral-100 pt-4 sm:grid-cols-2">
                       <button
                         type="button"
                         onClick={() =>
                           handleViewCustomer(reservation)
                         }
-                        className="col-span-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                        className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 sm:col-span-2"
                       >
                         View Customer
                       </button>
