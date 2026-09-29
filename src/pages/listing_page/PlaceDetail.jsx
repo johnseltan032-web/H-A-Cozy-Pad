@@ -70,14 +70,14 @@ export default function PropertyDetails() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto flex items-center justify-between px-10 pb-6 pt-8">
+        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Back */}
           <button
             type="button"
             onClick={() => window.history.back()}
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-black
               bg-white
@@ -94,7 +94,7 @@ export default function PropertyDetails() {
             type="button"
             onClick={() => navigate('/host/listing/PlaceImages')}
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-neutral-400
               bg-neutral-300 text-black

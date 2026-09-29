@@ -36,8 +36,55 @@ function smtpCommand($socket, $command) {
     return $response;
 }
 
+function sendResendMail(string $toEmail, string $subject, string $htmlBody, string $altBody = ''): bool
+{
+    $apiKey = getenv('RESEND_API_KEY') ?: '';
+    $from = getenv('EMAIL_FROM') ?: '';
+
+    if ($apiKey === '' || $from === '') {
+        error_log('Resend mail requires RESEND_API_KEY and EMAIL_FROM');
+        return false;
+    }
+
+    $payload = [
+        'from' => $from,
+        'to' => [$toEmail],
+        'subject' => $subject,
+        'html' => $htmlBody,
+    ];
+    if ($altBody !== '') {
+        $payload['text'] = $altBody;
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Authorization: Bearer $apiKey\r\nContent-Type: application/json\r\n",
+            'content' => json_encode($payload),
+            'timeout' => 30,
+            'ignore_errors' => true,
+        ],
+    ]);
+
+    $responseBody = @file_get_contents('https://api.resend.com/emails', false, $context);
+    $statusLine = $http_response_header[0] ?? '';
+    preg_match('/\s(\d{3})\s/', $statusLine, $matches);
+    $statusCode = (int) ($matches[1] ?? 0);
+
+    if ($responseBody === false || $statusCode < 200 || $statusCode >= 300) {
+        error_log('Resend email request failed with HTTP ' . $statusCode . ': ' . ($responseBody ?: 'No response body'));
+        return false;
+    }
+
+    return true;
+}
+
 function sendAppMail(string $toEmail, string $toName, string $subject, string $htmlBody, string $altBody = ''): bool
 {
+    if (getenv('RESEND_API_KEY')) {
+        return sendResendMail($toEmail, $subject, $htmlBody, $altBody);
+    }
+
     global $GMAIL_USER, $GMAIL_APP_PASSWORD;
 
     if (empty($GMAIL_USER) || empty($GMAIL_APP_PASSWORD)) {

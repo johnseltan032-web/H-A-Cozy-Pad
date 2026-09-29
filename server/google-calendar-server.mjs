@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { google } from 'googleapis';
 
 const app = express();
-const port = Number(process.env.GOOGLE_CALENDAR_PORT || 3001);
-const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+const port = Number(process.env.PORT || process.env.GOOGLE_CALENDAR_PORT || 3001);
+const frontendOrigin = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
 const redirectUri = process.env.GOOGLE_REDIRECT_URI || `http://localhost:${port}/auth/callback`;
 
 const oauth2Client = new google.auth.OAuth2(
@@ -37,7 +38,7 @@ app.get('/auth/callback', async (request, response) => {
     const { tokens } = await oauth2Client.getToken(request.query.code);
     credentials = tokens;
     oauth2Client.setCredentials(credentials);
-    response.redirect(`${frontendOrigin}/?connected=1`);
+    response.redirect(`${frontendOrigin}/host/calendar?connected=1`);
   } catch (error) {
     console.error('Google OAuth error:', error.message);
     response.status(500).send('Google Calendar authorization failed.');
@@ -46,6 +47,14 @@ app.get('/auth/callback', async (request, response) => {
 
 app.get('/auth/status', (_request, response) => {
   response.json({ connected: Boolean(credentials?.access_token || credentials?.refresh_token) });
+});
+
+app.post('/auth/disconnect', (_request, response) => {
+  credentials = null;
+  oauth2Client.revokeCredentials().catch((error) => {
+    console.error('Google Calendar token revocation error:', error.message);
+  });
+  response.json({ connected: false });
 });
 
 app.get('/events', async (request, response) => {

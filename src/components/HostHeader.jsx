@@ -47,8 +47,12 @@ export default function HostHeader({ activeNav = 'Today' }) {
   }, [isMenuOpen]);
 
   return (
-    <header className="grid grid-cols-[1fr_auto_1fr] items-center px-5 md:px-10 lg:px-[52px] py-6 bg-[#fdfdfd] border-b border-neutral-200 relative">
-      <Link to="/" className="text-2xl lg:text-3xl font-bold text-black no-underline justify-self-start">
+    <header className="host-header grid grid-cols-[1fr_auto_1fr] items-center px-5 py-4 md:px-10 md:py-6 lg:px-[52px] bg-[#fdfdfd] border-b border-neutral-200 relative">
+      {/* Logo */}
+      <Link
+        to="/"
+        className="host-header__brand text-2xl lg:text-3xl font-bold text-black no-underline justify-self-start"
+      >
         H&A Cozy Pad
       </Link>
 
@@ -123,9 +127,11 @@ export default function HostHeader({ activeNav = 'Today' }) {
         </ul>
       </nav>
 
-      <div className="flex items-center gap-4 justify-self-end">
+      {/* Right side */}
+      <div className="host-header__actions flex items-center gap-4 justify-self-end">
         <NotificationBell />
 
+        {/* Profile icon */}
         <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden">
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-neutral-500" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="8" r="4" />
@@ -147,7 +153,7 @@ export default function HostHeader({ activeNav = 'Today' }) {
       {isMenuOpen && (
         <div
           ref={menuRef}
-          className="absolute right-[20px] top-[70px] w-[280px] bg-white rounded-2xl shadow-xl border border-neutral-100 py-3 z-40"
+          className="host-header-menu absolute left-auto right-5 top-[70px] w-[280px] bg-white rounded-2xl shadow-xl border border-neutral-100 py-3 z-[2100]"
         >
           <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/></svg>

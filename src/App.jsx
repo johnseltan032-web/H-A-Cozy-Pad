@@ -32,6 +32,7 @@ import BookingConfirmation from './pages/booking_page/Bookingconfirmation';
 import BookingConfirmation2 from './pages/booking_page/Bookingconfirmation_2';
 
 import Chatbot from './components/Chatbot';
+import MobileTabBar from './components/MobileTabBar';
 
 // listing pages
 import PlaceOffer from './pages/listing_page/PlaceOffer';
@@ -163,7 +164,16 @@ function AppContent() {
           }>
           <Route
             path="/profile"
-            element={<Profile user={user} />}
+            element={
+              <Profile
+                user={user}
+                isMenuOpen={isMenuOpen}
+                setIsMenuOpen={setIsMenuOpen}
+                onLogout={() => setUser(null)}
+                onOpenSignIn={() => handleOpenAuth('/')}
+                onOpenRegister={handleOpenRegister}
+              />
+            }
           />
         </Route>
 
@@ -333,6 +343,8 @@ function AppContent() {
         </Route>
       </Routes>
 
+      <MobileTabBar onOpenChat={() => setIsChatOpen(true)} />
+
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -346,8 +358,8 @@ function AppContent() {
 
       <Chatbot
         isOpen={isChatOpen}
+        onOpen={() => setIsChatOpen(true)}
         onClose={() => setIsChatOpen(false)}
-        onToggle={() => setIsChatOpen(!isChatOpen)}
       />
     </>
   );

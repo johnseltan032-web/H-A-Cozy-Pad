@@ -407,7 +407,7 @@ export default function ListingPublish() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto flex items-center justify-between px-10 pb-6 pt-8">
+        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Back */}
           <button
@@ -416,7 +416,7 @@ export default function ListingPublish() {
               window.history.back()
             }
             className="
-              w-[142px]
+              w-full sm:w-[142px]
               h-[50px]
               rounded-full
               border
@@ -436,7 +436,7 @@ export default function ListingPublish() {
             disabled={!agreed || isPublishing}
             onClick={publishListing}
             className={`
-              w-[142px]
+              w-full sm:w-[142px]
               h-[50px]
               rounded-full
               border

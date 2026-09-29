@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
-import Chatbot from '../../components/Chatbot';
 import { API_BASE_URL } from '../../lib/api';
 
 export default function HelpCenter({
@@ -20,24 +19,8 @@ export default function HelpCenter({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadFaqData(true);
-
-    const interval = setInterval(() => {
-      loadFaqData();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  async function loadFaqData(showLoading = false) {
+  const loadFaqData = useCallback(async () => {
     try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
-
-      setError('');
-
       const [faqResponse, categoryResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/get_faqs.php`),
         fetch(`${API_BASE_URL}/get_faq_categories.php`),
@@ -58,6 +41,7 @@ export default function HelpCenter({
         );
       }
 
+      setError('');
       setFaqs(faqData.faqs || []);
 
       setCategories(
@@ -69,11 +53,21 @@ export default function HelpCenter({
     } catch (err) {
       setError(err.message);
     } finally {
-      if (showLoading) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const initialLoad = window.setTimeout(loadFaqData, 0);
+    const interval = setInterval(() => {
+      loadFaqData();
+    }, 5000);
+
+    return () => {
+      window.clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
+  }, [loadFaqData]);
 
   const visibleFaqs = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -109,12 +103,12 @@ export default function HelpCenter({
       />
 
       <main className="grow">
-        <section className="flex flex-col items-center px-5 pt-14 pb-10">
-          <h1 className="text-3xl lg:text-4xl font-bold mb-8 text-center">
+        <section className="flex flex-col items-center px-4 pt-7 pb-6 sm:px-5 sm:pt-14 sm:pb-10">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-5 sm:mb-8 text-center">
             Hello, how can we help you?
           </h1>
 
-          <div className="w-full max-w-[520px] flex items-center gap-3 bg-white border border-neutral-300 rounded-full px-6 py-4 shadow-sm">
+          <div className="w-full max-w-[520px] flex items-center gap-3 bg-white border border-neutral-300 rounded-full px-4 py-3 sm:px-6 sm:py-4 shadow-sm">
             <input
               type="text"
               value={search}
@@ -123,7 +117,7 @@ export default function HelpCenter({
                 setOpenFaqId(null);
               }}
               placeholder="Search"
-              className="w-full bg-transparent border-none outline-none text-lg font-light"
+              className="w-full min-w-0 bg-transparent border-none outline-none text-base sm:text-lg font-light"
             />
 
             <svg
@@ -142,22 +136,22 @@ export default function HelpCenter({
           </div>
         </section>
 
-        <section className="flex flex-col items-center px-5 pb-10">
-          <h2 className="text-2xl font-bold mb-6 text-center">
+        <section className="flex flex-col items-center px-4 pb-6 sm:px-5 sm:pb-10">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-center">
             Need to get in touch?
           </h2>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="grid w-full max-w-[420px] grid-cols-2 gap-2 mb-3 sm:flex sm:w-auto sm:gap-4 sm:mb-4">
             <button
               type="button"
-              className="px-10 py-3 text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
+              className="px-3 py-2.5 text-sm sm:px-10 sm:py-3 sm:text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
             >
               Chatbots
             </button>
 
             <button
               type="button"
-              className="px-10 py-3 text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
+              className="px-3 py-2.5 text-sm sm:px-10 sm:py-3 sm:text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
             >
               Contact Us
             </button>
@@ -173,12 +167,12 @@ export default function HelpCenter({
 
         <hr className="border-neutral-200 mx-5" />
 
-        <section className="px-5 md:px-10 lg:px-[52px] py-12">
-          <h2 className="text-2xl font-bold text-center mb-8">
+        <section className="px-4 py-8 sm:px-5 md:px-10 lg:px-[52px] md:py-12">
+          <h2 className="text-xl sm:text-2xl font-bold text-center mb-5 sm:mb-8">
             Frequently Asked Questions
           </h2>
 
-          <div className="pb-5 flex flex-wrap justify-center gap-3">
+          <div className="pb-4 sm:pb-5 flex flex-wrap justify-center gap-2 sm:gap-3">
             {categories.map((category) => {
               const isSelected =
                 selectedCategory === category.categoryId;
@@ -196,7 +190,7 @@ export default function HelpCenter({
                     setOpenFaqId(null);
                   }}
                   aria-pressed={isSelected}
-                  className={`px-5 py-3 text-sm font-medium border rounded-full cursor-pointer transition-colors ${
+                  className={`px-3 py-2 sm:px-5 sm:py-3 text-xs sm:text-sm font-medium border rounded-full cursor-pointer transition-colors ${
                     isSelected
                       ? 'bg-black text-white border-black'
                       : 'bg-white text-black border-neutral-300 hover:border-black hover:bg-neutral-50'
@@ -230,19 +224,19 @@ export default function HelpCenter({
               Loading FAQs...
             </p>
           ) : (
-            <div className="max-w-[800px] mx-auto flex flex-col gap-4">
+            <div className="max-w-[800px] mx-auto flex flex-col gap-2 sm:gap-4">
               {visibleFaqs.map((faq) => {
                 const isOpen = openFaqId === faq.faqId;
 
                 return (
                   <div
                     key={faq.faqId}
-                    className="border border-neutral-300 rounded-xl overflow-hidden"
+                    className="border border-neutral-300 rounded-lg sm:rounded-xl overflow-hidden"
                   >
                     <button
                       type="button"
                       onClick={() => toggleFaq(faq.faqId)}
-                      className="w-full flex items-center justify-between px-6 py-4 text-left text-lg font-medium bg-transparent border-0 cursor-pointer"
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 text-left text-sm sm:text-lg font-medium bg-transparent border-0 cursor-pointer"
                     >
                       {faq.question}
 
@@ -263,7 +257,7 @@ export default function HelpCenter({
                     </button>
 
                     {isOpen && (
-                      <div className="px-6 pb-4 text-base text-neutral-600">
+                      <div className="px-4 pb-3 sm:px-6 sm:pb-4 text-sm sm:text-base text-neutral-600 wrap-anywhere">
                         {faq.answer}
                       </div>
                     )}
@@ -286,7 +280,6 @@ export default function HelpCenter({
       </main>
 
       <Footer />
-      <Chatbot />
     </div>
   );
 }

@@ -65,8 +65,8 @@ function Counter({ label, value, onChange, min = 0 }) {
 
 function BedTypeRow({ bed, onChange, onRemove, canRemove }) {
   return (
-    <div className="flex items-end gap-4">
-      <div className="flex-1">
+    <div className="flex flex-wrap items-end gap-3 sm:flex-nowrap sm:gap-4">
+      <div className="min-w-0 flex-1 basis-[160px]">
         <p className="text-[13px] text-neutral-600 mb-1">
           Bed type
         </p>
@@ -529,7 +529,7 @@ export default function RoomsRates() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto flex items-center justify-between px-10 pb-6 pt-8">
+        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Back */}
           <button
@@ -538,7 +538,7 @@ export default function RoomsRates() {
               window.history.back()
             }
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-black
               bg-white
@@ -559,7 +559,7 @@ export default function RoomsRates() {
               )
             }
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-neutral-400
               bg-neutral-300 text-black

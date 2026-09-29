@@ -1048,7 +1048,7 @@ export default function AdditionalInformation({
           aria-modal="true"
           aria-labelledby="booking-success-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 text-center shadow-2xl sm:p-7">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
               <CheckIcon />
             </div>

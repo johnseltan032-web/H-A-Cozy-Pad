@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
+import Header from '../components/Header';
+import Footer from '../components/Footer_Lite';
 
 const settingsSections = [
   { label: 'Personal information', icon: 'person' },
@@ -11,6 +12,7 @@ const settingsSections = [
   { label: 'Payments', icon: 'card', badge: 'New' },
   { label: 'Languages & currency', icon: 'globe' },
   { label: 'Booking permissions', icon: 'key', badge: 'New' },
+  { label: 'Travel for work', icon: 'work' },
 ];
 
 function SettingsIcon({ name }) {
@@ -23,6 +25,7 @@ function SettingsIcon({ name }) {
     card: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h3" /></>,
     globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3Z" /></>,
     key: <><circle cx="8" cy="15" r="3" /><path d="m10.5 12.5 7-7 2 2-1.5 1.5 1.5 1.5-2 2-1.5-1.5-2 2" /></>,
+    work: <><path d="M3 7h18v14H3zM8 7V4h8v3M3 12h18M10 12v2h4v-2" /></>,
   };
 
   return (
@@ -43,15 +46,14 @@ function maskEmail(email) {
   return `${'*'.repeat(Math.min(8, localPart.length))}${localPart.slice(4)}@${domain}`;
 }
 
-export default function Profile({ user }) {
+export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onOpenSignIn, onOpenRegister }) {
   const [activeSection, setActiveSection] = useState('Personal information');
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [account, setAccount] = useState(user);
   const [isLoading, setIsLoading] = useState(true);
   const [editingField, setEditingField] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const isHost = ['admin', 'assistant'].includes(account?.role || user?.role);
-
   useEffect(() => {
     fetch(`${API_BASE_URL}/profile.php`, { credentials: 'include' })
       .then((response) => {
@@ -97,22 +99,18 @@ export default function Profile({ user }) {
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#111827] font-sans">
-      <header className="h-[76px] border-b border-neutral-200 flex items-center justify-between px-6 md:px-10 lg:px-12">
-        <Link to={isHost ? '/host/listings' : '/'} className="text-2xl font-semibold tracking-tight text-black no-underline" aria-label="Back to home">
-          H&A Cozy Pad
-        </Link>
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="rounded-full border-0 bg-neutral-100 px-8 py-3 text-sm font-semibold text-black hover:bg-neutral-200 cursor-pointer"
-        >
-          Done
-        </button>
-      </header>
+    <div className={`profile-settings min-h-screen bg-white text-[#111827] font-sans${isDetailOpen ? ' profile-settings--detail-open' : ''}`}>
+      <Header
+        isMenuOpen={isMenuOpen}
+        setIsMenuOpen={setIsMenuOpen}
+        user={user}
+        onLogout={onLogout}
+        onOpenSignIn={onOpenSignIn}
+        onOpenRegister={onOpenRegister}
+      />
 
       <main className="mx-auto flex max-w-[1300px] flex-col gap-8 px-6 py-8 md:flex-row md:gap-14 md:px-10 lg:px-12 lg:py-10">
-        <aside className="w-full shrink-0 md:w-[300px] lg:w-[340px]">
+        <aside className="profile-settings__list w-full shrink-0 md:w-[300px] lg:w-[340px]">
           <h1 className="mb-7 text-2xl font-semibold tracking-tight md:text-[28px]">Account settings</h1>
           <nav aria-label="Account settings">
             {settingsSections.map((section) => {
@@ -121,21 +119,28 @@ export default function Profile({ user }) {
                 <button
                   key={section.label}
                   type="button"
-                  onClick={() => setActiveSection(section.label)}
-                  className={`flex w-full items-center gap-4 rounded-2xl border-0 px-4 py-4 text-left text-base transition-colors cursor-pointer ${
+                  onClick={() => {
+                    setActiveSection(section.label);
+                    setIsDetailOpen(true);
+                  }}
+                  className={`profile-settings__row flex w-full items-center gap-4 rounded-2xl border-0 px-4 py-4 text-left text-base transition-colors cursor-pointer ${
                     isActive ? 'bg-neutral-100 font-semibold' : 'bg-transparent font-normal hover:bg-neutral-50'
                   }`}
                 >
                   <span className="h-6 w-6 shrink-0 text-neutral-900"><SettingsIcon name={section.icon} /></span>
                   <span className="flex-1">{section.label}</span>
                   {section.badge && <span className="rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-semibold text-pink-600">{section.badge}</span>}
+                  <svg className="profile-settings__chevron h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
               );
             })}
           </nav>
         </aside>
 
-        <section className="min-w-0 max-w-[695px] flex-1">
+        <section className="profile-settings__detail min-w-0 max-w-[695px] flex-1">
+          <button type="button" className="profile-settings__detail-back" onClick={() => setIsDetailOpen(false)} aria-label="Back to account settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          </button>
           <h2 className="mb-7 text-2xl font-semibold tracking-tight md:text-[28px]">{activeSection}</h2>
           {activeSection === 'Personal information' ? (
             <div className="divide-y divide-neutral-200 border-t border-neutral-200">
@@ -180,6 +185,104 @@ export default function Profile({ user }) {
           {saveError && <p className="mt-4 text-sm text-red-600">{saveError}</p>}
         </section>
       </main>
+      <Footer />
+    </div>
+  );
+}
+
+function EmailNotificationsRow({ isLoading, enabled, isSaving, onToggle }) {
+  return (
+    <div className="grid grid-cols-[1fr_auto] items-start gap-5 py-6 md:py-7">
+      <div className="min-w-0">
+        <h3 className="m-0 text-base font-semibold text-[#111827]">Email notifications</h3>
+        <p className="mt-1 max-w-[520px] text-[15px] leading-5 text-neutral-500">
+          Get emails about booking requests, confirmations and check-in reminders.
+          You will still see these updates in your notifications inside the app.
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="Email notifications"
+        disabled={isLoading || isSaving}
+        onClick={() => onToggle(!enabled)}
+        className={`relative mt-1 h-7 w-12 shrink-0 cursor-pointer rounded-full border-0 transition-colors disabled:opacity-50 ${
+          enabled ? 'bg-neutral-900' : 'bg-neutral-300'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all ${
+            enabled ? 'left-[22px]' : 'left-0.5'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+function EmailVerificationRow({ isLoading, email, isVerified }) {
+  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [message, setMessage] = useState('');
+
+  const resendVerification = async () => {
+    setStatus('sending');
+    setMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/send_verification.php`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Verification request failed (HTTP ${response.status}). Check the API service logs.`);
+      }
+      if (!response.ok) throw new Error(data.error || 'Unable to send verification email');
+
+      setStatus('sent');
+      setMessage(data.message || 'Verification email sent. Check your inbox.');
+    } catch (error) {
+      setStatus('error');
+      setMessage(error.message);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-[1fr_auto] gap-5 py-6 md:py-7">
+      <div className="min-w-0">
+        <h3 className="m-0 text-base font-semibold text-[#111827]">Email verification</h3>
+        <p className="mt-1 break-words text-[15px] text-neutral-500">
+          {isLoading ? 'Loading...' : (email || 'Not provided')}
+        </p>
+        <p className="mt-2">
+          {isLoading ? null : isVerified ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[13px] font-semibold text-green-700">
+              Verified
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-1 text-[13px] font-semibold text-yellow-700">
+              Not verified
+            </span>
+          )}
+        </p>
+        {message && (
+          <p className={`mt-2 text-sm ${status === 'error' ? 'text-red-600' : 'text-green-700'}`}>{message}</p>
+        )}
+      </div>
+      {!isLoading && !isVerified && (
+        <button
+          type="button"
+          disabled={status === 'sending'}
+          onClick={resendVerification}
+          className="self-start border-0 bg-transparent p-0 text-sm font-semibold text-[#111827] underline underline-offset-2 hover:text-neutral-500 cursor-pointer disabled:opacity-50"
+        >
+          {status === 'sending' ? 'Sending...' : 'Send verification email'}
+        </button>
+      )}
     </div>
   );
 }

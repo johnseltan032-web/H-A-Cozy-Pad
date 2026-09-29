@@ -481,14 +481,14 @@ export default function Location() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto flex items-center justify-between px-10 pb-6 pt-8">
+        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Back */}
           <button
             type="button"
             onClick={() => window.history.back()}
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-black
               bg-white
@@ -505,7 +505,7 @@ export default function Location() {
             type="button"
             onClick={handleContinue}
             className="
-              w-[142px] h-[50px]
+              w-full sm:w-[142px] h-[50px]
               rounded-full
               border border-black
               bg-black text-white

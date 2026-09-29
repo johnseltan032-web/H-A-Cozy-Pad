@@ -1,7 +1,8 @@
 import { GoogleLogin } from '@react-oauth/google';
+import { isGoogleConfigured } from '../lib/googleAuth';
 
 export default function GoogleAuthButton({ onSuccess, onError, disabled = false }) {
-  const isConfigured = !disabled && !!import.meta.env.VITE_GOOGLE_CLIENT_ID && import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your-google-oauth-client-id';
+  const isConfigured = !disabled && isGoogleConfigured;
 
   if (!isConfigured) {
     return (

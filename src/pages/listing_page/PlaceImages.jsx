@@ -339,13 +339,13 @@ export default function PlaceImages() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto flex items-center justify-between px-6 md:px-10 pb-6 pt-10">
+        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-10 sm:flex sm:items-center sm:justify-between sm:px-6 md:px-10">
 
           <button
             type="button"
             onClick={() => window.history.back()}
             className="
-              w-[142px]
+              w-full sm:w-[142px]
               h-[50px]
               rounded-full
               border
@@ -365,7 +365,7 @@ export default function PlaceImages() {
             disabled={images.length === 0}
             onClick={handleContinue}
             className={`
-              w-[142px]
+              w-full sm:w-[142px]
               h-[50px]
               rounded-full
               border

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './GoogleAuthButton';
+import { isGoogleConfigured } from '../lib/googleAuth';
 
 export default function AuthModal({
   isOpen,
@@ -14,7 +15,7 @@ export default function AuthModal({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const hasGoogleClient = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID) && import.meta.env.VITE_GOOGLE_CLIENT_ID !== 'your-google-oauth-client-id';
+  const hasGoogleClient = isGoogleConfigured;
 
   const navigate = useNavigate();
 
@@ -158,7 +159,7 @@ export default function AuthModal({
       }}
       className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
     >
-      <div className="w-full max-w-[520px] bg-white rounded-[25px] shadow-xl px-8 sm:px-12 py-10 relative">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-[25px] bg-white px-5 py-7 shadow-xl relative sm:px-12 sm:py-10">
         <button
           onClick={onClose}
           aria-label="Close"
