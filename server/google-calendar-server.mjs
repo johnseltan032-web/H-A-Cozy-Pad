@@ -38,7 +38,7 @@ app.get('/auth/callback', async (request, response) => {
     const { tokens } = await oauth2Client.getToken(request.query.code);
     credentials = tokens;
     oauth2Client.setCredentials(credentials);
-    response.redirect(`${frontendOrigin}/?connected=1`);
+    response.redirect(`${frontendOrigin}/host/calendar?connected=1`);
   } catch (error) {
     console.error('Google OAuth error:', error.message);
     response.status(500).send('Google Calendar authorization failed.');
@@ -47,6 +47,14 @@ app.get('/auth/callback', async (request, response) => {
 
 app.get('/auth/status', (_request, response) => {
   response.json({ connected: Boolean(credentials?.access_token || credentials?.refresh_token) });
+});
+
+app.post('/auth/disconnect', (_request, response) => {
+  credentials = null;
+  oauth2Client.revokeCredentials().catch((error) => {
+    console.error('Google Calendar token revocation error:', error.message);
+  });
+  response.json({ connected: false });
 });
 
 app.get('/events', async (request, response) => {
