@@ -28,6 +28,14 @@ const PLACEHOLDER_AMENITIES = Array.from(
   })
 );
 
+const PLACEHOLDER_CATEGORIES = [
+  'Category',
+  'Category',
+  'Category',
+  'Category',
+  'Category',
+];
+
 function normalizeAmenities(amenities) {
   if (!amenities) return [];
 
@@ -79,25 +87,16 @@ function formatPropertyCategory(category) {
   }[category] || category || 'Property';
 }
 
-function formatDateShort(dateString) {
-  if (!dateString) return '';
-  const date = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return dateString;
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
-}
-
-function StarRating({ rating, size = 'text-base' }) {
-  return (
-    <span className={`text-yellow-500 ${size}`} aria-label={`${rating} out of 5 stars`}>
-      {'★'.repeat(rating)}
-      <span className="text-neutral-300">{'★'.repeat(5 - rating)}</span>
-    </span>
-  );
-}
+const PLACEHOLDER_REVIEWS = Array.from(
+  { length: 6 },
+  (_, i) => ({
+    id: i + 1,
+    name: 'Name',
+    dateRange: '00/00/0000 - 00/00/0000',
+    text:
+      'Secure your upcoming booking by filling out the details below. Please choose your preferred date, time, and total number of guests. You will be held for a maximum of fifteen minutes upon schedule.',
+  })
+);
 
 export default function PropertyDetail({
   isMenuOpen,
@@ -119,20 +118,6 @@ export default function PropertyDetail({
 
   const [showAllComments, setShowAllComments] =
     useState(false);
-
-  // Reviews
-  const [reviews, setReviews] = useState([]);
-  const [averageRating, setAverageRating] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [reviewsLoading, setReviewsLoading] = useState(true);
-
-  const [reviewEligibility, setReviewEligibility] = useState({ eligible: false });
-  const [showReviewForm, setShowReviewForm] = useState(false);
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewComment, setReviewComment] = useState('');
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [reviewFormError, setReviewFormError] = useState('');
-  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -166,7 +151,7 @@ export default function PropertyDetail({
             `Request failed with status ${response.status}`
           );
         }
-
+        
         const data = await response.json();
 
         if (isMounted) {
@@ -227,79 +212,6 @@ export default function PropertyDetail({
   const propertyImages = Array.isArray(unit?.images)
     ? unit.images.filter(Boolean)
     : [];
-
-  const currentUnitId = unit?.unit_id;
-
-  const loadReviews = () => {
-    if (!currentUnitId) return;
-
-    setReviewsLoading(true);
-
-    fetch(`${API_BASE_URL}/get_reviews.php?unit_id=${encodeURIComponent(currentUnitId)}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!data) return;
-        setReviews(data.reviews || []);
-        setAverageRating(data.averageRating || 0);
-        setReviewCount(data.count || 0);
-      })
-      .catch(() => {})
-      .finally(() => setReviewsLoading(false));
-  };
-
-  const loadEligibility = () => {
-    if (!currentUnitId) return;
-
-    fetch(`${API_BASE_URL}/can_review.php?unit_id=${encodeURIComponent(currentUnitId)}`, {
-      credentials: 'include',
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (data) setReviewEligibility(data);
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    loadReviews();
-    loadEligibility();
-    setShowReviewForm(false);
-    setReviewSubmitted(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUnitId]);
-
-  const handleSubmitReview = async (event) => {
-    event.preventDefault();
-    setReviewFormError('');
-    setIsSubmittingReview(true);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/submit_review.php`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bookingId: reviewEligibility.bookingId,
-          rating: reviewRating,
-          comment: reviewComment,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Unable to submit review');
-
-      setReviewSubmitted(true);
-      setShowReviewForm(false);
-      setReviewComment('');
-      setReviewRating(5);
-      loadReviews();
-      loadEligibility();
-    } catch (error) {
-      setReviewFormError(error.message);
-    } finally {
-      setIsSubmittingReview(false);
-    }
-  };
 
   /*
    * ---------------------------------------------------------
@@ -483,8 +395,8 @@ export default function PropertyDetail({
 
   const visibleReviews =
     showAllComments
-      ? reviews
-      : reviews.slice(0, 6);
+      ? PLACEHOLDER_REVIEWS
+      : PLACEHOLDER_REVIEWS.slice(0, 6);
 
   return (
     <div className="bg-white text-black font-sans min-h-screen flex flex-col">
@@ -500,20 +412,6 @@ export default function PropertyDetail({
       />
 
       <main className="grow px-5 md:px-10 lg:px-[52px] py-10">
-
-        <div className="max-w-[1200px] mx-auto mb-6">
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-sm font-semibold text-neutral-700 hover:text-black bg-transparent border-0 p-0 cursor-pointer"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5" />
-              <path d="M12 19l-7-7 7-7" />
-            </svg>
-            Back
-          </button>
-        </div>
 
         {/* Loading */}
         {loading && (
@@ -540,113 +438,104 @@ export default function PropertyDetail({
         {/* Listing */}
         {!loading && !error && unit && (
           <div className="max-w-[1200px] mx-auto flex flex-col gap-10">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold">
-                {unit.building_name}
-              </h1>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">
+                  {unit.building_name}
+                </h1>
 
-              <p className="text-neutral-600 mt-1">
-                {unit.unit_name} ·{' '}
-                {unit.location}
-              </p>
+                <p className="text-neutral-600 mt-1">
+                  {unit.unit_name} ·{' '}
+                  {unit.location}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center justify-center rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-100 cursor-pointer"
+              >
+                Back
+              </button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
 
-              <div className="flex flex-col gap-3">
-                {/* Image Gallery */}
-                <div className="grid grid-cols-2 gap-3">
+              {/* Image Gallery */}
+              <div className="relative grid grid-cols-2 gap-3">
 
-                  {propertyImages.length === 0 && (
-                    <div className="col-span-2 h-56 md:h-72 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 flex items-center justify-center text-neutral-400">
+                {/* Main image */}
+                <div className="col-span-2 h-56 md:h-72 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+
+                  {propertyImages[0] ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedImageIndex(0)
+                      }
+                      className="w-full h-full cursor-pointer"
+                    >
+                      <img
+                        src={`${API_BASE_URL}/${propertyImages[0]}`}
+                        alt={
+                          unit.building_name
+                        }
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+                      />
+                    </button>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-400">
                       No image
                     </div>
                   )}
 
-                  {propertyImages.length === 1 && (
+                </div>
+
+                {/* Second image */}
+                <div className="h-28 md:h-32 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
+
+                  {propertyImages[1] ? (
                     <button
                       type="button"
-                      onClick={() => setSelectedImageIndex(0)}
-                      className="col-span-2 h-56 md:h-72 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 cursor-pointer"
+                      onClick={() =>
+                        setSelectedImageIndex(1)
+                      }
+                      className="w-full h-full cursor-pointer"
                     >
                       <img
-                        src={`${API_BASE_URL}/${propertyImages[0]}`}
-                        alt={unit.building_name}
+                        src={`${API_BASE_URL}/${propertyImages[1]}`}
+                        alt={`${unit.building_name} image 2`}
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                       />
                     </button>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                      No image
+                    </div>
                   )}
 
-                  {propertyImages.length === 2 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedImageIndex(0)}
-                        className="col-span-2 h-56 md:h-72 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 cursor-pointer"
-                      >
-                        <img
-                          src={`${API_BASE_URL}/${propertyImages[0]}`}
-                          alt={unit.building_name}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedImageIndex(1)}
-                        className="col-span-2 h-40 md:h-56 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 cursor-pointer"
-                      >
-                        <img
-                          src={`${API_BASE_URL}/${propertyImages[1]}`}
-                          alt={`${unit.building_name} image 2`}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-                        />
-                      </button>
-                    </>
-                  )}
+                </div>
 
-                  {propertyImages.length >= 3 && (
-                    <>
-                      {/* Main image */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedImageIndex(0)}
-                        className="col-span-2 h-56 md:h-72 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 cursor-pointer"
-                      >
-                        <img
-                          src={`${API_BASE_URL}/${propertyImages[0]}`}
-                          alt={unit.building_name}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-                        />
-                      </button>
+                {/* Third image */}
+                <div className="h-28 md:h-32 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
 
-                      {/* Second image */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedImageIndex(1)}
-                        className="h-28 md:h-32 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 cursor-pointer"
-                      >
-                        <img
-                          src={`${API_BASE_URL}/${propertyImages[1]}`}
-                          alt={`${unit.building_name} image 2`}
-                          className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-                        />
-                      </button>
-
-                      {/* Third image */}
-                      <div className="h-28 md:h-32 overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedImageIndex(2)}
-                          className="w-full h-full cursor-pointer"
-                        >
-                          <img
-                            src={`${API_BASE_URL}/${propertyImages[2]}`}
-                            alt={`${unit.building_name} image 3`}
-                            className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
-                          />
-                        </button>
-                      </div>
-                    </>
+                  {propertyImages[2] ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedImageIndex(2)
+                      }
+                      className="w-full h-full cursor-pointer"
+                    >
+                      <img
+                        src={`${API_BASE_URL}/${propertyImages[2]}`}
+                        alt={`${unit.building_name} image 3`}
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+                      />
+                    </button>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                      No image
+                    </div>
                   )}
 
                 </div>
@@ -655,11 +544,12 @@ export default function PropertyDetail({
                   <button
                     type="button"
                     onClick={() => setSelectedImageIndex(0)}
-                    className="self-start px-5 py-2.5 rounded-full border border-neutral-300 text-sm font-semibold hover:bg-neutral-100 cursor-pointer"
+                    className="absolute bottom-3 right-3 z-10 rounded-lg bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-sm hover:bg-black/85 cursor-pointer"
                   >
-                    Show all {propertyImages.length} photos
+                    Show all photos
                   </button>
                 )}
+
               </div>
 
               {/* Map */}
@@ -1003,7 +893,100 @@ export default function PropertyDetail({
 
             </section>
 
-            {/* Reviews section temporarily removed */}
+            <hr className="border-neutral-200" />
+
+            {/* =====================================================
+                REVIEWS
+            ====================================================== */}
+            
+            <section>
+
+              <h2 className="text-xl font-bold text-center mb-2">
+                Overall Ratings
+              </h2>
+
+              <p className="text-3xl font-bold text-center mb-6">
+                5.0
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-3 mb-8">
+
+                {PLACEHOLDER_CATEGORIES.map(
+                  (category, index) => (
+                    <span
+                      key={index}
+                      className="px-4 py-1.5 text-sm border border-neutral-300 rounded-full text-neutral-600"
+                    >
+                      {category}
+                    </span>
+                  )
+                )}
+
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                {visibleReviews.map(
+                  (review) => (
+                    <div
+                      key={review.id}
+                      className="flex flex-col gap-2"
+                    >
+
+                      <div className="flex items-center gap-2">
+
+                        <div className="w-9 h-9 rounded-full bg-neutral-200" />
+
+                        <div>
+
+                          <p className="text-sm font-medium">
+                            {review.name}
+                          </p>
+
+                          <p className="text-xs text-neutral-500">
+                            {review.dateRange}
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                      <p className="text-sm text-neutral-600">
+                        {review.text}
+                      </p>
+
+                      <button
+                        type="button"
+                        className="text-sm font-medium underline self-start cursor-pointer"
+                      >
+                        Show more
+                      </button>
+
+                    </div>
+                  )
+                )}
+
+              </div>
+
+              <div className="text-center mt-8">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowAllComments(
+                      (value) => !value
+                    )
+                  }
+                  className="px-8 py-3 border border-neutral-300 rounded-full font-medium hover:bg-neutral-100 cursor-pointer"
+                >
+                  {showAllComments
+                    ? 'Show less'
+                    : 'Show all comments'}
+                </button>
+
+              </div>
+
+            </section>
 
           </div>
         )}
