@@ -22,7 +22,7 @@ function GuestIcon() {
   );
 }
 
-export default function Trips() {
+export default function Trips({ onOpenSignIn }) {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -47,6 +47,7 @@ export default function Trips() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [requiresSignIn, setRequiresSignIn] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
@@ -80,10 +81,17 @@ export default function Trips() {
 
         const data = await response.json();
 
+        if (response.status === 401) {
+          setBookings([]);
+          setRequiresSignIn(true);
+          return;
+        }
+
         if (!response.ok) {
           throw new Error(data.error || "Unable to load trips");
         }
 
+        setRequiresSignIn(false);
         setBookings(data.bookings || []);
       } catch (err) {
         console.error("Trips error:", err);
@@ -427,7 +435,7 @@ const modificationDifference =
         setIsMenuOpen={setIsMenuOpen}
         user={user}
         onLogout={() => setUser(null)}
-        onOpenSignIn={() => navigate("/")}
+        onOpenSignIn={onOpenSignIn || (() => navigate("/"))}
         onOpenRegister={() => navigate("/")}
       />
       <main className="grow px-5 py-8 md:px-10 md:py-12">
@@ -457,20 +465,30 @@ const modificationDifference =
           </div>
         )}
 
-        {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+        {requiresSignIn && !isLoading && (
+          <section className="border-t border-gray-200 py-8">
+            <p className="text-base font-semibold">Sign in to view your reservations</p>
+            <p className="mt-2 text-sm text-gray-600">You can browse this page as a guest, but saved trips are linked to your account.</p>
+            <button type="button" onClick={onOpenSignIn} className="mt-4 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-neutral-800 cursor-pointer">
+              Sign in
+            </button>
+          </section>
+        )}
+
+        {error && !requiresSignIn && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
 
         {successMessage && (
           <p className="mb-6 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">{successMessage}</p>
         )}
 
-        {!isLoading && !error && bookings.length === 0 && (
+        {!isLoading && !error && !requiresSignIn && bookings.length === 0 && (
           <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
             <p className="text-lg font-semibold">No trips yet</p>
             <p className="mt-2 text-sm text-gray-500">Your saved trips will appear here.</p>
           </div>
         )}
 
-        {!isLoading && !error && bookings.length > 0 && (
+        {!isLoading && !error && !requiresSignIn && bookings.length > 0 && (
           <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
             <section>
               <div className="mb-3 flex items-center justify-between">

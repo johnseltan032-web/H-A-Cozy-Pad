@@ -580,7 +580,7 @@ export default function AdditionalInformation({
 
       formData.append(
         "guestEmail",
-        email
+        email.trim().toLowerCase()
       );
 
       formData.append(
@@ -635,6 +635,12 @@ export default function AdditionalInformation({
         throw new Error(
           data.error || 'Unable to create booking.'
         );
+      }
+
+      if (data.user) {
+        window.dispatchEvent(new CustomEvent('auth-changed', {
+          detail: { loggedIn: true, user: data.user },
+        }));
       }
 
       setSavedBookingId(data.bookingId);

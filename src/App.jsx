@@ -157,26 +157,19 @@ function AppContent() {
 
         <Route path="/verify-email" element={<VerifyEmail />} />
 
-        <Route element={
-            <ProtectedRoute
+        <Route
+          path="/profile"
+          element={
+            <Profile
               user={user}
-              isLoading={isLoading}
+              isMenuOpen={isMenuOpen}
+              setIsMenuOpen={setIsMenuOpen}
+              onLogout={() => setUser(null)}
+              onOpenSignIn={() => handleOpenAuth('/profile')}
+              onOpenRegister={handleOpenRegister}
             />
-          }>
-          <Route
-            path="/profile"
-            element={
-              <Profile
-                user={user}
-                isMenuOpen={isMenuOpen}
-                setIsMenuOpen={setIsMenuOpen}
-                onLogout={() => setUser(null)}
-                onOpenSignIn={() => handleOpenAuth('/')}
-                onOpenRegister={handleOpenRegister}
-              />
-            }
-          />
-        </Route>
+          }
+        />
 
         <Route
           element={
@@ -305,44 +298,37 @@ function AppContent() {
         />
 
         <Route
+          path="/trips"
+          element={<Trips onOpenSignIn={() => handleOpenAuth('/trips')} />}
+        />
+
+        <Route
+          path="/booking-confirmation"
           element={
-            <ProtectedRoute
+            <BookingConfirmation
               user={user}
-              isLoading={isLoading}
-              allowedRoles={['customer', 'admin', 'assistant']}
+              onLogout={() => setUser(null)}
+              isMenuOpen={isMenuOpen}
+              setIsMenuOpen={setIsMenuOpen}
+              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenRegister={handleOpenRegister}
             />
           }
-        >
-          <Route path="/trips" element={<Trips />} />
+        />
 
-          <Route
-            path="/booking-confirmation"
-            element={
-              <BookingConfirmation
-                user={user}
-                onLogout={() => setUser(null)}
-                isMenuOpen={isMenuOpen}
-                setIsMenuOpen={setIsMenuOpen}
-                onOpenSignIn={() => handleOpenAuth('/')}
-                onOpenRegister={handleOpenRegister}
-              />
-            }
-          />
-
-          <Route
-            path="/booking-confirmation-2"
-            element={
-              <BookingConfirmation2
-                user={user}
-                onLogout={() => setUser(null)}
-                isMenuOpen={isMenuOpen}
-                setIsMenuOpen={setIsMenuOpen}
-                onOpenSignIn={() => handleOpenAuth('/')}
-                onOpenRegister={handleOpenRegister}
-              />
-            }
-          />
-        </Route>
+        <Route
+          path="/booking-confirmation-2"
+          element={
+            <BookingConfirmation2
+              user={user}
+              onLogout={() => setUser(null)}
+              isMenuOpen={isMenuOpen}
+              setIsMenuOpen={setIsMenuOpen}
+              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenRegister={handleOpenRegister}
+            />
+          }
+        />
       </Routes>
 
       <MobileTabBar onOpenChat={() => setIsChatOpen(true)} />

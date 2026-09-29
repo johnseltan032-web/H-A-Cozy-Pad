@@ -519,13 +519,13 @@ export default function DashboardReservations() {
                   )}
 
                   {canViewCustomer && (
-                    <div className="mt-5 grid w-full grid-cols-1 gap-2 border-t border-neutral-100 pt-4 sm:grid-cols-2">
+                    <div className="mt-5 flex w-full flex-wrap justify-center gap-2 border-t border-neutral-100 pt-4 sm:justify-end">
                       <button
                         type="button"
                         onClick={() =>
                           handleViewCustomer(reservation)
                         }
-                        className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 sm:col-span-2"
+                        className="min-w-[112px] flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 sm:flex-none"
                       >
                         View Customer
                       </button>
@@ -558,7 +558,7 @@ export default function DashboardReservations() {
                                   });
                                 }
                               }}
-                              className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="min-w-[96px] flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                             >
                               {isUpdating
                                 ? 'Updating...'
@@ -592,7 +592,7 @@ export default function DashboardReservations() {
                                   });
                                 }
                               }}
-                              className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="min-w-[96px] flex-1 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
                             >
                               {isUpdating
                                 ? 'Updating...'

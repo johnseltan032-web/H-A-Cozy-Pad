@@ -132,7 +132,7 @@ export default function Header({
           ref={menuRef}
           className="header-menu absolute right-3 top-[90px] z-[2100] w-[min(280px,calc(100vw-1.5rem))] rounded-2xl border border-neutral-100 bg-white py-3 shadow-xl sm:right-[30px]"
         >
-          {user && (
+          {user && ['admin', 'assistant'].includes(String(user.role || '').toLowerCase()) && (
             <Link
               to="/host/listings"
               onClick={() => setIsMenuOpen(false)}

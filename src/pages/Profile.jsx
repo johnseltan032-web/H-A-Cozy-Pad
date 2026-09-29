@@ -110,6 +110,15 @@ export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onO
       />
 
       <main className="mx-auto flex max-w-[1300px] flex-col gap-8 px-6 py-8 md:flex-row md:gap-14 md:px-10 lg:px-12 lg:py-10">
+        {!user ? (
+          <section className="w-full max-w-2xl border-t border-neutral-200 py-8">
+            <h1 className="m-0 text-2xl font-semibold">Account settings</h1>
+            <p className="mt-3 text-neutral-600">Sign in to view and manage your personal information, security, and notification settings.</p>
+            <button type="button" onClick={onOpenSignIn} className="mt-5 rounded-full bg-black px-5 py-3 text-sm font-semibold text-white hover:bg-neutral-800 cursor-pointer">
+              Sign in
+            </button>
+          </section>
+        ) : <>
         <aside className="profile-settings__list w-full shrink-0 md:w-[300px] lg:w-[340px]">
           <h1 className="mb-7 text-2xl font-semibold tracking-tight md:text-[28px]">Account settings</h1>
           <nav aria-label="Account settings">
@@ -184,6 +193,7 @@ export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onO
           )}
           {saveError && <p className="mt-4 text-sm text-red-600">{saveError}</p>}
         </section>
+        </>}
       </main>
       <Footer />
     </div>

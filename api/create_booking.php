@@ -8,12 +8,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
 header('Content-Type: application/json');
 
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Authentication required']);
-    exit;
-}
-
 $data = $_POST ?: (json_decode(file_get_contents('php://input'), true) ?? []);
 
 $unitId = (int) ($data['unitId'] ?? 0);
@@ -22,6 +16,7 @@ $checkOut = trim($data['checkOut'] ?? '');
 $guests = (int) ($data['guests'] ?? 1);
 $guestName = trim($data['guestName'] ?? '');
 $guestContactNum = trim($data['guestContactNum'] ?? '');
+$guestEmail = strtolower(trim($data['guestEmail'] ?? ''));
 $vehicleType = trim($data['vehicleType'] ?? '');
 $specialRequests = trim($data['specialRequests'] ?? '');
 
@@ -38,6 +33,13 @@ if (strlen($guestName) > 50 || !preg_match('/^[0-9]{11}$/', $guestContactNum)) {
     echo json_encode([
         'error' => 'Guest name or contact number is invalid'
     ]);
+    exit;
+}
+
+$isGuestCheckout = !isset($_SESSION['user_id']);
+if ($isGuestCheckout && (!filter_var($guestEmail, FILTER_VALIDATE_EMAIL) || strlen($guestEmail) > 50)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'A valid email address of 50 characters or fewer is required for guest checkout']);
     exit;
 }
 
@@ -63,20 +65,33 @@ if ($checkInDate < $today) {
 }
 
 try {
-    $customer = $pdo->prepare(
-        'SELECT customer_id
-         FROM customer_profiles
-         WHERE user_id = ?'
-    );
-    $customer->execute([$_SESSION['user_id']]);
-    $customerId = $customer->fetchColumn();
+    $customerId = null;
+    if (!$isGuestCheckout) {
+        if (strtolower($_SESSION['role'] ?? '') !== 'customer') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Only customer accounts can make bookings']);
+            exit;
+        }
 
-    if (!$customerId) {
-        http_response_code(400);
-        echo json_encode([
-            'error' => 'Only customer accounts can make bookings'
-        ]);
-        exit;
+        $customer = $pdo->prepare(
+            'SELECT customer_id FROM customer_profiles WHERE user_id = ?'
+        );
+        $customer->execute([$_SESSION['user_id']]);
+        $customerId = $customer->fetchColumn();
+
+        if (!$customerId) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Customer profile not found']);
+            exit;
+        }
+    } else {
+        $existingAccount = $pdo->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+        $existingAccount->execute([$guestEmail]);
+        if ($existingAccount->fetchColumn()) {
+            http_response_code(409);
+            echo json_encode(['error' => 'An account with this email already exists. Sign in to book with that email.']);
+            exit;
+        }
     }
 
     $unit = $pdo->prepare(
@@ -183,6 +198,25 @@ try {
          FOR UPDATE'
     );
     $lockedUnit->execute([$unitId]);
+
+    $guestUserId = null;
+    if ($isGuestCheckout) {
+        $guestAccount = $pdo->prepare(
+            'INSERT INTO users (full_name, email, password, contact_num, role)
+             VALUES (?, ?, ?, ?, \'customer\')'
+        );
+        $guestAccount->execute([
+            $guestName,
+            $guestEmail,
+            password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT),
+            $guestContactNum,
+        ]);
+        $guestUserId = (int) $pdo->lastInsertId();
+
+        $guestProfile = $pdo->prepare('INSERT INTO customer_profiles (user_id) VALUES (?)');
+        $guestProfile->execute([$guestUserId]);
+        $customerId = (int) $pdo->lastInsertId();
+    }
 
     $overlap = $pdo->prepare(
         'SELECT booking_id
@@ -329,6 +363,13 @@ try {
 
     $pdo->commit();
 
+    if ($isGuestCheckout) {
+        $_SESSION['user_id'] = $guestUserId;
+        $_SESSION['email'] = $guestEmail;
+        $_SESSION['role'] = 'customer';
+        $_SESSION['full_name'] = $guestName;
+    }
+
     try {
         $admins = $pdo->query("SELECT user_id, full_name, email FROM users WHERE role = 'admin'");
         $adminList = $admins->fetchAll(PDO::FETCH_ASSOC);
@@ -366,12 +407,26 @@ try {
         error_log('Booking notification/email failed: ' . $notifyError->getMessage());
     }
 
-    echo json_encode([
+    $responseData = [
         'success' => true,
         'bookingId' => $bookingId,
         'status' => 'payment_review',
         'proofOfPaymentPath' => $proofOfPaymentPath
-    ]);
+    ];
+
+    if ($isGuestCheckout) {
+        $responseData['user'] = [
+            'id' => $guestUserId,
+            'user_id' => $guestUserId,
+            'name' => $guestName,
+            'fullName' => $guestName,
+            'email' => $guestEmail,
+            'contactNum' => $guestContactNum,
+            'role' => 'customer',
+        ];
+    }
+
+    echo json_encode($responseData);
 
 } catch (Throwable $error) {
     if ($pdo->inTransaction()) {
