@@ -67,6 +67,11 @@ export default function RegisterModal({ isOpen, onClose }) {
         }
       }
 
+      if (res.status === 409) {
+        setError(data.error || 'An account with this email already exists. Please log in instead.');
+        return;
+      }
+
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.');
         return;
