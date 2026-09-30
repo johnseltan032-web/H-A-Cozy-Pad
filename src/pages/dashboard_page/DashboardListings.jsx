@@ -497,7 +497,7 @@ export default function DashboardListings() {
       )}
 
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-[3300] flex items-center justify-center bg-black/45 px-4 md:hidden" onClick={() => !isDeleting && setIsDeleteConfirmOpen(false)}>
+        <div className="fixed inset-0 z-[3300] flex items-center justify-center bg-black/45 px-4" onClick={() => !isDeleting && setIsDeleteConfirmOpen(false)}>
           <section role="alertdialog" aria-modal="true" aria-labelledby="confirm-delete-title" className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl sm:p-6" onClick={(event) => event.stopPropagation()}>
             <h2 id="confirm-delete-title" className="text-lg font-semibold">Delete this listing?</h2>
             <p className="mt-2 text-sm leading-5 text-neutral-600">This will permanently remove {selectedListing?.building_name || selectedListing?.unit_name || 'this property'} and its listing details.</p>

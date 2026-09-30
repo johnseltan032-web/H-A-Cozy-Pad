@@ -280,10 +280,7 @@ try {
                 : $difference;
             $paymentStatus = 'pending';
 
-            if (
-                !isset($_FILES['proofOfPayment']) ||
-                $_FILES['proofOfPayment']['error'] !== UPLOAD_ERR_OK
-            ) {
+            if (!isset($_FILES['proofOfPayment']) || $_FILES['proofOfPayment']['error'] === UPLOAD_ERR_NO_FILE) {
                 http_response_code(400);
                 echo json_encode([
                     'error' => 'Proof of payment is required for an additional payment'
@@ -292,6 +289,21 @@ try {
             }
 
             $file = $_FILES['proofOfPayment'];
+
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                $uploadError = match ($file['error']) {
+                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The selected image exceeds the server upload limit. Try a smaller image or increase upload_max_filesize in PHP settings.',
+                    UPLOAD_ERR_PARTIAL => 'The image upload was interrupted. Please try again.',
+                    UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'The server could not save the uploaded image. Please contact support.',
+                    default => 'The image could not be uploaded. Please try again.',
+                };
+
+                http_response_code(400);
+                echo json_encode([
+                    'error' => $uploadError
+                ]);
+                exit;
+            }
 
             if ($file['size'] > 10 * 1024 * 1024) {
                 http_response_code(400);

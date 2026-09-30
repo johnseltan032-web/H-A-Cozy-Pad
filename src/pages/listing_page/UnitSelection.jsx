@@ -103,7 +103,7 @@ export default function UnitSelection() {
             onClick={() => window.history.back()}
             className="w-full sm:w-[142px] h-[50px] rounded-full border border-black bg-white text-[20px] hover:bg-neutral-100 transition"
           >
-            Back
+            Exit
           </button>
 
           <button

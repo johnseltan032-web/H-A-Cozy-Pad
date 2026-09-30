@@ -16,7 +16,7 @@ export default function ListingHeader() {
         onClick={() => navigate('/host/listing')}
         className="text-2xl font-bold text-black bg-transparent border-none p-0 cursor-pointer sm:text-3xl lg:text-4xl"
       >
-        Listing
+        Booking
       </button>
 
       <div className="flex items-center gap-2 sm:gap-6">
@@ -26,7 +26,7 @@ export default function ListingHeader() {
           onClick={handleCancelListing}
           className="px-3 py-2 text-sm border border-black rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer sm:px-6 sm:py-2.5 sm:text-lg md:text-xl"
         >
-          Cancel Listing
+          Save & Exit
         </button>
 
 

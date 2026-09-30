@@ -159,7 +159,7 @@ function OccupiedIcon() {
 
 function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
   return (
-    <article className="flex h-full min-h-[220px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <article className="flex h-[200px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}>
@@ -287,7 +287,7 @@ export default function DashboardOverview() {
 
           <Link to="/host/listing" className="rounded-2xl border border-neutral-200 bg-neutral-900 p-4 text-white shadow-sm transition hover:bg-neutral-800">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-300">Create</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">New listing</h2>
+            <h2 className="mt-2 text-lg font-semibold text-white">New Booking</h2>
             <p className="mt-1 text-sm text-neutral-200">Add a new unit or property to the calendar.</p>
           </Link>
         </section>

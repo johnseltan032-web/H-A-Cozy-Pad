@@ -853,7 +853,7 @@ const modificationDifference =
     />
 
     <p className="mt-1 text-xs text-gray-500">
-      JPG, PNG, or WEBP only. Maximum size: 10MB.
+      JPG, PNG, WEBP, HEIC, or HEIF. Maximum size: 10MB.
     </p>
 
     {proofOfPayment && (

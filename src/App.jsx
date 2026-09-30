@@ -196,6 +196,7 @@ function AppContent() {
           <Route path="/host/statistics" element={<DashboardStatistics />} />
           <Route path="/host/expenses" element={<DashboardExpenses />} />
           <Route path="/host/listings" element={<DashboardListings />} />
+          <Route path="/listings" element={<DashboardListings />} />
           <Route path="/host/reservations" element={<DashboardReservations />} />
           <Route path="/host/calendar" element={<DashboardCalendar />} />
           <Route path="/host/inbox" element={<Inbox />} />
