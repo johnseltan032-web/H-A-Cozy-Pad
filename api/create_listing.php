@@ -10,6 +10,9 @@ error_log(print_r($_POST, true));
 $buildingName = trim(
     $data['buildingName'] ?? ''
 );
+$propertyName = trim(
+    $data['propertyName'] ?? ''
+);
 
 $location = trim(
     $data['location'] ?? ''
@@ -26,10 +29,6 @@ $zip = trim($data['zip'] ?? '');
 $latitude = $data['latitude'] ?? null;
 $longitude = $data['longitude'] ?? null;
 
-$unitName = trim(
-    $data['unitName'] ?? 'Entire place'
-);
-
 $tower = trim(
     $data['tower'] ?? ''
 );
@@ -42,20 +41,11 @@ $description = trim(
     $data['description'] ?? ''
 );
 
-$propertySize = trim($data['propertySize'] ?? '');
 $bathrooms = max(0, (int) ($data['bathrooms'] ?? 0));
 $bedroomDetails = json_decode($data['bedroomDetails'] ?? '[]', true);
-$basePrice = ($data['basePrice'] ?? '') !== ''
-    ? (float) $data['basePrice']
-    : null;
-$discounts = json_decode($data['discounts'] ?? '[]', true);
 
 if (!is_array($bedroomDetails)) {
     $bedroomDetails = [];
-}
-
-if (!is_array($discounts)) {
-    $discounts = [];
 }
 
 $maxGuests = (int) (
@@ -77,30 +67,9 @@ $availableUntil = trim(
 $amenities = $data['amenities'] ?? [];
 
 
-$allowedUnitNames = [
-    'Entire place',
-    'Room',
-    'Hostel shared-room',
-];
-
-if (
-    !in_array(
-        $unitName,
-        $allowedUnitNames,
-        true
-    )
-) {
-    http_response_code(400);
-
-    echo json_encode([
-        'error' => 'Invalid property type'
-    ]);
-
-    exit;
-}
-
 if (
     !$buildingName ||
+    !$propertyName ||
     !$location ||
     !$description ||
     !$tower ||
@@ -246,6 +215,7 @@ try {
         'INSERT INTO buildings
         (
             building_name,
+            property_name,
             location,
             location_search,
             country,
@@ -257,11 +227,12 @@ try {
             latitude,
             longitude
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     $building->execute([
         $buildingName,
+        $propertyName,
         $location,
         $locationSearch,
         $country,
@@ -275,8 +246,7 @@ try {
     ]);
 
     $buildingId = $pdo->lastInsertId();
-
-    $unitDisplayName = trim(($tower !== '' ? $tower : $unitName) . ' ' . $unitNumber);
+    $unitLabel = trim($tower . ' ' . $unitNumber);
 
     $unit = $pdo->prepare(
         'INSERT INTO units
@@ -286,32 +256,26 @@ try {
             tower,
             unit_number,
             description,
-            property_size,
             max_guests,
             bathrooms,
             bedroom_details,
             rate_per_night,
-            base_price,
-            discounts,
             available_from,
             available_until
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
 
     $unit->execute([
         $buildingId,
-        $unitDisplayName ?: $unitName,
+        $unitLabel,
         $tower,
         $unitNumber,
         $description,
-        $propertySize ?: null,
         $maxGuests,
         $bathrooms,
         json_encode($bedroomDetails),
         $ratePerNight,
-        $basePrice,
-        json_encode($discounts),
         $availableFrom,
         $availableUntil,
     ]);
@@ -536,7 +500,7 @@ try {
         'success' => true,
         'buildingId' => (int) $buildingId,
         'unitId' => (int) $unitId,
-        'unitName' => $unitName,
+        'unitLabel' => $unitLabel,
         'availableFrom' => $availableFrom,
         'availableUntil' => $availableUntil,
         'images' => $uploadedImages,

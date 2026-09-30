@@ -23,6 +23,7 @@ $stmt = $pdo->prepare(
     'SELECT
         b.building_id,
         b.building_name,
+        b.property_name,
         b.location,
         b.location_search,
         b.country,
@@ -38,13 +39,10 @@ $stmt = $pdo->prepare(
         u.tower,
         u.unit_number,
         u.description,
-        u.property_size,
         u.max_guests,
         u.bathrooms,
         u.bedroom_details,
         u.rate_per_night,
-        u.base_price,
-        u.discounts,
         u.available_from,
         u.available_until,
         u.status,
@@ -56,12 +54,12 @@ $stmt = $pdo->prepare(
     LEFT JOIN unit_amenities a ON a.amenity_id = ua.amenity_id
     LEFT JOIN unit_images ui ON ui.unit_id = u.unit_id
     WHERE b.building_id = ?
-    GROUP BY b.building_id, b.building_name, b.location,
+    GROUP BY b.building_id, b.building_name, b.property_name, b.location,
         b.location_search, b.country, b.state, b.city, b.street,
         b.unit_location, b.zip, b.latitude, b.longitude, u.unit_id,
         u.unit_name, u.description,
-        u.property_size, u.tower, u.unit_number, u.max_guests, u.bathrooms, u.bedroom_details,
-        u.rate_per_night, u.base_price, u.discounts, u.available_from,
+        u.tower, u.unit_number, u.max_guests, u.bathrooms, u.bedroom_details,
+        u.rate_per_night, u.available_from,
         u.available_until, u.status'
 );
 
@@ -80,7 +78,6 @@ $listing['amenities'] = $listing['amenities']
     : [];
 
 $listing['bedroom_details'] = json_decode($listing['bedroom_details'] ?? '[]', true) ?: [];
-$listing['discounts'] = json_decode($listing['discounts'] ?? '[]', true) ?: [];
 
 $listing['images'] = $listing['images']
     ? array_map(static function ($image) {

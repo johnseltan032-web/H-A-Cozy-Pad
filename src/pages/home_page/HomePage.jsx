@@ -62,9 +62,10 @@ export default function HomePage({
     const filtered = properties.filter((property) => {
       const matchesQuery =
         !query ||
+        property.property_name?.toLowerCase().includes(query.toLowerCase()) ||
         property.building_name?.toLowerCase().includes(query.toLowerCase()) ||
         property.location?.toLowerCase().includes(query.toLowerCase()) ||
-        property.unit_name?.toLowerCase().includes(query.toLowerCase());
+        property.unit_number?.toLowerCase().includes(query.toLowerCase());
 
       const matchesGuests =
         !num_of_guests || (property.max_guests ? property.max_guests >= num_of_guests : true);

@@ -9,6 +9,7 @@ if (empty($data)) {
 
 $buildingId = (int) ($data['buildingId'] ?? 0);
 $buildingName = trim($data['buildingName'] ?? '');
+$propertyName = trim($data['propertyName'] ?? '');
 $location = trim($data['location'] ?? '');
 $locationSearch = trim($data['locationSearch'] ?? '');
 $country = trim($data['country'] ?? '');
@@ -17,17 +18,13 @@ $city = trim($data['city'] ?? '');
 $street = trim($data['street'] ?? '');
 $unitLocation = trim($data['unitLocation'] ?? '');
 $zip = trim($data['zip'] ?? '');
-$unitName = trim($data['unitName'] ?? 'Entire place');
 $tower = trim($data['tower'] ?? '');
 $unitNumber = trim($data['unitNumber'] ?? '');
 $description = trim($data['description'] ?? '');
-$propertySize = trim($data['propertySize'] ?? '');
 $maxGuests = (int) ($data['maxGuests'] ?? 0);
 $bathrooms = max(0, (int) ($data['bathrooms'] ?? 0));
 $bedroomDetails = json_decode($data['bedroomDetails'] ?? '[]', true);
 $ratePerNight = (float) ($data['ratePerNight'] ?? 0);
-$basePrice = ($data['basePrice'] ?? '') !== '' ? (float) $data['basePrice'] : null;
-$discounts = json_decode($data['discounts'] ?? '[]', true);
 $availableFrom = trim($data['availableFrom'] ?? '');
 $availableUntil = trim($data['availableUntil'] ?? '');
 $amenities = $data['amenities'] ?? [];
@@ -45,13 +42,10 @@ if (!is_array($bedroomDetails)) {
     $bedroomDetails = [];
 }
 
-if (!is_array($discounts)) {
-    $discounts = [];
-}
-
 $existingListing = $pdo->prepare(
     'SELECT
         b.building_name,
+        b.property_name,
         b.location,
         b.location_search,
         b.country,
@@ -60,17 +54,13 @@ $existingListing = $pdo->prepare(
         b.street,
         b.unit_location,
         b.zip,
-        u.unit_name,
         u.tower,
         u.unit_number,
         u.description,
-        u.property_size,
         u.max_guests,
         u.bathrooms,
         u.bedroom_details,
         u.rate_per_night,
-        u.base_price,
-        u.discounts,
         u.available_from,
         u.available_until
      FROM buildings b
@@ -87,6 +77,7 @@ if (!$existing) {
 }
 
 $buildingName = array_key_exists('buildingName', $data) ? $buildingName : ($existing['building_name'] ?? '');
+$propertyName = array_key_exists('propertyName', $data) ? $propertyName : ($existing['property_name'] ?? $buildingName);
 $location = array_key_exists('location', $data) ? $location : ($existing['location'] ?? '');
 $locationSearch = array_key_exists('locationSearch', $data)
     ? $locationSearch : ($existing['location_search'] ?? '');
@@ -96,23 +87,18 @@ $city = array_key_exists('city', $data) ? $city : ($existing['city'] ?? '');
 $street = array_key_exists('street', $data) ? $street : ($existing['street'] ?? '');
 $unitLocation = array_key_exists('unitLocation', $data) ? $unitLocation : ($existing['unit_location'] ?? '');
 $zip = array_key_exists('zip', $data) ? $zip : ($existing['zip'] ?? '');
-$unitName = array_key_exists('unitName', $data) ? $unitName : ($existing['unit_name'] ?? 'Entire place');
 $tower = array_key_exists('tower', $data) ? $tower : ($existing['tower'] ?? '');
 $unitNumber = array_key_exists('unitNumber', $data) ? $unitNumber : ($existing['unit_number'] ?? '');
 $description = array_key_exists('description', $data) ? $description : ($existing['description'] ?? '');
-$propertySize = array_key_exists('propertySize', $data) ? $propertySize : ($existing['property_size'] ?? '');
 $maxGuests = array_key_exists('maxGuests', $data) ? $maxGuests : (int) ($existing['max_guests'] ?? 0);
 $bathrooms = array_key_exists('bathrooms', $data) ? $bathrooms : (int) ($existing['bathrooms'] ?? 0);
 $bedroomDetails = array_key_exists('bedroomDetails', $data)
     ? $bedroomDetails : (json_decode($existing['bedroom_details'] ?? '[]', true) ?: []);
 $ratePerNight = array_key_exists('ratePerNight', $data) ? $ratePerNight : (float) ($existing['rate_per_night'] ?? 0);
-$basePrice = array_key_exists('basePrice', $data) ? $basePrice : $existing['base_price'];
-$discounts = array_key_exists('discounts', $data)
-    ? $discounts : (json_decode($existing['discounts'] ?? '[]', true) ?: []);
 $availableFrom = array_key_exists('availableFrom', $data) ? $availableFrom : ($existing['available_from'] ?? '');
 $availableUntil = array_key_exists('availableUntil', $data) ? $availableUntil : ($existing['available_until'] ?? '');
 
-if (!$buildingId || !$buildingName || !$location || !$description || !$tower || !$unitNumber || $maxGuests < 1 || $maxGuests > 4 || $ratePerNight <= 0 || !$availableFrom || !$availableUntil) {
+    if (!$buildingId || !$buildingName || !$propertyName || !$location || !$description || !$tower || !$unitNumber || $maxGuests < 1 || $maxGuests > 4 || $ratePerNight <= 0 || !$availableFrom || !$availableUntil) {
     http_response_code(400);
     echo json_encode(['error' => 'Complete the required listing fields, including tower and unit number. Maximum 4 guests per unit.']);
     exit;
@@ -135,13 +121,14 @@ try {
 
     $building = $pdo->prepare(
         'UPDATE buildings
-         SET building_name = ?, location = ?,
+         SET building_name = ?, property_name = ?, location = ?,
              location_search = ?, country = ?, state = ?, city = ?,
              street = ?, unit_location = ?, zip = ?
          WHERE building_id = ?'
     );
     $building->execute([
         $buildingName,
+        $propertyName,
         $location,
         $locationSearch,
         $country,
@@ -153,27 +140,23 @@ try {
         $buildingId,
     ]);
 
-    $unitDisplayName = trim(($tower !== '' ? $tower : $unitName) . ' ' . $unitNumber);
-
+    $unitLabel = trim($tower . ' ' . $unitNumber);
     $unit = $pdo->prepare(
         'UPDATE units
-         SET unit_name = ?, tower = ?, unit_number = ?, description = ?, property_size = ?, max_guests = ?,
+         SET unit_name = ?, tower = ?, unit_number = ?, description = ?, max_guests = ?,
              bathrooms = ?, bedroom_details = ?, rate_per_night = ?,
-             base_price = ?, discounts = ?, available_from = ?, available_until = ?
+             available_from = ?, available_until = ?
          WHERE building_id = ?'
     );
     $unit->execute([
-        $unitDisplayName ?: $unitName,
+        $unitLabel,
         $tower,
         $unitNumber,
         $description,
-        $propertySize ?: null,
         $maxGuests,
         $bathrooms,
         json_encode($bedroomDetails),
         $ratePerNight,
-        $basePrice,
-        json_encode($discounts),
         $availableFrom,
         $availableUntil,
         $buildingId,

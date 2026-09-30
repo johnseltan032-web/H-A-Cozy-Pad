@@ -51,16 +51,6 @@ export default function ListingPublish() {
 
   const draft = getListingDraft();
 
-  const propertyTypeNames = {
-    entirePlace: 'Entire place',
-    room: 'Room',
-    hostel: 'Hostel shared-room',
-  };
-
-  const propertyType =
-    propertyTypeNames[draft.placeType] ||
-    'Entire place';
-
   const images = location.state?.images || [];
   const firstImage =
     images[0]?.preview ||
@@ -147,8 +137,9 @@ export default function ListingPublish() {
 
       formData.append(
         'buildingName',
-        draft.buildingName || ''
+        draft.building || draft.buildingName || ''
       );
+      formData.append('propertyName', draft.buildingName || '');
 
       formData.append(
         'location',
@@ -162,11 +153,8 @@ export default function ListingPublish() {
       formData.append('street', draft.street || '');
       formData.append('unitLocation', draft.unit || '');
       formData.append('zip', draft.zip || '');
-      formData.append('propertySize', draft.propertySize || '');
       formData.append('bathrooms', draft.bathrooms || '0');
       formData.append('bedroomDetails', JSON.stringify(draft.bedrooms || []));
-      formData.append('basePrice', draft.basePrice || '');
-      formData.append('discounts', JSON.stringify(draft.discounts || []));
 
       if (
         draft.latitude !== null &&
@@ -187,11 +175,6 @@ export default function ListingPublish() {
           draft.longitude
         );
       }
-
-      formData.append(
-        'unitName',
-        propertyType
-      );
 
       formData.append(
         'tower',
@@ -347,11 +330,6 @@ export default function ListingPublish() {
                   {propertyPlace}
                 </p>
               </div>
-
-              {/* Place type */}
-              <p className="text-[12px] text-neutral-500 mt-1">
-                {propertyType}
-              </p>
 
               <p className="text-[12px] text-neutral-500 mt-1">
                 {images.length}{' '}

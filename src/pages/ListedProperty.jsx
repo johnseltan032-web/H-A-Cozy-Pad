@@ -433,11 +433,13 @@ export default function PropertyDetail({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold">
-                  {unit.building_name}
+                  {unit.property_name || unit.building_name}
                 </h1>
 
                 <p className="text-neutral-600 mt-1">
-                  {unit.unit_name} ·{' '}
+                  {unit.building_name}
+                  {unit.tower ? ` · Tower ${unit.tower}` : ''}
+                  {unit.unit_number ? ` · Unit ${unit.unit_number}` : ''} ·{' '}
                   {unit.location}
                 </p>
               </div>
@@ -469,7 +471,7 @@ export default function PropertyDetail({
                       <img
                         src={`${API_BASE_URL}/${propertyImages[0]}`}
                         alt={
-                          unit.building_name
+                          unit.property_name || unit.building_name
                         }
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                       />
@@ -495,7 +497,7 @@ export default function PropertyDetail({
                     >
                       <img
                         src={`${API_BASE_URL}/${propertyImages[1]}`}
-                        alt={`${unit.building_name} image 2`}
+                        alt={`${unit.property_name || unit.building_name} image 2`}
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                       />
                     </button>
@@ -520,7 +522,7 @@ export default function PropertyDetail({
                     >
                       <img
                         src={`${API_BASE_URL}/${propertyImages[2]}`}
-                        alt={`${unit.building_name} image 3`}
+                        alt={`${unit.property_name || unit.building_name} image 3`}
                         className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                       />
                     </button>
@@ -609,24 +611,24 @@ export default function PropertyDetail({
 
                   <div className="grid grid-cols-2 gap-x-5 gap-y-4 text-sm sm:grid-cols-3">
                     <div>
-                      <p className="text-neutral-500">Property type</p>
-                      <p className="mt-1 font-medium">{unit.unit_name || '—'}</p>
+                      <p className="text-neutral-500">Building</p>
+                      <p className="mt-1 font-medium">{unit.building_name || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-neutral-500">Property size</p>
-                      <p className="mt-1 font-medium">{unit.property_size || 'Not specified'}</p>
+                      <p className="text-neutral-500">Tower</p>
+                      <p className="mt-1 font-medium">{unit.tower || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-neutral-500">Bathrooms</p>
-                      <p className="mt-1 font-medium">{unit.bathrooms ?? 0}</p>
+                      <p className="text-neutral-500">Unit number</p>
+                      <p className="mt-1 font-medium">{unit.unit_number || '—'}</p>
                     </div>
                     <div>
                       <p className="text-neutral-500">Maximum guests</p>
                       <p className="mt-1 font-medium">{unit.max_guests ?? '—'}</p>
                     </div>
                     <div>
-                      <p className="text-neutral-500">Base price</p>
-                      <p className="mt-1 font-medium">{unit.base_price ? `₱${Number(unit.base_price).toFixed(2)}` : 'Not specified'}</p>
+                      <p className="text-neutral-500">Bathrooms / toilets</p>
+                      <p className="mt-1 font-medium">{unit.bathrooms ?? 0}</p>
                     </div>
                   </div>
 
@@ -637,29 +639,7 @@ export default function PropertyDetail({
                         {unit.bedroom_details.map((bedroom, index) => (
                           <p key={bedroom.id || index}>
                             <span className="font-medium">Bedroom {index + 1}:</span>{' '}
-                            {(bedroom.beds || []).map((bed, bedIndex) => `${bed.numBeds || 1} ${bed.bedType || 'bed'}${bedIndex < bedroom.beds.length - 1 ? ', ' : ''}`)}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {(unit.street || unit.city || unit.state || unit.country || unit.zip || unit.unit_location) && (
-                    <div className="mt-5">
-                      <p className="text-sm text-neutral-500">Address details</p>
-                      <p className="mt-1 text-sm">
-                        {[unit.street, unit.unit_location, unit.city, unit.state, unit.country, unit.zip].filter(Boolean).join(', ')}
-                      </p>
-                    </div>
-                  )}
-
-                  {Array.isArray(unit.discounts) && unit.discounts.some((discount) => discount.checked) && (
-                    <div className="mt-5">
-                      <p className="text-sm text-neutral-500">Special offers</p>
-                      <div className="mt-2 space-y-1 text-sm">
-                        {unit.discounts.filter((discount) => discount.checked).map((discount) => (
-                          <p key={discount.id || discount.title} className="font-medium">
-                            {discount.percent} off: {discount.title}
+                            {(bedroom.beds || []).map((bed) => `${bed.numBeds || 1} ${bed.bedType || 'bed'}`).join(', ')}
                           </p>
                         ))}
                       </div>

@@ -1,6 +1,7 @@
 create table buildings(
     building_id int auto_increment primary key,
     building_name varchar(100) not null,
+    property_name varchar(100) not null,
     location varchar(150) not null,
     location_search varchar(255) null,
     country varchar(100) null,

@@ -74,7 +74,7 @@ export default function PropertySection({ title, properties = [] }) {
                     {thumbnail ? (
                       <img
                         src={thumbnail}
-                        alt={property.unit_name || 'Property'}
+                        alt={property.property_name || property.building_name || 'Property'}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
@@ -89,7 +89,7 @@ export default function PropertySection({ title, properties = [] }) {
                   <div className="mt-2 sm:mt-3">
                     <div className="flex justify-between items-start gap-2">
                       <h3 className="min-w-0 break-words [overflow-wrap:anywhere] text-sm sm:text-base lg:text-lg font-normal leading-tight">
-                        {property.building_name}
+                        {property.property_name || property.building_name}
                       </h3>
 
                       {property.max_guests && (
@@ -99,9 +99,24 @@ export default function PropertySection({ title, properties = [] }) {
                       )}
                     </div>
 
-                    <p className="min-w-0 break-words [overflow-wrap:anywhere] text-xs sm:text-sm text-neutral-500 mt-0.5 line-clamp-2">
-                      {property.unit_name} • {property.location}
+                    <p className="min-w-0 break-words [overflow-wrap:anywhere] text-xs sm:text-sm text-neutral-500 mt-1 line-clamp-1">
+                      {property.building_name} · {property.location}
                     </p>
+
+                    <div className="mt-1 grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                      <div className="min-w-0">
+                        <span className="block text-neutral-400">Unit number</span>
+                        <span className="block break-words [overflow-wrap:anywhere] text-neutral-600">
+                          {property.unit_number || '—'}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-neutral-400">Tower</span>
+                        <span className="block break-words [overflow-wrap:anywhere] text-neutral-600">
+                          {property.tower || '—'}
+                        </span>
+                      </div>
+                    </div>
 
                     <p className="text-sm sm:text-base lg:text-lg font-light mt-1">
                       ₱{' '}

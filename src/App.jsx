@@ -42,10 +42,8 @@ import MobileTabBar from './components/MobileTabBar';
 // listing pages
 import PlaceOffer from './pages/listing_page/PlaceOffer';
 import UnitSelection from './pages/listing_page/UnitSelection';
-import PlaceDescription from './pages/listing_page/PlaceDescription';
 import PlaceLocation from './pages/listing_page/PlaceLocation';
 import PlaceRate from './pages/listing_page/PlaceRate';
-import PlaceDiscount from './pages/listing_page/PlaceDiscount';
 import PlaceDetail from './pages/listing_page/PlaceDetail';
 import ListingPublish from './pages/listing_page/ListingPublish';
 import PlaceImages from './pages/listing_page/PlaceImages';
@@ -209,10 +207,6 @@ function AppContent() {
             element={<UnitSelection />}
           />
           <Route
-            path="/host/listing/PlaceDescription"
-            element={<PlaceDescription />}
-          />
-          <Route
             path="/host/listing/PlaceOffer"
             element={<PlaceOffer />}
           />
@@ -223,10 +217,6 @@ function AppContent() {
           <Route
             path="/host/listing/PlaceRate"
             element={<PlaceRate />}
-          />
-          <Route
-            path="/host/listing/PlaceDiscount"
-            element={<PlaceDiscount />}
           />
           <Route
             path="/host/listing/PlaceDetail"

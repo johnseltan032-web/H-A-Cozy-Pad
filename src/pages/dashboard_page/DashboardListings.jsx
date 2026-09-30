@@ -21,6 +21,8 @@ const amenities = [
   'Pets allowed',
 ];
 
+const shoreBuildings = Array.from({ length: 10 }, (_, index) => `Shore ${index + 1}`);
+
 export default function DashboardListings() {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);
@@ -37,18 +39,15 @@ export default function DashboardListings() {
   const [toastMessage, setToastMessage] = useState('');
   const [editForm, setEditForm] = useState({
     buildingName: '',
+    propertyName: '',
     tower: '',
     unitNumber: '',
-    unitName: 'Entire place',
     location: '',
     description: '',
-    propertySize: '',
     bathrooms: 0,
     bedroomDetails: [],
     maxGuests: '',
     ratePerNight: '',
-    basePrice: '',
-    discounts: [],
     availableFrom: '',
     availableUntil: '',
     amenities: [],
@@ -169,18 +168,15 @@ export default function DashboardListings() {
 
       setEditForm({
         buildingName: data.building_name || '',
+        propertyName: data.property_name || data.building_name || '',
         tower: data.tower || '',
         unitNumber: data.unit_number || '',
-        unitName: data.unit_name || 'Entire place',
         location: data.location || '',
         description: data.description || '',
-        propertySize: data.property_size || '',
         bathrooms: data.bathrooms || 0,
         bedroomDetails: data.bedroom_details || [],
         maxGuests: data.max_guests || '',
         ratePerNight: data.rate_per_night || '',
-        basePrice: data.base_price || '',
-        discounts: data.discounts || [],
         availableFrom: data.available_from || '',
         availableUntil: data.available_until || '',
         amenities: data.amenities || [],
@@ -267,38 +263,6 @@ export default function DashboardListings() {
     }));
   };
 
-  const updateDiscount = (discountIndex, field, value) => {
-    setEditForm((currentForm) => ({
-      ...currentForm,
-      discounts: currentForm.discounts.map((discount, index) =>
-        index === discountIndex ? { ...discount, [field]: value } : discount
-      ),
-    }));
-  };
-
-  const addDiscount = () => {
-    setEditForm((currentForm) => ({
-      ...currentForm,
-      discounts: [
-        ...currentForm.discounts,
-        {
-          id: `discount-${Date.now()}`,
-          percent: '10%',
-          title: 'Custom offer',
-          description: '',
-          checked: true,
-        },
-      ],
-    }));
-  };
-
-  const removeDiscount = (discountIndex) => {
-    setEditForm((currentForm) => ({
-      ...currentForm,
-      discounts: currentForm.discounts.filter((_, index) => index !== discountIndex),
-    }));
-  };
-
   const handleNewImages = (event) => {
     const selectedImages = Array.from(event.target.files || []);
     setNewImages((currentImages) => [...currentImages, ...selectedImages]);
@@ -324,7 +288,7 @@ export default function DashboardListings() {
       Object.entries(editForm).forEach(([field, value]) => {
         if (field === 'amenities') {
           value.forEach((amenity) => body.append('amenities[]', amenity));
-        } else if (field === 'bedroomDetails' || field === 'discounts') {
+        } else if (field === 'bedroomDetails') {
           body.append(field, JSON.stringify(value));
         } else {
           body.append(field, value);
@@ -351,8 +315,8 @@ export default function DashboardListings() {
           ? {
               ...currentListing,
               building_name: editForm.buildingName,
+              property_name: editForm.propertyName,
               tower: editForm.tower,
-              unit_name: editForm.unitName,
               unit_number: editForm.unitNumber,
               location: editForm.location,
               max_guests: editForm.maxGuests,
@@ -434,7 +398,7 @@ export default function DashboardListings() {
 
                   <div className="min-w-0 flex-1">
                     <p className="line-clamp-2 break-words text-base font-semibold text-neutral-900">
-                      {listing.building_name || listing.unit_name}
+                      {listing.property_name || listing.building_name || listing.unit_name}
                     </p>
                   </div>
 
@@ -466,7 +430,7 @@ export default function DashboardListings() {
                 <div>
                   <p className="text-sm text-neutral-500">Property summary</p>
                   <h2 id="listing-summary-title" className="mt-1 text-xl font-semibold">
-                    {selectedListing.building_name || selectedListing.unit_name}
+                    {selectedListing.property_name || selectedListing.building_name || selectedListing.unit_name}
                   </h2>
                 </div>
                 <button type="button" onClick={() => setSelectedListing(null)} aria-label="Close property details" className="text-2xl leading-none text-neutral-500">&times;</button>
@@ -477,9 +441,9 @@ export default function DashboardListings() {
               )}
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+                <div><dt className="text-neutral-500">Property name</dt><dd className="mt-1 font-medium">{selectedListing.property_name || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Building</dt><dd className="mt-1 font-medium">{selectedListing.building_name || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Tower</dt><dd className="mt-1 font-medium">{selectedListing.tower || 'Not specified'}</dd></div>
-                <div><dt className="text-neutral-500">Unit</dt><dd className="mt-1 font-medium">{selectedListing.unit_name || selectedListing.unit_number || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Unit number</dt><dd className="mt-1 font-medium">{selectedListing.unit_number || 'Not specified'}</dd></div>
                 <div className="col-span-2"><dt className="text-neutral-500">Location</dt><dd className="mt-1 font-medium break-words">{selectedListing.location || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Guests</dt><dd className="mt-1 font-medium">{selectedListing.max_guests || 'Not specified'}</dd></div>
@@ -500,7 +464,7 @@ export default function DashboardListings() {
         <div className="fixed inset-0 z-[3300] flex items-center justify-center bg-black/45 px-4" onClick={() => !isDeleting && setIsDeleteConfirmOpen(false)}>
           <section role="alertdialog" aria-modal="true" aria-labelledby="confirm-delete-title" className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl sm:p-6" onClick={(event) => event.stopPropagation()}>
             <h2 id="confirm-delete-title" className="text-lg font-semibold">Delete this listing?</h2>
-            <p className="mt-2 text-sm leading-5 text-neutral-600">This will permanently remove {selectedListing?.building_name || selectedListing?.unit_name || 'this property'} and its listing details.</p>
+            <p className="mt-2 text-sm leading-5 text-neutral-600">This will permanently remove {selectedListing?.property_name || selectedListing?.building_name || selectedListing?.unit_name || 'this property'} and its listing details.</p>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} disabled={isDeleting} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm disabled:opacity-50">Cancel</button>
@@ -534,14 +498,32 @@ export default function DashboardListings() {
             ) : (
               <form onSubmit={saveEdit} className="mt-6 space-y-4">
                 <label className="block text-sm font-medium">
-                  Building name
+                  Property name
                   <input
-                    name="buildingName"
-                    value={editForm.buildingName}
+                    name="propertyName"
+                    value={editForm.propertyName}
                     onChange={handleEditChange}
                     required
                     className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
                   />
+                </label>
+
+                <label className="block text-sm font-medium">
+                  Building
+                  <select
+                    name="buildingName"
+                    value={editForm.buildingName}
+                    onChange={handleEditChange}
+                    required
+                    className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 font-normal outline-none focus:border-black"
+                  >
+                    {editForm.buildingName && !shoreBuildings.includes(editForm.buildingName) && (
+                      <option value={editForm.buildingName}>{editForm.buildingName}</option>
+                    )}
+                    {shoreBuildings.map((building) => (
+                      <option key={building} value={building}>{building}</option>
+                    ))}
+                  </select>
                 </label>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -568,22 +550,6 @@ export default function DashboardListings() {
                   </label>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-sm font-medium">
-                    Property type
-                    <select
-                      name="unitName"
-                      value={editForm.unitName}
-                      onChange={handleEditChange}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 font-normal outline-none focus:border-black"
-                    >
-                      <option value="Entire place">Entire place</option>
-                      <option value="Room">Room</option>
-                      <option value="Hostel shared-room">Hostel shared-room</option>
-                    </select>
-                  </label>
-                </div>
-
                 <label className="block text-sm font-medium">
                   Location
                   <input
@@ -607,30 +573,17 @@ export default function DashboardListings() {
                   />
                 </label>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-sm font-medium">
-                    Property size
-                    <input
-                      name="propertySize"
-                      value={editForm.propertySize}
-                      onChange={handleEditChange}
-                      placeholder="e.g. 45 sqm"
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
-                    />
-                  </label>
-
-                  <label className="block text-sm font-medium">
-                    Bathrooms
-                    <input
-                      name="bathrooms"
-                      type="number"
-                      min="0"
-                      value={editForm.bathrooms}
-                      onChange={handleEditChange}
-                      className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
-                    />
-                  </label>
-                </div>
+                <label className="block text-sm font-medium">
+                  Bathrooms / toilets
+                  <input
+                    name="bathrooms"
+                    type="number"
+                    min="0"
+                    value={editForm.bathrooms}
+                    onChange={handleEditChange}
+                    className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
+                  />
+                </label>
 
                 <fieldset className="rounded-xl border border-neutral-200 p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -706,62 +659,6 @@ export default function DashboardListings() {
                     />
                   </label>
                 </div>
-
-                <label className="block text-sm font-medium">
-                  Base price
-                  <input
-                    name="basePrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={editForm.basePrice}
-                    onChange={handleEditChange}
-                    placeholder="Optional"
-                    className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
-                  />
-                </label>
-
-                <fieldset className="rounded-xl border border-neutral-200 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <legend className="text-sm font-medium">Custom discounts</legend>
-                    <button type="button" onClick={addDiscount} className="text-sm font-medium underline">Add discount</button>
-                  </div>
-                  <div className="mt-3 space-y-3">
-                    {editForm.discounts.map((discount, discountIndex) => (
-                      <div key={discount.id || discountIndex} className="rounded-lg bg-neutral-50 p-3">
-                        <div className="grid gap-2 sm:grid-cols-[90px_1fr_auto]">
-                          <input
-                            value={discount.percent || ''}
-                            onChange={(event) => updateDiscount(discountIndex, 'percent', event.target.value)}
-                            placeholder="10%"
-                            className="rounded border border-neutral-300 px-2 py-2 text-sm"
-                          />
-                          <input
-                            value={discount.title || ''}
-                            onChange={(event) => updateDiscount(discountIndex, 'title', event.target.value)}
-                            placeholder="Offer title"
-                            className="rounded border border-neutral-300 px-2 py-2 text-sm"
-                          />
-                          <button type="button" onClick={() => removeDiscount(discountIndex)} className="text-xs text-red-600 underline">Remove</button>
-                        </div>
-                        <input
-                          value={discount.description || ''}
-                          onChange={(event) => updateDiscount(discountIndex, 'description', event.target.value)}
-                          placeholder="Offer description"
-                          className="mt-2 w-full rounded border border-neutral-300 px-2 py-2 text-sm"
-                        />
-                        <label className="mt-2 flex items-center gap-2 text-xs text-neutral-600">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(discount.checked)}
-                            onChange={(event) => updateDiscount(discountIndex, 'checked', event.target.checked)}
-                          />
-                          Show this offer to guests
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </fieldset>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-medium">

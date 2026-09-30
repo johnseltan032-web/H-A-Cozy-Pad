@@ -26,7 +26,7 @@ export default function UnitSelection() {
       unitCount: 1,
     });
 
-    navigate('/host/listing/PlaceDescription');
+    navigate('/host/listing/PlaceOffer');
   };
 
   return (

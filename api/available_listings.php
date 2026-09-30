@@ -16,6 +16,7 @@ try {
         "SELECT
             b.building_id,
             b.building_name,
+            b.property_name,
             b.location,
             b.location_search,
             b.country,
@@ -32,13 +33,10 @@ try {
             u.tower,
             u.unit_number,
             u.description,
-            u.property_size,
             u.max_guests,
             u.bathrooms,
             u.bedroom_details,
             u.rate_per_night,
-            u.base_price,
-            u.discounts,
             u.status,
             u.available_from,
             u.available_until,
@@ -74,6 +72,7 @@ try {
         GROUP BY
             b.building_id,
             b.building_name,
+            b.property_name,
             b.location,
             b.location_search,
             b.country,
@@ -90,13 +89,10 @@ try {
             u.tower,
             u.unit_number,
             u.description,
-            u.property_size,
             u.max_guests,
             u.bathrooms,
             u.bedroom_details,
             u.rate_per_night,
-            u.base_price,
-            u.discounts,
             u.status,
             u.available_from,
             u.available_until
@@ -108,7 +104,6 @@ try {
 
     foreach ($listings as &$listing) {
         $listing['bedroom_details'] = json_decode($listing['bedroom_details'] ?? '[]', true) ?: [];
-        $listing['discounts'] = json_decode($listing['discounts'] ?? '[]', true) ?: [];
 
         if (!empty($listing['images'])) {
             $listing['images'] = explode('|||', $listing['images']);

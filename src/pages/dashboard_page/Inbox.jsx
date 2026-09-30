@@ -21,18 +21,29 @@ function formatShortDate(value) {
 export default function Inbox() {
   const [messages, setMessages] = useState([]);
   const [status, setStatus] = useState('loading'); // loading | ready | error
+  const [loadError, setLoadError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('all'); // all | unread
   const [query, setQuery] = useState('');
 
   const load = useCallback(() => {
     fetch(`${API_BASE_URL}/inbox.php`, { credentials: 'include' })
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || `Unable to load messages (${res.status}).`);
+        }
+        return data;
+      })
       .then((data) => {
         setMessages(data.messages || []);
+        setLoadError('');
         setStatus('ready');
       })
-      .catch(() => setStatus('error'));
+      .catch((error) => {
+        setLoadError(error.message || 'Unable to load messages.');
+        setStatus('error');
+      });
   }, []);
 
   useEffect(() => {
@@ -139,7 +150,7 @@ export default function Inbox() {
               {status === 'loading' && <p className="m-0 p-6 text-center text-sm text-neutral-500">Loading messages…</p>}
               {status === 'error' && (
                 <p className="m-0 p-6 text-center text-sm text-red-600">
-                  Couldn't load messages.{' '}
+                  {loadError || "Couldn't load messages."}{' '}
                   <button type="button" onClick={load} className="cursor-pointer border-0 bg-transparent p-0 underline">
                     Try again
                   </button>

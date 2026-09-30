@@ -54,13 +54,38 @@ if (in_array($_SERVER['REQUEST_METHOD'], ['PATCH', 'PUT'], true)) {
     exit;
 }
 
-$stmt = $pdo->query(
-    'SELECT contact_id, name, email, subject, message, is_read, created_at
-     FROM contact_messages
-     ORDER BY created_at DESC
-     LIMIT 200'
-);
-$messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $tableCheck = $pdo->prepare(
+        'SELECT COUNT(*)
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
+         AND table_name = ?'
+    );
+    $tableCheck->execute(['contact_messages']);
+
+    if (!(int) $tableCheck->fetchColumn()) {
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'Inbox storage is missing. Apply sql/migrations/add_contact_messages.sql to the database.'
+        ]);
+        exit;
+    }
+
+    $stmt = $pdo->query(
+        'SELECT contact_id, name, email, subject, message, is_read, created_at
+         FROM contact_messages
+         ORDER BY created_at DESC
+         LIMIT 200'
+    );
+    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $error) {
+    error_log('Inbox load failed: ' . $error->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'error' => 'Unable to load inbox messages. Check the API service logs.'
+    ]);
+    exit;
+}
 
 $unreadCount = 0;
 foreach ($messages as $m) {

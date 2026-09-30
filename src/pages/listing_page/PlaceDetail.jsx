@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import ListingHeader from '../../components/ListingHeader';
 import { useNavigate } from 'react-router-dom';
 import { getListingDraft, updateListingDraft } from '../../lib/listingDraft';
@@ -9,7 +9,6 @@ export default function PropertyDetails() {
   const draft = getListingDraft();
   const [propertyName, setPropertyName] = useState(draft.buildingName || '');
   const [propertyDescription, setPropertyDescription] = useState(draft.description || '');
-  const [propertySize, setPropertySize] = useState(draft.propertySize || '');
 
   const updateField = (field, setValue) => (event) => {
     const value = event.target.value;
@@ -33,7 +32,7 @@ export default function PropertyDetails() {
 
           {/* Heading */}
           <h1 className="text-center text-[23px] md:text-[24px] font-semibold leading-tight mb-8">
-            Property Details
+            Property Name &amp; Description
           </h1>
 
           {/* Property Name */}
@@ -59,14 +58,6 @@ export default function PropertyDetails() {
             className="w-full border border-black rounded-[19px] px-5 py-4 text-[15px] placeholder:text-neutral-500 focus:outline-none focus:bg-neutral-50 resize-none mb-6"
           />
 
-          {/* Property Size */}
-          <input
-            type="text"
-            value={propertySize}
-            onChange={updateField('propertySize', setPropertySize)}
-            placeholder="Property Size (optional)"
-            className="w-full h-[52px] border border-black rounded-[19px] px-5 text-[15px] placeholder:text-neutral-500 focus:outline-none focus:bg-neutral-50 mb-8"
-          />
         </div>
 
         {/* Bottom buttons */}

@@ -10,6 +10,7 @@ export function getListingDraft() {
 
 export function updateListingDraft(patch) {
   const draft = { ...getListingDraft(), ...patch };
+  delete draft.unitType;
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
   return draft;
 }
