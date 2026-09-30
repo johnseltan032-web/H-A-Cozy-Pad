@@ -157,7 +157,7 @@ function OccupiedIcon() {
   );
 }
 
-function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
+function DailyOperationsCard({ title, count, items, icon, accent, emptyText, fixedListHeight = false }) {
   return (
     <article className="flex min-h-[190px] flex-col rounded-lg border border-neutral-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -171,7 +171,7 @@ function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
       </div>
 
       {items.length ? (
-        <ul className="m-0 flex-1 list-none overflow-y-auto pr-1 text-sm text-neutral-700">
+        <ul className={`m-0 ${fixedListHeight ? 'h-[150px] flex-none' : 'flex-1'} list-none overflow-y-auto pr-1 text-sm text-neutral-700`}>
           {items.map((item, index) => {
             const primaryLabel = item.property_name || item.unit_name || '—';
             const fallbackLabel = item.unit_name && item.property_name && item.unit_name !== item.property_name
@@ -378,6 +378,7 @@ export default function DashboardOverview() {
                 icon={<VacantIcon />}
                 accent="bg-violet-100 text-violet-700"
                 emptyText="No vacant units."
+                fixedListHeight
               />
               <DailyOperationsCard
                 title="Occupied / Booked"

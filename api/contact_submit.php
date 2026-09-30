@@ -40,33 +40,37 @@ $preview = mb_strlen($message) > 200 ? mb_substr($message, 0, 200) . '…' : $me
 $text = "New inquiry from $name ($email)\nSubject: $subject\n$preview\nOpen the Inbox to read and reply.";
 
 try {
+    // Store the full message for the Inbox page
+    $save = $pdo->prepare(
+        'INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)'
+    );
+    $save->execute([$name, $email, $subject, $message]);
+} catch (Throwable $e) {
+    error_log('Contact message save failed: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false]);
+    exit;
+}
+
+try {
     // ASSUMPTIONS: users has columns user_id and role.
     // notifications.booking_id must allow NULL, and `type` must accept 'contact_inquiry'.
     $admins = $pdo->query("SELECT user_id FROM users WHERE role IN ('admin','super_admin')")
                   ->fetchAll(PDO::FETCH_COLUMN);
 
     if (!$admins) {
-        http_response_code(500);
-        echo json_encode(['success' => false]);
-        exit;
+        error_log('Contact message saved without admin notifications: no admins found.');
+    } else {
+        $stmt = $pdo->prepare(
+            'INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
+             VALUES (?, NULL, ?, ?, 0, NOW())'
+        );
+        foreach ($admins as $adminId) {
+            $stmt->execute([$adminId, 'contact_inquiry', $text]);
+        }
     }
-
-    // Store the full message for the Inbox page
-    $save = $pdo->prepare(
-        'INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)'
-    );
-    $save->execute([$name, $email, $subject, $message]);
-
-    $stmt = $pdo->prepare(
-        'INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
-         VALUES (?, NULL, ?, ?, 0, NOW())'
-    );
-    foreach ($admins as $adminId) {
-        $stmt->execute([$adminId, 'contact_inquiry', $text]);
-    }
-
-    echo json_encode(['success' => true]);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false]);
+    error_log('Contact message saved, but admin notifications failed: ' . $e->getMessage());
 }
+
+echo json_encode(['success' => true]);

@@ -194,7 +194,7 @@ export default function ContactModal({ isOpen, onClose }) {
                 onChange={handleChange}
                 aria-invalid={!!errors.message}
                 aria-describedby={errors.message ? 'message-error' : undefined}
-                className={`${inputClass('message')} resize-y`}
+                className={`${inputClass('message')} h-[200px] resize-none overflow-y-auto`}
               />
             </Field>
 

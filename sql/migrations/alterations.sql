@@ -14,21 +14,5 @@ ALTER TABLE booking_requests
 ALTER TABLE users
     MODIFY role ENUM('super_admin', 'admin', 'customer') NOT NULL DEFAULT 'customer';
 
-UPDATE users
-SET role = CASE
-    WHEN role = 'admin' THEN 'super_admin'
-    WHEN role = 'assistant' THEN 'admin'
-    ELSE role
-END
-WHERE role IN ('admin', 'assistant');
-
 ALTER TABLE admin_profiles
     MODIFY position ENUM('super_admin', 'admin') NOT NULL;
-
-UPDATE admin_profiles ap
-JOIN users u ON u.user_id = ap.user_id
-SET ap.position = CASE
-    WHEN u.role = 'super_admin' THEN 'super_admin'
-    ELSE 'admin'
-END
-WHERE ap.position IN ('admin', 'assistant');

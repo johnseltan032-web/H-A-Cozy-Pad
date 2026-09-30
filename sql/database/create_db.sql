@@ -61,22 +61,14 @@ CREATE TABLE IF NOT EXISTS units (
     tower VARCHAR(50) NULL,
     unit_number VARCHAR(50) NULL,
     description TEXT NULL,
-    property_size VARCHAR(100) NULL,
     max_guests INT NOT NULL DEFAULT 1,
     bathrooms INT NOT NULL DEFAULT 0,
     bedroom_details JSON NULL,
     rate_per_night DECIMAL(10, 2) NOT NULL,
-    base_price DECIMAL(10, 2) NULL,
-    discounts JSON NULL,
-    customer_id INT NULL,
     status ENUM('available', 'occupied', 'maintenance', 'unavailable') NOT NULL DEFAULT 'available',
     available_from DATE NULL,
     available_until DATE NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_unit_customer
-        FOREIGN KEY (customer_id)
-        REFERENCES customer_profiles(customer_id)
-        ON DELETE SET NULL,
     CONSTRAINT fk_unit_building
         FOREIGN KEY (building_id)
         REFERENCES buildings(building_id)
@@ -356,21 +348,6 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   message    TEXT NOT NULL,
   is_read    TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_created (created_at)
+    INDEX idx_created (created_at)
 );
 
-UPDATE users
-SET role = CASE
-    WHEN role = 'admin' THEN 'super_admin'
-    WHEN role = 'assistant' THEN 'admin'
-    ELSE role
-END
-WHERE role IN ('admin', 'assistant');
-
-UPDATE admin_profiles ap
-JOIN users u ON u.user_id = ap.user_id
-SET ap.position = CASE
-    WHEN u.role = 'super_admin' THEN 'super_admin'
-    ELSE 'admin'
-END
-WHERE ap.position IN ('admin', 'assistant');
