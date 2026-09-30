@@ -27,6 +27,7 @@ import DashboardOverview from './pages/dashboard_page/dashboardOverview';
 import DashboardStatistics from './pages/dashboard_page/DashboardStatistics';
 import DashboardExpenses from './pages/dashboard_page/DashboardExpenses';
 import UserManagement from './pages/dashboard_page/UserManagement';
+import Inbox from './pages/dashboard_page/Inbox';
 
 // home page
 import HomePage from './pages/home_page/HomePage';
@@ -197,6 +198,7 @@ function AppContent() {
           <Route path="/host/listings" element={<DashboardListings />} />
           <Route path="/host/reservations" element={<DashboardReservations />} />
           <Route path="/host/calendar" element={<DashboardCalendar />} />
+          <Route path="/host/inbox" element={<Inbox />} />
           <Route
             path="/host/listing"
             element={<Navigate to="/host/listing/UnitSelection" replace />}

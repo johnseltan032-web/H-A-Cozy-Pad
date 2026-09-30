@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import Chatbot from '../../components/Chatbot';
+import ContactModal from '../../components/ContactModal';
 import { API_BASE_URL } from '../../lib/api';
 
 export default function HelpCenter({
@@ -10,6 +12,7 @@ export default function HelpCenter({
   onLogout,
   onOpenSignIn,
   onOpenRegister,
+  onOpenChat,
 }) {
   const [faqs, setFaqs] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -18,6 +21,17 @@ export default function HelpCenter({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
+  const handleOpenChat = () => {
+    if (typeof onOpenChat === 'function') {
+      onOpenChat();
+      return;
+    }
+
+    setIsChatOpen(true);
+  };
 
   const loadFaqData = useCallback(async () => {
     try {
@@ -144,6 +158,7 @@ export default function HelpCenter({
           <div className="grid w-full max-w-[420px] grid-cols-2 gap-2 mb-3 sm:flex sm:w-auto sm:gap-4 sm:mb-4">
             <button
               type="button"
+              onClick={handleOpenChat}
               className="px-3 py-2.5 text-sm sm:px-10 sm:py-3 sm:text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
             >
               Chatbots
@@ -151,6 +166,7 @@ export default function HelpCenter({
 
             <button
               type="button"
+              onClick={() => setIsContactOpen(true)}
               className="px-3 py-2.5 text-sm sm:px-10 sm:py-3 sm:text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
             >
               Contact Us
@@ -280,6 +296,15 @@ export default function HelpCenter({
       </main>
 
       <Footer />
+      <Chatbot
+        isOpen={isChatOpen}
+        onOpen={() => setIsChatOpen(true)}
+        onClose={() => setIsChatOpen(false)}
+      />
+      <ContactModal
+        isOpen={isContactOpen}
+        onClose={() => setIsContactOpen(false)}
+      />
     </div>
   );
 }

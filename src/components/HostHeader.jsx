@@ -231,6 +231,28 @@ export default function HostHeader({
             Help Center Management
           </Link>
 
+          {/* Inbox */}
+          <Link
+            to="/host/inbox"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <polyline points="3 7 12 13 21 7" />
+            </svg>
+            Inbox
+          </Link>
+
           {isAdmin && (<Link
             to="/host/users"
             onClick={() => setIsMenuOpen(false)}

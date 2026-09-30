@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS units (
     unit_id INT AUTO_INCREMENT PRIMARY KEY,
     building_id INT NOT NULL,
     unit_name VARCHAR(100) NOT NULL,
+    tower VARCHAR(50) NULL,
+    unit_number VARCHAR(50) NULL,
     description TEXT NULL,
     property_size VARCHAR(100) NULL,
     max_guests INT NOT NULL DEFAULT 1,
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS units (
     bedroom_details JSON NULL,
     rate_per_night DECIMAL(10, 2) NOT NULL,
     base_price DECIMAL(10, 2) NULL,
+    discounts JSON NULL,
     customer_id INT NULL,
     status ENUM('available', 'occupied', 'maintenance', 'unavailable') NOT NULL DEFAULT 'available',
     available_from DATE NULL,
@@ -343,3 +346,30 @@ create table IF NOT EXISTS reviews(
     constraint chk_review_rating
         check (rating between 1 and 5)
 );
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  contact_id INT AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(100) NOT NULL,
+  email      VARCHAR(150) NOT NULL,
+  subject    VARCHAR(150) NOT NULL,
+  message    TEXT NOT NULL,
+  is_read    TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_created (created_at)
+);
+
+UPDATE users
+SET role = CASE
+    WHEN role = 'admin' THEN 'super_admin'
+    WHEN role = 'assistant' THEN 'admin'
+    ELSE role
+END
+WHERE role IN ('admin', 'assistant');
+
+UPDATE admin_profiles ap
+JOIN users u ON u.user_id = ap.user_id
+SET ap.position = CASE
+    WHEN u.role = 'super_admin' THEN 'super_admin'
+    ELSE 'admin'
+END
+WHERE ap.position IN ('admin', 'assistant');

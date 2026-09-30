@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Chatbot from '../components/Chatbot';
+import ContactModal from '../components/ContactModal';
 
 const FAQS = [
   { id: 1, question: 'What is your cancellation policy?', answer: 'Answer to question 1 goes here.' },
@@ -16,11 +17,23 @@ export default function HelpCenter({
   setIsMenuOpen,
   onOpenSignIn,
   onOpenRegister,
+  onOpenChat,
 }) {
   const [openFaqId, setOpenFaqId] = useState(null);
+  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const toggleFaq = (id) => {
     setOpenFaqId(openFaqId === id ? null : id);
+  };
+
+  const handleOpenChat = () => {
+    if (typeof onOpenChat === 'function') {
+      onOpenChat();
+      return;
+    }
+
+    setIsChatOpen(true);
   };
 
   return (
@@ -53,10 +66,16 @@ export default function HelpCenter({
         <section className="flex flex-col items-center px-5 pb-10">
           <h2 className="text-2xl font-bold mb-6 text-center">Need to get in touch?</h2>
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <button className="px-10 py-3 text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer">
+            <button
+              onClick={handleOpenChat}
+              className="px-10 py-3 text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
+            >
               Chatbots
             </button>
-            <button className="px-10 py-3 text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer">
+            <button
+              onClick={() => setIsContactOpen(true)}
+              className="px-10 py-3 text-lg font-medium bg-neutral-100 border border-neutral-300 rounded-full hover:bg-neutral-200 cursor-pointer"
+            >
               Contact Us
             </button>
           </div>
@@ -106,7 +125,12 @@ export default function HelpCenter({
       </main>
 
       <Footer />
-      <Chatbot />
+      <Chatbot
+        isOpen={isChatOpen}
+        onOpen={() => setIsChatOpen(true)}
+        onClose={() => setIsChatOpen(false)}
+      />
+      <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
     </div>
   );
 }
