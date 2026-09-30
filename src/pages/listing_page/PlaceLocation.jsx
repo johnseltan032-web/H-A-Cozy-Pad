@@ -255,7 +255,6 @@ export default function Location() {
       {/* Header */}
       <ListingHeader
         onOpenQuestions={() => console.log('Questions')}
-        onSaveAndExit={() => console.log('Save & Exit')}
       />
 
       {/* Main content */}
@@ -481,7 +480,7 @@ export default function Location() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
+        <div className="listing-step-actions mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Back */}
           <button

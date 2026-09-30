@@ -32,6 +32,7 @@ export default function DashboardListings() {
   const [selectedListing, setSelectedListing] = useState(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -89,7 +90,7 @@ export default function DashboardListings() {
     }
 
     setIsDeleting(true);
-    setError('');
+    setDeleteError('');
 
     try {
       const response = await fetch(`${API_BASE_URL}/delete_listing.php`, {
@@ -114,7 +115,7 @@ export default function DashboardListings() {
       setIsDeleteConfirmOpen(false);
       setToastMessage('Listing deleted successfully');
     } catch (deleteError) {
-      setError(deleteError.message);
+      setDeleteError(deleteError.message);
     } finally {
       setIsDeleting(false);
     }
@@ -453,7 +454,7 @@ export default function DashboardListings() {
             </div>
 
             <div className="flex shrink-0 justify-end gap-2 border-t border-neutral-200 bg-white px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-7">
-              <button type="button" onClick={() => setIsDeleteConfirmOpen(true)} disabled={isDeleting} className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 disabled:opacity-50">Delete</button>
+              <button type="button" onClick={() => { setDeleteError(''); setIsDeleteConfirmOpen(true); }} disabled={isDeleting} className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 disabled:opacity-50">Delete</button>
               <button type="button" onClick={() => { setSelectedListing(null); openEditModal(); }} className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white">Edit</button>
             </div>
           </section>
@@ -461,13 +462,13 @@ export default function DashboardListings() {
       )}
 
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-[3300] flex items-center justify-center bg-black/45 px-4" onClick={() => !isDeleting && setIsDeleteConfirmOpen(false)}>
+        <div className="fixed inset-0 z-[3300] flex items-center justify-center bg-black/45 px-4" onClick={() => { if (!isDeleting) { setIsDeleteConfirmOpen(false); setDeleteError(''); } }}>
           <section role="alertdialog" aria-modal="true" aria-labelledby="confirm-delete-title" className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl sm:p-6" onClick={(event) => event.stopPropagation()}>
             <h2 id="confirm-delete-title" className="text-lg font-semibold">Delete this listing?</h2>
             <p className="mt-2 text-sm leading-5 text-neutral-600">This will permanently remove {selectedListing?.property_name || selectedListing?.building_name || selectedListing?.unit_name || 'this property'} and its listing details.</p>
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            {deleteError && <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{deleteError}</p>}
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setIsDeleteConfirmOpen(false)} disabled={isDeleting} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={() => { setIsDeleteConfirmOpen(false); setDeleteError(''); }} disabled={isDeleting} className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm disabled:opacity-50">Cancel</button>
               <button type="button" onClick={deleteListing} disabled={isDeleting} className="rounded-lg bg-red-700 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{isDeleting ? 'Deleting...' : 'Delete listing'}</button>
             </div>
           </section>

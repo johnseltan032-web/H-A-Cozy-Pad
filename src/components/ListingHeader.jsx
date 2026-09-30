@@ -1,20 +1,25 @@
 import { useNavigate } from 'react-router-dom';
 
-export default function ListingHeader() {
+export default function ListingHeader({ onSaveAndExit }) {
   const navigate = useNavigate();
 
   const handleCancelListing = () => {
+    if (onSaveAndExit) {
+      onSaveAndExit();
+      return;
+    }
+
     navigate('/host/listings');
   };
 
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-5 bg-[#fdfdfd] border-b border-neutral-200 shadow-sm sm:px-5 sm:py-7 md:px-10 lg:px-[52px]">
+    <header className="listing-header flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5 md:px-10 lg:px-[52px]">
       
       <button
         type="button"
         onClick={() => navigate('/host/listing')}
-        className="text-2xl font-bold text-black bg-transparent border-none p-0 cursor-pointer sm:text-3xl lg:text-4xl"
+        className="text-xl font-bold text-neutral-900 bg-transparent border-none p-0 cursor-pointer sm:text-2xl"
       >
         Booking
       </button>
@@ -24,7 +29,7 @@ export default function ListingHeader() {
         <button
           type="button"
           onClick={handleCancelListing}
-          className="px-3 py-2 text-sm border border-black rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer sm:px-6 sm:py-2.5 sm:text-lg md:text-xl"
+          className="px-4 py-2 text-sm border border-neutral-300 rounded-full text-neutral-700 hover:bg-neutral-50 bg-white cursor-pointer sm:px-5 sm:py-2.5"
         >
           Save & Exit
         </button>

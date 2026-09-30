@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../lib/api';
 import Header from '../components/Header';
+import HostHeader from '../components/HostHeader';
 import Footer from '../components/Footer_Lite';
 
 const settingsSections = [
@@ -46,7 +47,7 @@ function maskEmail(email) {
   return `${'*'.repeat(Math.min(8, localPart.length))}${localPart.slice(4)}@${domain}`;
 }
 
-export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onOpenSignIn, onOpenRegister }) {
+export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onOpenSignIn, onOpenRegister, isHostView = false }) {
   const [activeSection, setActiveSection] = useState('Personal information');
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [account, setAccount] = useState(user);
@@ -100,14 +101,18 @@ export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onO
 
   return (
     <div className={`profile-settings min-h-screen bg-white text-[#111827] font-sans${isDetailOpen ? ' profile-settings--detail-open' : ''}`}>
-      <Header
-        isMenuOpen={isMenuOpen}
-        setIsMenuOpen={setIsMenuOpen}
-        user={user}
-        onLogout={onLogout}
-        onOpenSignIn={onOpenSignIn}
-        onOpenRegister={onOpenRegister}
-      />
+      {isHostView ? (
+        <HostHeader activeNav="Settings" onLogout={onLogout} />
+      ) : (
+        <Header
+          isMenuOpen={isMenuOpen}
+          setIsMenuOpen={setIsMenuOpen}
+          user={user}
+          onLogout={onLogout}
+          onOpenSignIn={onOpenSignIn}
+          onOpenRegister={onOpenRegister}
+        />
+      )}
 
       <main className="mx-auto flex max-w-[1300px] flex-col gap-8 px-6 py-8 md:flex-row md:gap-14 md:px-10 lg:px-12 lg:py-10">
         {!user ? (
@@ -195,7 +200,7 @@ export default function Profile({ user, isMenuOpen, setIsMenuOpen, onLogout, onO
         </section>
         </>}
       </main>
-      <Footer />
+      {!isHostView && <Footer />}
     </div>
   );
 }

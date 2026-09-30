@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import NotificationBell from './NotificationBell';
 
@@ -7,6 +7,7 @@ export default function HostHeader({
   activeNav = 'Today',
   onLogout,
 }) {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [canViewStatistics, setCanViewStatistics] = useState(false);
@@ -21,7 +22,7 @@ export default function HostHeader({
     ...(canViewStatistics
       ? [{ label: 'Statistics', to: '/host/statistics', key: 'Statistics' }]
       : []),
-    { label: 'Settings', to: isAdmin ? '/host/users' : '/profile', key: 'Settings' },
+    { label: 'Settings', to: '/host/settings', key: 'Settings' },
   ];
 
   useEffect(() => {
@@ -102,11 +103,8 @@ export default function HostHeader({
             <li key={item.key}>
               <Link
                 to={item.to}
-                className={`text-base font-medium ${
-                  activeNav === item.key
-                    ? 'text-black border-b-2 border-black pb-1'
-                    : 'text-neutral-600 hover:text-black'
-                }`}
+                aria-current={activeNav === item.key ? 'page' : undefined}
+                className={`host-header__nav-link${activeNav === item.key ? ' is-active' : ''}`}
               >
                 {item.label}
               </Link>
@@ -119,13 +117,12 @@ export default function HostHeader({
       <div className="host-header__actions flex items-center gap-4 justify-self-end">
         <button
           type="button"
-          onClick={() => {
-            window.location.href = '/host/listing';
-          }}
-          className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-700"
+          aria-label="Create a new listing"
+          onClick={() => navigate('/host/listing')}
+          className="host-header__new-listing inline-flex items-center gap-2 rounded-full bg-[#df766c] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#bd584f]"
         >
           <span className="text-lg leading-none">+</span>
-          <span>New Booking</span>
+          <span>New listing</span>
         </button>
 
         <NotificationBell />

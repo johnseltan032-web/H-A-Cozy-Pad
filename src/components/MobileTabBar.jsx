@@ -11,7 +11,7 @@ const hostTabs = [
   { label: 'Calendar', to: '/host/calendar', icon: 'calendar' },
   { label: 'Expenses', to: '/host/expenses', icon: 'expenses' },
   { label: 'Statistics', to: '/host/statistics', icon: 'stats' },
-  { label: 'Settings', to: '/profile', icon: 'settings' },
+  { label: 'Settings', to: '/host/settings', icon: 'settings' },
 ];
 
 function TabIcon({ name }) {

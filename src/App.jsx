@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from 'react-router-dom';
 
 import { API_BASE_URL } from './lib/api';
@@ -60,6 +61,8 @@ export default function App() {
 
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isListingFlow = location.pathname.startsWith('/host/listing');
 
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +72,11 @@ function AppContent() {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const [loginRedirect, setLoginRedirect] = useState('/');
+
+  useEffect(() => {
+    document.body.classList.toggle('listing-flow-active', isListingFlow);
+    return () => document.body.classList.remove('listing-flow-active');
+  }, [isListingFlow]);
 
 
   const handleOpenAuth = (redirectTo = '/') => {
@@ -191,6 +199,16 @@ function AppContent() {
           }
         >
           <Route path="/host/overview" element={<DashboardOverview />} />
+          <Route
+            path="/host/settings"
+            element={
+              <Profile
+                user={user}
+                onLogout={() => setUser(null)}
+                isHostView
+              />
+            }
+          />
           <Route path="/host/statistics" element={<DashboardStatistics />} />
           <Route path="/host/expenses" element={<DashboardExpenses />} />
           <Route path="/host/listings" element={<DashboardListings />} />
@@ -296,7 +314,7 @@ function AppContent() {
         />
       </Routes>
 
-      <MobileTabBar onOpenChat={() => setIsChatOpen(true)} />
+      {!isListingFlow && <MobileTabBar onOpenChat={() => setIsChatOpen(true)} />}
 
       <AuthModal
         isOpen={isAuthModalOpen}
@@ -309,11 +327,13 @@ function AppContent() {
         onClose={() => setIsRegisterModalOpen(false)}
       />
 
-      <Chatbot
-        isOpen={isChatOpen}
-        onOpen={() => setIsChatOpen(true)}
-        onClose={() => setIsChatOpen(false)}
-      />
+      {!isListingFlow && (
+        <Chatbot
+          isOpen={isChatOpen}
+          onOpen={() => setIsChatOpen(true)}
+          onClose={() => setIsChatOpen(false)}
+        />
+      )}
     </>
   );
 }

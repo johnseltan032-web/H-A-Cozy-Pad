@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import ListingHeader from '../../components/ListingHeader';
 import { useNavigate } from 'react-router-dom';
 import { getListingDraft, updateListingDraft } from '../../lib/listingDraft';
@@ -46,7 +46,6 @@ export default function PlaceOffer() {
       {/* Header */}
       <ListingHeader
         onOpenQuestions={() => console.log('Questions')}
-        onSaveAndExit={() => console.log('Save & Exit')}
       />
 
       {/* Main content */}
@@ -60,7 +59,7 @@ export default function PlaceOffer() {
           </h1>
 
           {/* Amenity cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             {amenities.map((amenity) => {
               const selected = selectedAmenities.includes(amenity.id);
 
@@ -73,19 +72,19 @@ export default function PlaceOffer() {
                   className={`
                     flex flex-col items-center justify-center
                     text-center
-                    border border-black
-                    rounded-[19px]
-                    px-4 py-5
+                    border border-neutral-300
+                    rounded-xl
+                    px-3 py-4
                     transition
                     cursor-pointer
-                    ${selected ? 'bg-amber-600' : 'bg-white hover:bg-neutral-50'}
+                    ${selected ? 'border-[#df766c] bg-[#df766c] text-white' : 'bg-white hover:border-neutral-400 hover:bg-neutral-50'}
                   `}
                 >
-                  <h2 className="text-[15px] md:text-[16px] font-medium leading-tight mb-3">
+                  <h2 className="text-[14px] md:text-[15px] font-medium leading-tight mb-2">
                     {amenity.title}
                   </h2>
 
-                  <span className="text-2xl" aria-hidden="true">
+                  <span className="text-xl" aria-hidden="true">
                     {amenity.icon}
                   </span>
                 </button>
@@ -95,7 +94,7 @@ export default function PlaceOffer() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
+        <div className="listing-step-actions mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
 
           {/* Back */}
           <button

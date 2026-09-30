@@ -1,16 +1,29 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ListingHeader from '../../components/ListingHeader';
-import { updateListingDraft } from '../../lib/listingDraft';
+import { getListingDraft, updateListingDraft } from '../../lib/listingDraft';
 
 const BUILDING_OPTIONS = Array.from({ length: 10 }, (_, index) => `Shore ${index + 1}`);
 
 export default function UnitSelection() {
   const navigate = useNavigate();
-  const [building, setBuilding] = useState('Shore 1');
-  const [tower, setTower] = useState('');
-  const [unitNumber, setUnitNumber] = useState('');
-  const [maxGuests, setMaxGuests] = useState(4);
+  const draft = getListingDraft();
+  const [building, setBuilding] = useState(draft.building || 'Shore 1');
+  const [tower, setTower] = useState(draft.tower || '');
+  const [unitNumber, setUnitNumber] = useState(draft.unitNumber || '');
+  const [maxGuests, setMaxGuests] = useState(draft.maxGuests || 4);
+
+  const saveAndExit = () => {
+    updateListingDraft({
+      building,
+      tower: tower.trim(),
+      unitNumber: unitNumber.trim(),
+      maxGuests: Number(maxGuests),
+      unitSelection: [{ building, tower: tower.trim(), unitNumber: unitNumber.trim(), maxGuests: Number(maxGuests) }],
+      unitCount: 1,
+    });
+    navigate('/host/listings');
+  };
 
   const handleContinue = () => {
     if (!building || !tower.trim() || !unitNumber.trim()) {
@@ -33,7 +46,7 @@ export default function UnitSelection() {
     <div className="min-h-screen bg-white text-black font-sans flex flex-col">
       <ListingHeader
         onOpenQuestions={() => console.log('Questions')}
-        onSaveAndExit={() => console.log('Save & Exit')}
+        onSaveAndExit={saveAndExit}
       />
 
       <main className="flex-1 flex flex-col">
@@ -97,7 +110,7 @@ export default function UnitSelection() {
           </div>
         </div>
 
-        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
+        <div className="listing-step-actions mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-8 sm:flex sm:items-center sm:justify-between sm:px-10">
           <button
             type="button"
             onClick={() => window.history.back()}

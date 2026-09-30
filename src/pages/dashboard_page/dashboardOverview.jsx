@@ -159,10 +159,10 @@ function OccupiedIcon() {
 
 function DailyOperationsCard({ title, count, items, icon, accent, emptyText }) {
   return (
-    <article className="flex h-[200px] flex-col rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <article className="flex min-h-[190px] flex-col rounded-lg border border-neutral-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl ${accent}`}>
+          <span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${accent}`}>
             {icon}
           </span>
           <h2 className="m-0 text-base font-semibold text-neutral-800">{title}</h2>
@@ -244,28 +244,29 @@ export default function DashboardOverview() {
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-neutral-900">
+    <div className="pms-page min-h-screen font-sans text-neutral-900">
       <HostHeader activeNav="Dashboard" />
       <main className="mx-auto max-w-7xl px-5 py-8 md:px-10">
-        <header className="mb-7">
-          <h1 className="m-0 text-3xl font-semibold">Operations Overview</h1>
-          <p className="mb-0 mt-2 text-sm text-neutral-500">Daily property operations and booking activity.</p>
+        <header className="mb-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#bd584f]">Property operations</p>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight sm:text-3xl">Operations overview</h1>
+          <p className="mb-0 mt-2 text-sm text-neutral-500">Today’s bookings, arrivals, and unit status.</p>
         </header>
 
-        <section className="mb-7 grid gap-3 md:grid-cols-2 xl:grid-cols-5" aria-label="Operations shortcuts">
-          <Link to="/host/calendar" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+        <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Operations shortcuts">
+          <Link to="/host/calendar" className="rounded-lg border border-neutral-200 bg-white p-4 transition hover:border-[#df766c] hover:shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Calendar</p>
             <h2 className="mt-2 text-lg font-semibold text-neutral-900">Unit calendar</h2>
             <p className="mt-1 text-sm text-neutral-600">See bookings, check-ins, and occupancy in one place.</p>
           </Link>
 
-          <Link to="/host/reservations" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+          <Link to="/host/reservations" className="rounded-lg border border-neutral-200 bg-white p-4 transition hover:border-[#df766c] hover:shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Reservations</p>
             <h2 className="mt-2 text-lg font-semibold text-neutral-900">Manage stays</h2>
             <p className="mt-1 text-sm text-neutral-600">Approve, reject, and review all guest reservations.</p>
           </Link>
 
-          <Link to="/host/listings" className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition hover:border-neutral-400 hover:shadow-md">
+          <Link to="/host/listings" className="rounded-lg border border-neutral-200 bg-white p-4 transition hover:border-[#df766c] hover:shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Listings</p>
             <h2 className="mt-2 text-lg font-semibold text-neutral-900">Manage listings</h2>
             <p className="mt-1 text-sm text-neutral-600">Review, edit, and update unit details, pricing, and availability.</p>
@@ -278,17 +279,17 @@ export default function DashboardOverview() {
               <p className="mt-1 text-sm text-neutral-600">Review occupancy, revenue, and performance metrics.</p>
             </Link>
           ) : (
-            <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-neutral-500 shadow-sm">
+            <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-4 text-neutral-500">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500">Statistics</p>
               <h2 className="mt-2 text-lg font-semibold text-neutral-700">Restricted</h2>
               <p className="mt-1 text-sm text-neutral-600">Statistics are hidden for this admin profile.</p>
             </div>
           )}
 
-          <Link to="/host/listing" className="rounded-2xl border border-neutral-200 bg-neutral-900 p-4 text-white shadow-sm transition hover:bg-neutral-800">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-300">Create</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">New Booking</h2>
-            <p className="mt-1 text-sm text-neutral-200">Add a new unit or property to the calendar.</p>
+          <Link to="/host/listing" className="rounded-lg border border-[#ca635a] bg-[#df766c] p-4 text-white transition hover:bg-[#bd584f]">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/80">Create</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">New listing</h2>
+            <p className="mt-1 text-sm text-white/90">Add a unit and open its availability.</p>
           </Link>
         </section>
 
@@ -298,7 +299,7 @@ export default function DashboardOverview() {
         ) : dashboard && (
           <>
             {dashboard?.alerts?.length > 0 && (
-              <section className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <section className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Alerts</p>
@@ -313,7 +314,7 @@ export default function DashboardOverview() {
                   {dashboard.alerts.map((alert, index) => (
                     <div
                       key={`${alert.type}-${index}`}
-                      className={`rounded-xl border p-3 ${
+                      className={`rounded-lg border p-3 ${
                         alert.severity === 'high'
                           ? 'border-red-200 bg-red-50'
                           : 'border-amber-200 bg-white'
@@ -393,7 +394,7 @@ export default function DashboardOverview() {
 
             <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key metrics">
               {statCards.map(([key, label, iconType]) => (
-                <article key={key} className="border-b border-neutral-200 px-1 py-4">
+                <article key={key} className="rounded-lg border border-neutral-200 bg-white px-4 py-4">
                   <div className="flex items-center gap-2 text-sm text-neutral-500">
                     <MetricIcon type={iconType} />
                     <p className="m-0">{label}</p>
@@ -401,7 +402,7 @@ export default function DashboardOverview() {
                   <p className="mb-0 mt-2 text-3xl font-semibold tabular-nums">{dashboard.stats[key]}</p>
                 </article>
               ))}
-              <article className="border-b border-neutral-200 px-1 py-4">
+              <article className="rounded-lg border border-neutral-200 bg-white px-4 py-4">
                 <div className="flex items-center gap-2 text-sm text-neutral-500">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-neutral-600">
                     <path d="M12 1v22" />
@@ -413,8 +414,8 @@ export default function DashboardOverview() {
               </article>
             </section>
 
-            <section className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-              <div>
+            <section className="mt-8 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+              <div className="rounded-lg border border-neutral-200 bg-white p-5">
                 <h2 className="mb-1 text-lg font-semibold">Upcoming reservations</h2>
                 <p className="mb-4 mt-0 text-sm text-neutral-500">Next scheduled guest stays.</p>
                 {dashboard.upcomingReservations.length ? (
@@ -426,14 +427,20 @@ export default function DashboardOverview() {
                           <p className="mb-0 mt-1 text-sm text-neutral-600">{booking.building_name} · {booking.unit_name}</p>
                           <p className="mb-0 mt-1 text-sm text-neutral-500">{formatDate(booking.check_in_date)} to {formatDate(booking.check_out_date)} · {booking.num_of_guests} guests</p>
                         </div>
-                        <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium capitalize">{readableStatus(booking.status)}</span>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
+                          booking.status === 'confirmed' || booking.status === 'checked_in'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : booking.status === 'pending'
+                              ? 'bg-amber-50 text-amber-800'
+                              : 'bg-neutral-100 text-neutral-700'
+                        }`}>{readableStatus(booking.status)}</span>
                       </li>
                     ))}
                   </ul>
                 ) : <p className="border-y border-neutral-200 py-6 text-sm text-neutral-500">No upcoming reservations.</p>}
               </div>
 
-              <div>
+              <div className="rounded-lg border border-neutral-200 bg-white p-5">
                 <h2 className="mb-1 text-lg font-semibold">Booking summary</h2>
                 <p className="mb-4 mt-0 text-sm text-neutral-500">Bookings by current status.</p>
                 <ul className="m-0 divide-y divide-neutral-200 border-y border-neutral-200 p-0">
@@ -451,7 +458,7 @@ export default function DashboardOverview() {
               <h2 className="mb-1 text-lg font-semibold">Recent payments</h2>
               <p className="mb-4 mt-0 text-sm text-neutral-500">Latest payment activity.</p>
               {dashboard.recentPayments.length ? (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white px-4">
                   <table className="w-full min-w-[680px] border-collapse text-left text-sm">
                     <thead><tr className="border-b border-neutral-300 text-xs text-neutral-500">
                       <th className="py-3 pr-4 font-medium">Customer</th>

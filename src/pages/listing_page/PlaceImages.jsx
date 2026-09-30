@@ -87,7 +87,6 @@ export default function PlaceImages() {
       {/* Header */}
       <ListingHeader
         onOpenQuestions={() => console.log('Questions')}
-        onSaveAndExit={() => console.log('Save & Exit')}
       />
 
       <main className="flex-1 flex flex-col">
@@ -342,7 +341,7 @@ export default function PlaceImages() {
         </div>
 
         {/* Bottom buttons */}
-        <div className="mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-10 sm:flex sm:items-center sm:justify-between sm:px-6 md:px-10">
+        <div className="listing-step-actions mt-auto grid grid-cols-2 gap-3 px-4 pb-6 pt-10 sm:flex sm:items-center sm:justify-between sm:px-6 md:px-10">
 
           <button
             type="button"

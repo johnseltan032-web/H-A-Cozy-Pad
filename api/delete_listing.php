@@ -29,7 +29,12 @@ try {
     echo json_encode(['success' => true, 'buildingId' => $buildingId]);
 } catch (PDOException $error) {
     http_response_code(409);
+    $errorCode = $error->errorInfo[1] ?? null;
+    $message = $errorCode === 1451
+        ? 'This listing has existing reservations and cannot be deleted.'
+        : 'This listing cannot be deleted because it is linked to other records.';
+
     echo json_encode([
-        'error' => 'This listing cannot be deleted because it has related bookings.',
+        'error' => $message,
     ]);
 }
