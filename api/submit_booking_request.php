@@ -273,6 +273,7 @@ try {
         $refundAmount = $requestedRefundAmount !== null ? max(0, (float) $requestedRefundAmount) : null;
         $paymentStatus = 'not_required';
         $proofPath = null;
+        $proofFile = $_FILES['proofOfPayment'] ?? null;
 
         if ($difference > 0) {
             $paymentAmount = $requestedPaymentAmount !== null
@@ -280,18 +281,23 @@ try {
                 : $difference;
             $paymentStatus = 'pending';
 
-            if (!isset($_FILES['proofOfPayment']) || $_FILES['proofOfPayment']['error'] === UPLOAD_ERR_NO_FILE) {
+            if (!$proofFile || $proofFile['error'] === UPLOAD_ERR_NO_FILE) {
                 http_response_code(400);
                 echo json_encode([
                     'error' => 'Proof of payment is required for an additional payment'
                 ]);
                 exit;
             }
+        } elseif ($difference < 0) {
+            $refundAmount = $requestedRefundAmount !== null
+                ? max(0, (float) $requestedRefundAmount)
+                : abs($difference);
+            $paymentStatus = 'not_required';
+        }
 
-            $file = $_FILES['proofOfPayment'];
-
-            if ($file['error'] !== UPLOAD_ERR_OK) {
-                $uploadError = match ($file['error']) {
+        if ($proofFile && $proofFile['error'] !== UPLOAD_ERR_NO_FILE) {
+            if ($proofFile['error'] !== UPLOAD_ERR_OK) {
+                $uploadError = match ($proofFile['error']) {
                     UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'The selected image exceeds the server upload limit. Try a smaller image or increase upload_max_filesize in PHP settings.',
                     UPLOAD_ERR_PARTIAL => 'The image upload was interrupted. Please try again.',
                     UPLOAD_ERR_NO_TMP_DIR, UPLOAD_ERR_CANT_WRITE, UPLOAD_ERR_EXTENSION => 'The server could not save the uploaded image. Please contact support.',
@@ -305,7 +311,7 @@ try {
                 exit;
             }
 
-            if ($file['size'] > 10 * 1024 * 1024) {
+            if ($proofFile['size'] > 10 * 1024 * 1024) {
                 http_response_code(400);
                 echo json_encode([
                     'error' => 'Proof of payment must not exceed 10MB'
@@ -314,8 +320,8 @@ try {
             }
 
             $finfo = new finfo(FILEINFO_MIME_TYPE);
-            $mimeType = strtolower((string) $finfo->file($file['tmp_name']));
-            $fileExtension = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+            $mimeType = strtolower((string) $finfo->file($proofFile['tmp_name']));
+            $fileExtension = strtolower(pathinfo($proofFile['name'] ?? '', PATHINFO_EXTENSION));
 
             $allowedMimeTypes = [
                 'image/jpeg',
@@ -342,10 +348,8 @@ try {
 
             $uploadDirectory = __DIR__ . '/uploads/payment_proofs/';
 
-            if (!is_dir($uploadDirectory)) {
-                if (!mkdir($uploadDirectory, 0755, true)) {
-                    throw new Exception('Unable to create payment proof directory');
-                }
+            if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0755, true)) {
+                throw new Exception('Unable to create payment proof directory');
             }
 
             if (
@@ -359,26 +363,18 @@ try {
                 $extension = 'webp';
             } elseif ($mimeType === 'image/heic' || $fileExtension === 'heic') {
                 $extension = 'heic';
-            } elseif ($mimeType === 'image/heif' || $fileExtension === 'heif') {
-                $extension = 'heif';
             } else {
-                $extension = 'jpg';
+                $extension = 'heif';
             }
 
             $fileName = 'proof_' . $bookingId . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
-
             $filePath = $uploadDirectory . $fileName;
 
-            if (!move_uploaded_file($file['tmp_name'], $filePath)) {
+            if (!move_uploaded_file($proofFile['tmp_name'], $filePath)) {
                 throw new Exception('Unable to save proof of payment');
             }
 
             $proofPath = 'uploads/payment_proofs/' . $fileName;
-        } elseif ($difference < 0) {
-            $refundAmount = $requestedRefundAmount !== null
-                ? max(0, (float) $requestedRefundAmount)
-                : abs($difference);
-            $paymentStatus = 'not_required';
         }
 
         $request = $pdo->prepare(
