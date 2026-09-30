@@ -109,23 +109,6 @@ function ChevronDownIcon({
   );
 }
 
-function CardIcon() {
-  return (
-    <svg
-      className="w-4 h-4 text-gray-500"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-    </svg>
-  );
-}
-
 function WalletIcon() {
   return (
     <svg
@@ -172,8 +155,8 @@ export default function BookingConfirmation({
     Math.max(1, guestCount)
   );
 
-  const [paymentMethod, setPaymentMethod] =
-    useState("card");
+  const [paymentType, setPaymentType] = useState("full_payment");
+  const [paymentMethod, setPaymentMethod] = useState("gcash");
 
   const [isAvailable, setIsAvailable] =
     useState(null);
@@ -703,6 +686,7 @@ export default function BookingConfirmation({
         checkIn,
         checkOut,
         guests,
+        paymentType,
         paymentMethod,
       },
     });
@@ -782,11 +766,7 @@ export default function BookingConfirmation({
 
       <main className="grow px-5 md:px-10 lg:px-[52px] py-10">
         <div className="max-w-[1200px] mx-auto">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="mb-6 text-sm underline"
-          >
+          <button type="button" onClick={() => navigate(-1)} className="mb-6 text-sm underline">
             Back
           </button>
 
@@ -795,132 +775,56 @@ export default function BookingConfirmation({
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* PROPERTY + PRICE */}
             <section className="border border-gray-200 rounded-xl p-5 md:p-6 space-y-4 h-fit">
               <div className="flex gap-3 items-center">
                 <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                   <ImagePlaceholderIcon />
                 </div>
-
                 <div>
-                  <p className="text-base font-medium text-gray-900">
-                    {property.building_name ||
-                      "Property Name"}
-                  </p>
-
+                  <p className="text-base font-medium text-gray-900">{property.building_name || "Property Name"}</p>
                   <p className="flex items-center gap-1 text-sm text-gray-500 mt-0.5">
                     <MapPinIcon />
-                    {property.location ||
-                      property.building_name ||
-                      "Property Place"}
+                    {property.location || property.building_name || "Property Place"}
                   </p>
                 </div>
               </div>
 
-              {/* DATES + GUESTS */}
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] text-gray-500 mb-1">
-                    Date
-                  </p>
-
-                  <div
-                    className="flex items-center gap-2 flex-wrap"
-                    data-error={
-                      errors.checkIn ||
-                      errors.checkOut
-                        ? "true"
-                        : "false"
-                    }
-                  >
+                  <p className="text-[11px] text-gray-500 mb-1">Date</p>
+                  <div className="flex items-center gap-2 flex-wrap" data-error={errors.checkIn || errors.checkOut ? "true" : "false"}>
                     <DatePill
                       label="Check-in"
                       value={checkIn}
                       onChange={handleCheckInChange}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={new Date().toISOString().split("T")[0]}
                       max={checkOut || undefined}
                       error={errors.checkIn}
                     />
-
-                    <span className="text-gray-300">
-                      –
-                    </span>
-
+                    <span className="text-gray-300">-</span>
                     <DatePill
                       label="Check-out"
                       value={checkOut}
-                      onChange={
-                        handleCheckOutChange
-                      }
-                      min={checkIn || new Date().toISOString().split('T')[0]}
+                      onChange={handleCheckOutChange}
+                      min={checkIn || new Date().toISOString().split("T")[0]}
                       error={errors.checkOut}
                     />
                   </div>
-
-                  {errors.checkIn && (
-                    <p className="mt-2 text-xs text-red-600">
-                      {errors.checkIn}
-                    </p>
-                  )}
-
-                  {errors.checkOut && (
-                    <p className="mt-1 text-xs text-red-600">
-                      {errors.checkOut}
-                    </p>
-                  )}
-
-                  {availabilityError && (
-                    <p className="mt-2 text-xs text-red-600">
-                      {availabilityError}
-                    </p>
-                  )}
-
-                  {!availabilityError &&
-                    isAvailable === false && (
-                      <p className="mt-2 text-xs text-red-600">
-                        This room is already booked
-                        for the selected dates.
-                      </p>
-                    )}
-
-                  {isAvailable === true && (
-                    <p className="mt-2 text-xs text-green-600">
-                      Room is available.
-                    </p>
-                  )}
+                  {errors.checkIn && <p className="mt-2 text-xs text-red-600">{errors.checkIn}</p>}
+                  {errors.checkOut && <p className="mt-1 text-xs text-red-600">{errors.checkOut}</p>}
+                  {availabilityError && <p className="mt-2 text-xs text-red-600">{availabilityError}</p>}
+                  {!availabilityError && isAvailable === false && <p className="mt-2 text-xs text-red-600">This room is already booked for the selected dates.</p>}
+                  {isAvailable === true && <p className="mt-2 text-xs text-green-600">Room is available.</p>}
                 </div>
 
                 <div className="text-right">
-                  <p className="text-[11px] text-gray-500 mb-1">
-                    Number of Guest
-                  </p>
-
+                  <p className="text-[11px] text-gray-500 mb-1">Number of guests</p>
                   <div className="flex items-center border border-gray-200 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setGuests((g) =>
-                          Math.max(1, g - 1)
-                        )
-                      }
-                      className="p-2 text-gray-500 hover:text-gray-900"
-                      aria-label="Decrease guests"
-                    >
+                    <button type="button" onClick={() => setGuests((value) => Math.max(1, value - 1))} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Decrease guests">
                       <MinusIcon />
                     </button>
-
-                    <span className="w-5 text-center text-sm text-gray-900">
-                      {guests}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setGuests((g) => g + 1)
-                      }
-                      className="p-2 text-gray-500 hover:text-gray-900"
-                      aria-label="Increase guests"
-                    >
+                    <span className="w-5 text-center text-sm text-gray-900">{guests}</span>
+                    <button type="button" onClick={() => setGuests((value) => value + 1)} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Increase guests">
                       <PlusIcon />
                     </button>
                   </div>
@@ -928,383 +832,68 @@ export default function BookingConfirmation({
               </div>
 
               <hr className="border-gray-100" />
-
-              {/* PRICE DETAIL */}
               <div>
-                <p className="text-sm font-medium text-gray-700 text-center mb-2">
-                  Price Detail
-                </p>
-
+                <p className="text-sm font-medium text-gray-700 text-center mb-2">Price detail</p>
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>
-                    {nights} night
-                    {nights > 1 ? "s" : ""} x PHP{" "}
-                    {nightRate.toLocaleString(
-                      "en-PH",
-                      {
-                        minimumFractionDigits: 2,
-                      }
-                    )}
-                  </span>
-
-                  <span>
-                    PHP{" "}
-                    {nightRate.toLocaleString(
-                      "en-PH",
-                      {
-                        minimumFractionDigits: 2,
-                      }
-                    )}
-                  </span>
+                  <span>{nights} night{nights > 1 ? "s" : ""} x PHP {nightRate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
+                  <span>PHP {total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
-
               <hr className="border-gray-100" />
-
               <div className="flex justify-between items-baseline">
-                <span className="text-base font-semibold text-gray-900">
-                  Total PHP
-                </span>
-
-                <span className="text-base font-semibold text-gray-900">
-                  PHP{" "}
-                  {total.toLocaleString("en-PH", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
+                <span className="text-base font-semibold text-gray-900">Total PHP</span>
+                <span className="text-base font-semibold text-gray-900">PHP {total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
               </div>
             </section>
 
-            {/* PAYMENT */}
             <section className="border border-gray-200 rounded-xl p-5 md:p-6 space-y-4 h-fit">
               <p className="text-base font-semibold text-gray-900">
-                1. Add a payment method
+                Payment type
               </p>
-
-              {/* CARD */}
-              <div>
+              <div className="space-y-3">
                 <PaymentRow
-                  icon={<CardIcon />}
-                  label="Credit or debit card"
-                  selected={
-                    paymentMethod === "card"
-                  }
-                  onSelect={() =>
-                    setPaymentMethod("card")
-                  }
+                  name="paymentType"
+                  icon={<WalletIcon />}
+                  label="Reservation fee - PHP 1,000.00"
+                  selected={paymentType === "reservation_fee"}
+                  onSelect={() => setPaymentType("reservation_fee")}
                 />
 
-                {paymentMethod === "card" && (
-                  <div className="mt-3 space-y-3">
-                    {/* CARD NUMBER */}
-                    <div
-                      data-error={
-                        errors.cardNumber
-                          ? "true"
-                          : "false"
-                      }
-                    >
-                      <input
-                        type="text"
-                        value={cardNumber}
-                        onChange={
-                          handleCardNumberChange
-                        }
-                        onBlur={() => {
-                          if (
-                            !cardNumber.trim()
-                          ) {
-                            setFieldError(
-                              "cardNumber",
-                              "Card number is required."
-                            );
-                          }
-                        }}
-                        placeholder="Card number"
-                        inputMode="numeric"
-                        autoComplete="cc-number"
-                        className={`w-full border rounded-lg px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 ${
-                          errors.cardNumber
-                            ? "border-red-500 focus:ring-red-200"
-                            : "border-gray-200 focus:ring-gray-300"
-                        }`}
-                      />
-
-                      {errors.cardNumber && (
-                        <p className="mt-1 text-xs text-red-600">
-                          {errors.cardNumber}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* EXPIRATION + CVV */}
-                    <div className="flex gap-3">
-                      <div
-                        className="w-1/2"
-                        data-error={
-                          errors.expiration
-                            ? "true"
-                            : "false"
-                        }
-                      >
-                        <input
-                          type="text"
-                          value={expiration}
-                          onChange={
-                            handleExpirationChange
-                          }
-                          onBlur={() => {
-                            if (!expiration) {
-                              setFieldError(
-                                "expiration",
-                                "Expiration date is required."
-                              );
-                            }
-                          }}
-                          placeholder="Expiration"
-                          inputMode="numeric"
-                          autoComplete="cc-exp"
-                          maxLength={5}
-                          className={`w-full border rounded-lg px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 ${
-                            errors.expiration
-                              ? "border-red-500 focus:ring-red-200"
-                              : "border-gray-200 focus:ring-gray-300"
-                          }`}
-                        />
-
-                        {errors.expiration && (
-                          <p className="mt-1 text-xs text-red-600">
-                            {errors.expiration}
-                          </p>
-                        )}
-                      </div>
-
-                      <div
-                        className="w-1/2"
-                        data-error={
-                          errors.cvv
-                            ? "true"
-                            : "false"
-                        }
-                      >
-                        <input
-                          type="password"
-                          value={cvv}
-                          onChange={handleCvvChange}
-                          onBlur={() => {
-                            if (!cvv) {
-                              setFieldError(
-                                "cvv",
-                                "CVV is required."
-                              );
-                            }
-                          }}
-                          placeholder="CVV"
-                          inputMode="numeric"
-                          autoComplete="cc-csc"
-                          maxLength={4}
-                          className={`w-full border rounded-lg px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 ${
-                            errors.cvv
-                              ? "border-red-500 focus:ring-red-200"
-                              : "border-gray-200 focus:ring-gray-300"
-                          }`}
-                        />
-
-                        {errors.cvv && (
-                          <p className="mt-1 text-xs text-red-600">
-                            {errors.cvv}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* CARD NAME */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden sm:grid sm:grid-cols-2">
-                      <div
-                        data-error={
-                          errors.cardFirstName
-                            ? "true"
-                            : "false"
-                        }
-                      >
-                        <input
-                          type="text"
-                          value={cardFirstName}
-                          onChange={
-                            handleCardFirstNameChange
-                          }
-                          onBlur={() => {
-                            if (
-                              !cardFirstName.trim()
-                            ) {
-                              setFieldError(
-                                "cardFirstName",
-                                "First name is required."
-                              );
-                            }
-                          }}
-                          placeholder="First Name"
-                          autoComplete="cc-given-name"
-                          className={`w-full px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none border-b sm:border-b-0 sm:border-r ${
-                            errors.cardFirstName
-                              ? "border-red-500"
-                              : "border-gray-200"
-                          }`}
-                        />
-
-                        {errors.cardFirstName && (
-                          <p className="px-3 py-1 text-xs text-red-600 sm:hidden">
-                            {errors.cardFirstName}
-                          </p>
-                        )}
-                      </div>
-
-                      <div
-                        data-error={
-                          errors.cardLastName
-                            ? "true"
-                            : "false"
-                        }
-                      >
-                        <input
-                          type="text"
-                          value={cardLastName}
-                          onChange={
-                            handleCardLastNameChange
-                          }
-                          onBlur={() => {
-                            if (
-                              !cardLastName.trim()
-                            ) {
-                              setFieldError(
-                                "cardLastName",
-                                "Last name is required."
-                              );
-                            }
-                          }}
-                          placeholder="Last Name"
-                          autoComplete="cc-family-name"
-                          className={`w-full px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none ${
-                            errors.cardLastName
-                              ? "border-red-500"
-                              : ""
-                          }`}
-                        />
-
-                        {errors.cardLastName && (
-                          <p className="px-3 py-1 text-xs text-red-600 sm:hidden">
-                            {errors.cardLastName}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* DESKTOP NAME ERRORS */}
-                    {(errors.cardFirstName ||
-                      errors.cardLastName) && (
-                      <div className="hidden sm:flex gap-3">
-                        <div className="w-1/2">
-                          {errors.cardFirstName && (
-                            <p className="text-xs text-red-600">
-                              {errors.cardFirstName}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="w-1/2">
-                          {errors.cardLastName && (
-                            <p className="text-xs text-red-600">
-                              {errors.cardLastName}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ZIP */}
-                    <div
-                      data-error={
-                        errors.zipCode
-                          ? "true"
-                          : "false"
-                      }
-                    >
-                      <input
-                        type="text"
-                        value={zipCode}
-                        onChange={handleZipCodeChange}
-                        onBlur={() => {
-                          if (!zipCode.trim()) {
-                            setFieldError(
-                              "zipCode",
-                              "ZIP code is required."
-                            );
-                          }
-                        }}
-                        placeholder="ZIP code"
-                        inputMode="numeric"
-                        autoComplete="postal-code"
-                        className={`w-full border rounded-lg px-3 py-2.5 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 ${
-                          errors.zipCode
-                            ? "border-red-500 focus:ring-red-200"
-                            : "border-gray-200 focus:ring-gray-300"
-                        }`}
-                      />
-
-                      {errors.zipCode && (
-                        <p className="mt-1 text-xs text-red-600">
-                          {errors.zipCode}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* COUNTRY */}
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-left"
-                    >
-                      <span>
-                        <span className="block text-[11px] text-gray-400">
-                          Country/Region
-                        </span>
-
-                        <span className="text-gray-900 font-medium">
-                          Philippines
-                        </span>
-                      </span>
-
-                      <ChevronDownIcon />
-                    </button>
-                  </div>
+                {paymentType === "reservation_fee" && (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+                    The reservation fee is fixed at PHP 1,000.00, regardless of the length of stay. The remaining balance is due separately.
+                  </p>
                 )}
+
+                <PaymentRow
+                  name="paymentType"
+                  icon={<WalletIcon />}
+                  label={`Full payment - PHP ${total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+                  selected={paymentType === "full_payment"}
+                  onSelect={() => setPaymentType("full_payment")}
+                />
               </div>
 
               <hr className="border-gray-100" />
 
-              {/* GCASH */}
+              <p className="text-base font-semibold text-gray-900">
+                Payment method
+              </p>
+
               <PaymentRow
+                name="paymentMethod"
                 icon={<WalletIcon />}
-                label="Gcash"
-                selected={
-                  paymentMethod === "gcash"
-                }
-                onSelect={() =>
-                  setPaymentMethod("gcash")
-                }
+                label="GCash"
+                selected={paymentMethod === "gcash"}
+                onSelect={() => setPaymentMethod("gcash")}
               />
 
-              <hr className="border-gray-100" />
-
-              {/* PROOF OF PAYMENT */}
               <PaymentRow
+                name="paymentMethod"
                 icon={<WalletIcon />}
-                label="Proof of Payment Method"
-                selected={
-                  paymentMethod === "proof"
-                }
-                onSelect={() =>
-                  setPaymentMethod("proof")
-                }
+                label="Proof of Payment"
+                selected={paymentMethod === "proof"}
+                onSelect={() => setPaymentMethod("proof")}
               />
 
               <hr className="border-gray-100" />
@@ -1381,6 +970,7 @@ function DatePill({
 }
 
 function PaymentRow({
+  name = "payment",
   icon,
   label,
   selected,
@@ -1400,7 +990,7 @@ function PaymentRow({
 
       <input
         type="radio"
-        name="payment"
+        name={name}
         checked={selected}
         onChange={onSelect}
         className="sr-only"
@@ -1415,7 +1005,7 @@ function PaymentRow({
 function RadioDot({ selected }) {
   return (
     <span
-      className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
         selected
           ? "border-gray-900"
           : "border-gray-300"

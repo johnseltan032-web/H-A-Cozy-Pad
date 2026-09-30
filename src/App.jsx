@@ -320,6 +320,7 @@ function AppContent() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+        onSwitchToRegister={handleOpenRegister}
       />
 
       <RegisterModal
