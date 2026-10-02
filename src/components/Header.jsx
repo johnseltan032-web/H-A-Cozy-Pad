@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import logo from '../images/logo.png';
 import NotificationBell from './NotificationBell';
+import ContactModal from './ContactModal';
 
 export default function Header({
   isMenuOpen,
@@ -10,11 +11,15 @@ export default function Header({
   user,
   onLogout,
   onOpenSignIn,
-  onOpenRegister,
 }) {
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
+  const logoutRefreshTimer = useRef(null);
   const navigate = useNavigate();
+  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [showLogoutSuccess, setShowLogoutSuccess] = useState(false);
+  const fullName = user?.fullName || user?.name || user?.full_name || '';
+  const displayName = fullName.trim().split(/\s+/)[0] || 'User';
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -36,6 +41,12 @@ export default function Header({
     };
   }, [isMenuOpen, setIsMenuOpen]);
 
+  useEffect(() => () => {
+    if (logoutRefreshTimer.current) {
+      clearTimeout(logoutRefreshTimer.current);
+    }
+  }, []);
+
   const handleLogout = async () => {
     try {
       await fetch(`${API_BASE_URL}/logout.php`, {
@@ -46,6 +57,10 @@ export default function Header({
       onLogout();
       setIsMenuOpen(false);
       navigate('/');
+      setShowLogoutSuccess(true);
+      logoutRefreshTimer.current = setTimeout(() => {
+        window.location.reload();
+      }, 2000);
     } catch (error) {
       console.error('Logout failed:', error);
       setIsMenuOpen(false);
@@ -96,24 +111,22 @@ export default function Header({
 
       <div className="flex items-center gap-3">
         {!user && (
-          <>
-            <button
-              onClick={onOpenRegister}
-              className="hidden md:block px-6 py-2.5 text-lg border border-black rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer"
-            >
-              Register
-            </button>
-
-            <button
-              onClick={handleSignIn}
-              className="hidden md:block px-6 py-2.5 text-lg border border-black rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer"
-            >
-              Sign in
-            </button>
-          </>
+          <button
+            onClick={() => setIsContactOpen(true)}
+            className="hidden md:block px-6 py-2.5 text-lg border border-black rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer"
+          >
+            Contact us
+          </button>
         )}
 
-        {user && <NotificationBell />}
+        {user && (
+          <>
+            <span className="hidden text-base font-medium text-neutral-700 md:inline">
+              {displayName} — Logged In
+            </span>
+            <NotificationBell />
+          </>
+        )}
 
         <button
           ref={buttonRef}
@@ -155,26 +168,52 @@ export default function Header({
             </Link>
           )}
 
-          <Link
-            to="/profile"
-            onClick={() => setIsMenuOpen(false)}
-            className="header-menu-item flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 no-underline text-black"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {!user ? (
+            <button
+              type="button"
+              onClick={handleSignIn}
+              className="header-menu-item w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
             >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21c0-4 4-6 8-6s8-2 8 6" />
-            </svg>
-            Profile
-          </Link>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              Log in or sign up
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="header-menu-item w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="10" y2="7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              Log out
+            </button>
+          )}
 
           <hr className="my-2 border-neutral-200" />
 
@@ -199,56 +238,18 @@ export default function Header({
             </svg>
             Help Center
           </Link>
+        </div>
+      )}
 
-          <hr className="my-2 border-neutral-200" />
+      <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
 
-          {user ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="header-menu-item w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
-                <polyline points="10 17 15 12 10 7" />
-                <line x1="15" y1="12" x2="10" y2="7" />
-                <line x1="15" y1="12" x2="3" y2="12" />
-              </svg>
-              Log out
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSignIn}
-              className="header-menu-item w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
-                <polyline points="10 17 15 12 10 7" />
-                <line x1="15" y1="12" x2="10" y2="7" />
-                <line x1="15" y1="12" x2="3" y2="12" />
-              </svg>
-              Log in or sign up
-            </button>
-          )}
+      {showLogoutSuccess && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-[2200] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-green-700 px-5 py-3 text-sm font-medium text-white shadow-lg"
+        >
+          <span aria-hidden="true" className="text-lg leading-none">✓</span>
+          Logged out successfully. Refreshing...
         </div>
       )}
     </header>

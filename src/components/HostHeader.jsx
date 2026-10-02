@@ -127,7 +127,6 @@ export default function HostHeader({
 
         <NotificationBell />
 
-        {/* Profile icon */}
         <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center overflow-hidden">
           <svg
             xmlns="http://www.w3.org/2000/svg"

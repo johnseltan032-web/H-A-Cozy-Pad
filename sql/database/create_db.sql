@@ -302,20 +302,6 @@ CREATE TABLE IF NOT EXISTS unit_images (
         ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS email_verification_tokens (
-    token_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    token_hash CHAR(64) NOT NULL,
-    expires_at DATETIME NOT NULL,
-    used_at DATETIME NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_evt_user
-        FOREIGN KEY (user_id)
-        REFERENCES users(user_id)
-        ON DELETE CASCADE,
-    UNIQUE KEY uq_token_hash (token_hash)
-);
-
 create table IF NOT EXISTS reviews(
     review_id int auto_increment primary key,
     booking_id int not null unique,
