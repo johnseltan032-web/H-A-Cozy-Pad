@@ -1,4 +1,4 @@
-create table faqs(
+CREATE TABLE IF NOT EXISTS faqs (
     faq_id int auto_increment primary key,
     category_id int not null,
     question text not null,

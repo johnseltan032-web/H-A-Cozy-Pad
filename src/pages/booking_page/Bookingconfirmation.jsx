@@ -22,6 +22,18 @@ function ImagePlaceholderIcon() {
   );
 }
 
+function getPropertyImageUrl(imagePath) {
+  if (!imagePath) return null;
+
+  const normalizedPath = String(imagePath)
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\/+/, '')
+    .replace(/^api\//i, '');
+
+  return `${API_BASE_URL.replace(/\/$/, '')}/${normalizedPath}`;
+}
+
 function MapPinIcon() {
   return (
     <svg
@@ -139,7 +151,16 @@ export default function BookingConfirmation({
   const navigate = useNavigate();
 
   const booking = location.state || {};
-  const property = booking.property || {};
+  const isCustomer = String(user?.role || '').toLowerCase() === 'customer';
+  const bookingProperties = Array.isArray(booking.properties) && booking.properties.length > 0
+    ? booking.properties
+    : [booking.property || {}];
+  const property = bookingProperties[0] || {};
+  const bookingUnitIds = bookingProperties.map((selectedProperty) => selectedProperty.unit_id).join(',');
+  const maximumGuests = bookingProperties.reduce(
+    (totalCapacity, selectedProperty) => totalCapacity + Number(selectedProperty.max_guests || 0),
+    0
+  );
 
   const [checkIn, setCheckIn] = useState(
     booking.checkIn || ""
@@ -163,6 +184,7 @@ export default function BookingConfirmation({
 
   const [availabilityError, setAvailabilityError] =
     useState("");
+  const [accountError, setAccountError] = useState('');
 
   /*
    * CARD INFORMATION
@@ -180,6 +202,7 @@ export default function BookingConfirmation({
   const [errors, setErrors] = useState({
     checkIn: "",
     checkOut: "",
+    guests: "",
     cardNumber: "",
     expiration: "",
     cvv: "",
@@ -188,8 +211,9 @@ export default function BookingConfirmation({
     zipCode: "",
   });
 
-  const nightRate = Number(
-    property.rate_per_night || 0
+  const nightRate = bookingProperties.reduce(
+    (totalRate, selectedProperty) => totalRate + Number(selectedProperty.rate_per_night || 0),
+    0
   );
 
   const nights =
@@ -205,6 +229,7 @@ export default function BookingConfirmation({
       : 1;
 
   const total = nightRate * nights;
+  const propertyImage = getPropertyImageUrl(property.images?.[0]);
 
   const setFieldError = (field, message) => {
     setErrors((prev) => ({
@@ -494,6 +519,7 @@ export default function BookingConfirmation({
     const newErrors = {
       checkIn: "",
       checkOut: "",
+      guests: "",
       cardNumber: "",
       expiration: "",
       cvv: "",
@@ -504,6 +530,10 @@ export default function BookingConfirmation({
 
     let isValid = true;
 
+    if (maximumGuests > 0 && guests > maximumGuests) {
+      newErrors.guests = `This property can accommodate a maximum of ${maximumGuests} guest${maximumGuests === 1 ? "" : "s"}.`;
+      isValid = false;
+    }
 
     if (!checkIn) {
       newErrors.checkIn =
@@ -673,6 +703,12 @@ export default function BookingConfirmation({
 
 
   const handleConfirm = () => {
+    if (!isCustomer) {
+      setAccountError('Only customer accounts can make bookings.');
+      return;
+    }
+
+    setAccountError('');
     const isValid = validateForm();
 
     if (!isValid) {
@@ -692,14 +728,23 @@ export default function BookingConfirmation({
     });
   };
 
+  const handleIncreaseGuests = () => {
+    setGuests((value) => {
+      if (maximumGuests > 0 && value >= maximumGuests) {
+        setErrors((previousErrors) => ({
+          ...previousErrors,
+          guests: `This property can accommodate a maximum of ${maximumGuests} guest${maximumGuests === 1 ? "" : "s"}.`,
+        }));
+        return value;
+      }
+
+      return value + 1;
+    });
+  };
+
 
   useEffect(() => {
-    if (
-      !property.unit_id ||
-      !checkIn ||
-      !checkOut ||
-      checkOut <= checkIn
-    ) {
+    if (!bookingProperties.length || !checkIn || !checkOut || checkOut <= checkIn) {
       return undefined;
     }
 
@@ -716,28 +761,21 @@ export default function BookingConfirmation({
       }
     };
 
-    fetch(
-      `${API_BASE_URL}/check_availability.php?unit_id=${encodeURIComponent(
-        property.unit_id
-      )}&check_in=${encodeURIComponent(
-        checkIn
-      )}&check_out=${encodeURIComponent(
-        checkOut
-      )}`,
-      {
-        signal: controller.signal,
-      }
-    )
-      .then(async (response) => {
+    Promise.all(bookingProperties.map((selectedProperty) =>
+      fetch(
+        `${API_BASE_URL}/check_availability.php?unit_id=${encodeURIComponent(selectedProperty.unit_id)}&check_in=${encodeURIComponent(checkIn)}&check_out=${encodeURIComponent(checkOut)}`,
+        { signal: controller.signal }
+      ).then(async (response) => {
         const data = await parseJsonResponse(response);
-
         if (!response.ok) {
-          throw new Error(
-            data.error || 'Unable to check room availability.'
-          );
+          throw new Error(data.error || 'Unable to check room availability.');
         }
-
-        setIsAvailable(Boolean(data.available));
+        return Boolean(data.available);
+      })
+    ))
+      .then((availabilityResults) => {
+        setIsAvailable(availabilityResults.every(Boolean));
+        setAvailabilityError(availabilityResults.every(Boolean) ? '' : 'One or more selected units are unavailable for these dates.');
       })
       .catch((error) => {
         if (error.name !== 'AbortError') {
@@ -748,7 +786,7 @@ export default function BookingConfirmation({
 
     return () => controller.abort();
   }, [
-    property.unit_id,
+    bookingUnitIds,
     checkIn,
     checkOut,
   ]);
@@ -766,26 +804,60 @@ export default function BookingConfirmation({
 
       <main className="grow px-5 md:px-10 lg:px-[52px] py-10">
         <div className="max-w-[1200px] mx-auto">
-          <button type="button" onClick={() => navigate(-1)} className="mb-6 text-sm underline">
-            Back
-          </button>
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <h2 className="text-2xl md:text-3xl font-bold">
+              Booking Confirmation
+            </h2>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-100 cursor-pointer"
+            >
+              Back
+            </button>
+          </div>
 
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
-            Booking Confirmation
-          </h2>
+          {!isCustomer && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4" role="alert">
+              <p className="text-sm font-semibold text-amber-950">
+                {accountError || 'Only customer accounts can make bookings.'}
+              </p>
+              <p className="mt-1 text-sm text-amber-900">Please log in or create a customer account to continue.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={onOpenSignIn} className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">Log In</button>
+                <button type="button" onClick={onOpenRegister} className="rounded-full border border-amber-900 px-4 py-2 text-sm font-medium text-amber-950 hover:bg-amber-100">Sign Up</button>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <section className="border border-gray-200 rounded-xl p-5 md:p-6 space-y-4 h-fit">
               <div className="flex gap-3 items-center">
-                <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                  <ImagePlaceholderIcon />
+                <div className="w-14 h-14 overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+                  {propertyImage ? (
+                    <img
+                      src={propertyImage}
+                      alt={property.property_name || property.building_name || "Property"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ImagePlaceholderIcon />
+                  )}
                 </div>
                 <div>
-                  <p className="text-base font-medium text-gray-900">{property.building_name || "Property Name"}</p>
+                  <p className="text-base font-medium text-gray-900">{property.property_name || property.building_name || "Property Name"}</p>
                   <p className="flex items-center gap-1 text-sm text-gray-500 mt-0.5">
                     <MapPinIcon />
-                    {property.location || property.building_name || "Property Place"}
+                    {property.building_name || "Property Place"}
                   </p>
+                  {bookingProperties.length > 1 && (
+                    <div className="mt-1 text-xs text-[#d65f54]">
+                      <p className="font-medium">{bookingProperties.length} units selected for this group</p>
+                      <p className="mt-0.5 text-gray-500">
+                        {bookingProperties.map((selectedProperty) => selectedProperty.unit_name || selectedProperty.unit_id).join(' + ')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -819,15 +891,16 @@ export default function BookingConfirmation({
 
                 <div className="text-right">
                   <p className="text-[11px] text-gray-500 mb-1">Number of guests</p>
-                  <div className="flex items-center border border-gray-200 rounded-lg">
-                    <button type="button" onClick={() => setGuests((value) => Math.max(1, value - 1))} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Decrease guests">
+                  <div className="flex items-center border border-gray-200 rounded-lg" data-error={errors.guests ? "true" : "false"}>
+                    <button type="button" onClick={() => { setGuests((value) => Math.max(1, value - 1)); clearFieldError("guests"); }} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Decrease guests">
                       <MinusIcon />
                     </button>
                     <span className="w-5 text-center text-sm text-gray-900">{guests}</span>
-                    <button type="button" onClick={() => setGuests((value) => value + 1)} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Increase guests">
+                    <button type="button" onClick={handleIncreaseGuests} disabled={maximumGuests > 0 && guests >= maximumGuests} className="p-2 text-gray-500 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Increase guests">
                       <PlusIcon />
                     </button>
                   </div>
+                  {errors.guests && <p className="mt-2 max-w-40 text-xs text-red-600">{errors.guests}</p>}
                 </div>
               </div>
 
@@ -835,7 +908,7 @@ export default function BookingConfirmation({
               <div>
                 <p className="text-sm font-medium text-gray-700 text-center mb-2">Price detail</p>
                 <div className="flex justify-between text-sm text-gray-600">
-                  <span>{nights} night{nights > 1 ? "s" : ""} x PHP {nightRate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
+                  <span>{nights} night{nights > 1 ? "s" : ""} x {bookingProperties.length > 1 ? "combined " : ""}PHP {nightRate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
                   <span>PHP {total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
@@ -910,9 +983,12 @@ export default function BookingConfirmation({
                   !checkIn ||
                   !checkOut ||
                   checkOut <= checkIn ||
-                  isAvailable !== true
+                  !isCustomer ||
+                  isAvailable !== true ||
+                  (maximumGuests > 0 && guests > maximumGuests) ||
+                  Object.values(errors).some(Boolean)
                 }
-                className="block w-full bg-gray-900 text-white text-sm font-medium text-center rounded-full py-3 hover:bg-gray-800 transition-colors cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="block w-full border border-transparent bg-[#f26b5e] text-white text-sm font-medium text-center rounded-full py-3 hover:bg-[#df5b4f] transition-colors cursor-pointer disabled:border-gray-300 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
               >
                 Confirm & Pay
               </button>

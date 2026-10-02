@@ -229,7 +229,7 @@ export default function RegisterModal({ isOpen, onClose }) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 w-full py-4 text-xl sm:text-2xl font-bold text-white bg-black border border-black rounded-full hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 w-full py-4 text-xl sm:text-2xl font-bold text-white bg-[#df766c] border border-[#ca635a] rounded-full hover:bg-[#bd584f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd584f] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Registering...' : 'Agree & Register'}
           </button>

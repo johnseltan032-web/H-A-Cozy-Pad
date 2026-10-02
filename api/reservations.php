@@ -59,7 +59,7 @@ try {
             u.rate_per_night,
 
             bu.building_name,
-            bu.location,
+            bu.google_maps_url,
 
             COALESCE(usr.full_name, bd.guest_name) AS guest_name,
             COALESCE(usr.email, bd.guest_email) AS guest_email,

@@ -117,7 +117,7 @@ export default function PlaceOffer() {
           <button
             type="button"
             disabled={selectedAmenities.length === 0}
-            onClick={() => navigate('/host/listing/PlaceLocation')}
+            onClick={() => navigate('/host/listing/PlaceRate')}
             className={`
               w-full sm:w-[142px] h-[50px]
               rounded-full

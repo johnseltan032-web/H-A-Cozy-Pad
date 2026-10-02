@@ -41,9 +41,9 @@ export default function DashboardListings() {
   const [editForm, setEditForm] = useState({
     buildingName: '',
     propertyName: '',
+    googleMapsUrl: '',
     tower: '',
     unitNumber: '',
-    location: '',
     description: '',
     bathrooms: 0,
     bedroomDetails: [],
@@ -170,9 +170,9 @@ export default function DashboardListings() {
       setEditForm({
         buildingName: data.building_name || '',
         propertyName: data.property_name || data.building_name || '',
+        googleMapsUrl: data.google_maps_url || '',
         tower: data.tower || '',
         unitNumber: data.unit_number || '',
-        location: data.location || '',
         description: data.description || '',
         bathrooms: data.bathrooms || 0,
         bedroomDetails: data.bedroom_details || [],
@@ -317,9 +317,9 @@ export default function DashboardListings() {
               ...currentListing,
               building_name: editForm.buildingName,
               property_name: editForm.propertyName,
+              google_maps_url: editForm.googleMapsUrl,
               tower: editForm.tower,
               unit_number: editForm.unitNumber,
-              location: editForm.location,
               max_guests: editForm.maxGuests,
               rate_per_night: editForm.ratePerNight,
               available_from: editForm.availableFrom,
@@ -446,7 +446,7 @@ export default function DashboardListings() {
                 <div><dt className="text-neutral-500">Building</dt><dd className="mt-1 font-medium">{selectedListing.building_name || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Tower</dt><dd className="mt-1 font-medium">{selectedListing.tower || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Unit number</dt><dd className="mt-1 font-medium">{selectedListing.unit_number || 'Not specified'}</dd></div>
-                <div className="col-span-2"><dt className="text-neutral-500">Location</dt><dd className="mt-1 font-medium break-words">{selectedListing.location || 'Not specified'}</dd></div>
+                <div className="col-span-2"><dt className="text-neutral-500">Google Maps link</dt><dd className="mt-1 break-all"><a href={selectedListing.google_maps_url || '#'} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">{selectedListing.google_maps_url || 'Not specified'}</a></dd></div>
                 <div><dt className="text-neutral-500">Guests</dt><dd className="mt-1 font-medium">{selectedListing.max_guests || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Rate per night</dt><dd className="mt-1 font-medium">{selectedListing.rate_per_night ? `₱${Number(selectedListing.rate_per_night).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : 'Not specified'}</dd></div>
                 {selectedListing.description && <div className="col-span-2"><dt className="text-neutral-500">Description</dt><dd className="mt-1 whitespace-pre-wrap break-words">{selectedListing.description}</dd></div>}
@@ -552,11 +552,13 @@ export default function DashboardListings() {
                 </div>
 
                 <label className="block text-sm font-medium">
-                  Location
+                  Google Maps link
                   <input
-                    name="location"
-                    value={editForm.location}
+                    name="googleMapsUrl"
+                    type="url"
+                    value={editForm.googleMapsUrl}
                     onChange={handleEditChange}
+                    placeholder="https://maps.app.goo.gl/..."
                     required
                     className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
                   />

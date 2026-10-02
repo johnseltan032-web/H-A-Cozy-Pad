@@ -24,10 +24,16 @@ $data = $_POST ?: (json_decode(file_get_contents('php://input'), true) ?? []);
 $unitId = (int) ($data['unitId'] ?? 0);
 $checkIn = trim((string) ($data['checkIn'] ?? ''));
 $checkOut = trim((string) ($data['checkOut'] ?? ''));
+$checkInTime = trim((string) ($data['checkInTime'] ?? ''));
+$checkOutTime = trim((string) ($data['checkOutTime'] ?? ''));
 $guests = (int) ($data['guests'] ?? 1);
 $guestName = trim((string) ($data['guestName'] ?? ''));
 $guestContactNum = trim((string) ($data['guestContactNum'] ?? ''));
 $guestEmail = strtolower(trim((string) ($data['guestEmail'] ?? '')));
+$paymentAmount = isset($data['paymentAmount']) && $data['paymentAmount'] !== '' ? (float) $data['paymentAmount'] : null;
+$paymentMethod = trim((string) ($data['paymentMethod'] ?? 'cash'));
+$paymentStatus = trim((string) ($data['paymentStatus'] ?? 'verified'));
+$notes = trim((string) ($data['notes'] ?? ''));
 
 if (!$unitId || !$checkIn || !$checkOut || $guests < 1 || !$guestName || !$guestContactNum) {
     http_response_code(400);
@@ -45,6 +51,22 @@ if ($guests > 4) {
     http_response_code(400);
     echo json_encode(['error' => 'Maximum 4 guests per unit.']);
     exit;
+}
+
+foreach ([$checkInTime, $checkOutTime] as $timeValue) {
+    if ($timeValue !== '' && !preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $timeValue)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Check-in and check-out times must be valid.']);
+        exit;
+    }
+}
+
+if (!in_array($paymentMethod, ['e-wallet', 'bank_transfer', 'cash', 'card'], true)) {
+    $paymentMethod = 'cash';
+}
+
+if (!in_array($paymentStatus, ['pending', 'verified', 'rejected', 'refunded'], true)) {
+    $paymentStatus = 'verified';
 }
 
 $checkInDate = DateTime::createFromFormat('Y-m-d', $checkIn);
@@ -126,44 +148,24 @@ if ($blocked->fetch()) {
     exit;
 }
 
-$guestEmail = $guestEmail !== '' ? $guestEmail : 'guest+' . time() . '@booking.local';
+$customerId = null;
 
 try {
     $pdo->beginTransaction();
 
-    $userInsert = $pdo->prepare(
-        'INSERT INTO users (full_name, email, password, role, contact_num)
-         VALUES (?, ?, ?, \"customer\", ?)'
-    );
-    $userInsert->execute([
-        $guestName,
-        $guestEmail,
-        password_hash('guest-booking-' . time(), PASSWORD_DEFAULT),
-        $guestContactNum,
-    ]);
-
-    $userId = (int) $pdo->lastInsertId();
-
-    $customerCheck = $pdo->prepare('SELECT customer_id FROM customer_profiles WHERE user_id = ? LIMIT 1');
-    $customerCheck->execute([$userId]);
-    $customerId = $customerCheck->fetchColumn();
-
-    if (!$customerId) {
-        $customerInsert = $pdo->prepare('INSERT INTO customer_profiles (user_id) VALUES (?)');
-        $customerInsert->execute([$userId]);
-        $customerId = (int) $pdo->lastInsertId();
-    }
-
     $bookingInsert = $pdo->prepare(
-        'INSERT INTO bookings (customer_id, unit_id, check_in_date, check_out_date, num_of_guests, status)
-         VALUES (?, ?, ?, ?, ?, \"confirmed\")'
+        'INSERT INTO bookings (customer_id, unit_id, check_in_date, check_out_date, check_in_time, check_out_time, num_of_guests, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, \"confirmed\", ?)'
     );
     $bookingInsert->execute([
         $customerId,
         $unitId,
         $checkIn,
         $checkOut,
+        $checkInTime !== '' ? $checkInTime : null,
+        $checkOutTime !== '' ? $checkOutTime : null,
         $guests,
+        $notes !== '' ? $notes : null,
     ]);
 
     $bookingId = (int) $pdo->lastInsertId();
@@ -184,9 +186,15 @@ try {
 
     $paymentInsert = $pdo->prepare(
         'INSERT INTO payments (booking_id, amount, payment_method, proof_of_payment, payment_status, verified_by, verified_at)
-         VALUES (?, ?, \"cash\", \"manual-admin-booking\", \"verified\", NULL, NOW())'
+         VALUES (?, ?, ?, \"manual-admin-booking\", ?, NULL, CASE WHEN ? = \"verified\" THEN NOW() ELSE NULL END)'
     );
-    $paymentInsert->execute([$bookingId, $amount]);
+    $paymentInsert->execute([
+        $bookingId,
+        $paymentAmount ?? $amount,
+        $paymentMethod,
+        $paymentStatus,
+        $paymentStatus,
+    ]);
 
     $pdo->commit();
 

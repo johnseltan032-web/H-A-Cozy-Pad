@@ -1,4 +1,4 @@
-create table chatbot_logs(
+CREATE TABLE IF NOT EXISTS chatbot_logs (
     chatbot_log_id int auto_increment primary key,
     user_id int null,
     question text not null,

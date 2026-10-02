@@ -63,10 +63,7 @@ export default function ListingPublish() {
   const propertyName =
     draft.buildingName || 'Property Name';
 
-  const propertyPlace =
-    [draft.city, draft.country]
-      .filter(Boolean)
-      .join(', ') || 'Property Place';
+  const propertyPlace = draft.googleMapsUrl || 'Google Maps location added';
 
   const [agreed, setAgreed] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -117,16 +114,6 @@ export default function ListingPublish() {
     setIsPublishing(true);
     setError('');
 
-    const fullLocation = [
-      draft.street,
-      draft.city,
-      draft.state,
-      draft.country,
-      draft.zip,
-    ]
-      .filter(Boolean)
-      .join(', ') || draft.location || '';
-
     try {
       const formData = new FormData();
 
@@ -142,39 +129,11 @@ export default function ListingPublish() {
       formData.append('propertyName', draft.buildingName || '');
 
       formData.append(
-        'location',
-        fullLocation
+        'googleMapsUrl',
+        draft.googleMapsUrl || ''
       );
-
-      formData.append('locationSearch', draft.search || '');
-      formData.append('country', draft.country || '');
-      formData.append('state', draft.state || '');
-      formData.append('city', draft.city || '');
-      formData.append('street', draft.street || '');
-      formData.append('unitLocation', draft.unit || '');
-      formData.append('zip', draft.zip || '');
       formData.append('bathrooms', draft.bathrooms || '0');
       formData.append('bedroomDetails', JSON.stringify(draft.bedrooms || []));
-
-      if (
-        draft.latitude !== null &&
-        draft.latitude !== undefined
-      ) {
-        formData.append(
-          'latitude',
-          draft.latitude
-        );
-      }
-
-      if (
-        draft.longitude !== null &&
-        draft.longitude !== undefined
-      ) {
-        formData.append(
-          'longitude',
-          draft.longitude
-        );
-      }
 
       formData.append(
         'tower',

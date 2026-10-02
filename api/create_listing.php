@@ -14,20 +14,20 @@ $propertyName = trim(
     $data['propertyName'] ?? ''
 );
 
-$location = trim(
-    $data['location'] ?? ''
-);
+$googleMapsUrl = trim($data['googleMapsUrl'] ?? '');
 
-$locationSearch = trim($data['locationSearch'] ?? '');
-$country = trim($data['country'] ?? '');
-$state = trim($data['state'] ?? '');
-$city = trim($data['city'] ?? '');
-$street = trim($data['street'] ?? '');
-$unitLocation = trim($data['unitLocation'] ?? '');
-$zip = trim($data['zip'] ?? '');
+if ($googleMapsUrl !== '' && !filter_var($googleMapsUrl, FILTER_VALIDATE_URL)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Please provide a valid Google Maps link.']);
+    exit;
+}
 
-$latitude = $data['latitude'] ?? null;
-$longitude = $data['longitude'] ?? null;
+$googleMapsHost = strtolower((string) parse_url($googleMapsUrl, PHP_URL_HOST));
+if ($googleMapsUrl === '' || !in_array($googleMapsHost, ['maps.app.goo.gl', 'maps.google.com', 'www.google.com', 'google.com'], true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'A Google Maps link is required.']);
+    exit;
+}
 
 $tower = trim(
     $data['tower'] ?? ''
@@ -70,7 +70,6 @@ $amenities = $data['amenities'] ?? [];
 if (
     !$buildingName ||
     !$propertyName ||
-    !$location ||
     !$description ||
     !$tower ||
     !$unitNumber ||
@@ -149,64 +148,6 @@ if (!is_array($amenities)) {
     exit;
 }
 
-if (
-    $latitude !== null &&
-    $latitude !== '' &&
-    (
-        !is_numeric($latitude) ||
-        $latitude < -90 ||
-        $latitude > 90
-    )
-) {
-    http_response_code(400);
-
-    echo json_encode([
-        'error' => 'Invalid latitude'
-    ]);
-
-    exit;
-}
-
-if (
-    $longitude !== null &&
-    $longitude !== '' &&
-    (
-        !is_numeric($longitude) ||
-        $longitude < -180 ||
-        $longitude > 180
-    )
-) {
-    http_response_code(400);
-
-    echo json_encode([
-        'error' => 'Invalid longitude'
-    ]);
-
-    exit;
-}
-
-if ($latitude === '') {
-    $latitude = null;
-}
-
-if ($longitude === '') {
-    $longitude = null;
-}
-
-if (
-    ($latitude === null) !==
-    ($longitude === null)
-) {
-    http_response_code(400);
-
-    echo json_encode([
-        'error' => 'Both latitude and longitude are required'
-    ]);
-
-    exit;
-}
-
-
 try {
 
     $pdo->beginTransaction();
@@ -216,33 +157,15 @@ try {
         (
             building_name,
             property_name,
-            location,
-            location_search,
-            country,
-            state,
-            city,
-            street,
-            unit_location,
-            zip,
-            latitude,
-            longitude
+            google_maps_url
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        VALUES (?, ?, ?)'
     );
 
     $building->execute([
         $buildingName,
         $propertyName,
-        $location,
-        $locationSearch,
-        $country,
-        $state,
-        $city,
-        $street,
-        $unitLocation,
-        $zip,
-        $latitude,
-        $longitude,
+        $googleMapsUrl,
     ]);
 
     $buildingId = $pdo->lastInsertId();

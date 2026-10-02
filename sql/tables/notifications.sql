@@ -1,4 +1,4 @@
-create table notifications(
+CREATE TABLE IF NOT EXISTS notifications (
     notification_id int auto_increment primary key,
     user_id int not null,
     booking_id int null,

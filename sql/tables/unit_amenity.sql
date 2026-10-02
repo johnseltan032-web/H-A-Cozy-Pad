@@ -1,4 +1,4 @@
-create table unit_amenity(
+CREATE TABLE IF NOT EXISTS unit_amenity (
     unit_id int not null,
     amenity_id int not null,
     primary key(unit_id, amenity_id),

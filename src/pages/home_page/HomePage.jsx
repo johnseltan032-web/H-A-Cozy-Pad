@@ -16,6 +16,11 @@ export default function HomePage({
 }) {
   const [properties, setProperties] = useState([]);
   const [filteredProperties, setFilteredProperties] = useState([]);
+  const [searchParams, setSearchParams] = useState({
+    check_in_date: '',
+    check_out_date: '',
+    num_of_guests: 1,
+  });
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/available_listings.php`, { credentials: 'include' })
@@ -58,17 +63,20 @@ export default function HomePage({
   // Filter properties dynamically when search parameters change
   const handleSearch = (searchParams) => {
     const { query, num_of_guests } = searchParams;
+    setSearchParams(searchParams);
+    const normalizedQuery = query?.trim().toLowerCase();
 
     const filtered = properties.filter((property) => {
-      const matchesQuery =
-        !query ||
-        property.property_name?.toLowerCase().includes(query.toLowerCase()) ||
-        property.building_name?.toLowerCase().includes(query.toLowerCase()) ||
-        property.location?.toLowerCase().includes(query.toLowerCase()) ||
-        property.unit_number?.toLowerCase().includes(query.toLowerCase());
+      const searchableLocation = [
+        property.property_name,
+        property.building_name,
+        property.google_maps_url,
+        property.unit_number,
+      ].filter(Boolean).join(' ').toLowerCase();
+      const matchesQuery = !normalizedQuery || searchableLocation.includes(normalizedQuery);
 
       const matchesGuests =
-        !num_of_guests || (property.max_guests ? property.max_guests >= num_of_guests : true);
+        !num_of_guests || (property.max_guests ? property.max_guests >= Math.min(num_of_guests, 4) : true);
 
       return matchesQuery && matchesGuests;
     });
@@ -106,7 +114,7 @@ export default function HomePage({
       )}
       <main className="grow">
         <SearchSection onSearch={handleSearch} />
-        <PropertySection properties={filteredProperties} />
+        <PropertySection properties={filteredProperties} searchParams={searchParams} />
       </main>
       <Footer />
     </div>

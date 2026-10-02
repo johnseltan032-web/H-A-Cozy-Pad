@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
@@ -198,10 +198,30 @@ function DailyOperationsCard({ title, count, items, icon, accent, emptyText, fix
 }
 
 export default function DashboardOverview() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [canViewStatistics, setCanViewStatistics] = useState(false);
+  const [unitOptions, setUnitOptions] = useState([]);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isSavingBooking, setIsSavingBooking] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+  const [bookingForm, setBookingForm] = useState({
+    guestName: '',
+    guestContactNum: '',
+    guests: 1,
+    unitId: '',
+    checkIn: new Date().toISOString().split('T')[0],
+    checkOut: '',
+    checkInTime: '',
+    checkOutTime: '',
+    paymentAmount: '',
+    paymentMethod: 'cash',
+    paymentStatus: 'verified',
+    notes: '',
+  });
 
   useEffect(() => {
     let isCurrent = true;
@@ -230,10 +250,70 @@ export default function DashboardOverview() {
         if (isCurrent) setIsLoading(false);
       });
 
+    fetch(`${API_BASE_URL}/listings.php`, { credentials: 'include' })
+      .then((response) => response.json())
+      .then((data) => setUnitOptions(Array.isArray(data) ? data : []))
+      .catch(() => setUnitOptions([]));
+
     return () => {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('newBooking') === '1') {
+      setBookingError('');
+      setIsBookingOpen(true);
+    }
+  }, [location.search]);
+
+  const handleBookingFieldChange = (event) => {
+    const { name, value } = event.target;
+    setBookingForm((currentForm) => ({ ...currentForm, [name]: value }));
+  };
+
+  const closeBookingModal = () => {
+    setIsBookingOpen(false);
+    if (location.search) {
+      navigate('/host/overview', { replace: true });
+    }
+  };
+
+  const saveManualBooking = async (event) => {
+    event.preventDefault();
+    setIsSavingBooking(true);
+    setBookingError('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin_create_booking.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...bookingForm, guests: Number(bookingForm.guests), unitId: Number(bookingForm.unitId) }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to create booking.');
+
+      closeBookingModal();
+      setBookingForm((currentForm) => ({
+        ...currentForm,
+        guestName: '',
+        guestContactNum: '',
+        guests: 1,
+        unitId: '',
+        checkOut: '',
+        checkInTime: '',
+        checkOutTime: '',
+        paymentAmount: '',
+        notes: '',
+      }));
+      window.location.reload();
+    } catch (saveError) {
+      setBookingError(saveError.message);
+    } finally {
+      setIsSavingBooking(false);
+    }
+  };
 
   const dailyOps = dashboard?.dailyOperations || {
     checkIns: { count: 0, items: [] },
@@ -286,12 +366,43 @@ export default function DashboardOverview() {
             </div>
           )}
 
-          <Link to="/host/listing" className="rounded-lg border border-[#ca635a] bg-[#df766c] p-4 text-white transition hover:bg-[#bd584f]">
+          <Link to="/host/listing" className="rounded-lg border border-[#ca635a] bg-[#df766c] p-4 text-left text-white transition hover:bg-[#bd584f]">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/80">Create</p>
             <h2 className="mt-2 text-lg font-semibold text-white">New listing</h2>
             <p className="mt-1 text-sm text-white/90">Add a unit and open its availability.</p>
           </Link>
         </section>
+
+        {isBookingOpen && (
+          <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 px-4 py-6" onClick={closeBookingModal}>
+            <section className="max-h-[calc(100dvh-3rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="new-booking-title" onClick={(event) => event.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-neutral-500">Admin booking</p>
+                  <h2 id="new-booking-title" className="mt-1 text-2xl font-bold">New Booking</h2>
+                </div>
+                <button type="button" onClick={closeBookingModal} className="text-2xl leading-none text-neutral-400 hover:text-black" aria-label="Close new booking">&times;</button>
+              </div>
+
+              <form onSubmit={saveManualBooking} className="mt-6 grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium">Guest name<input name="guestName" value={bookingForm.guestName} onChange={handleBookingFieldChange} required className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Contact number<input name="guestContactNum" value={bookingForm.guestContactNum} onChange={handleBookingFieldChange} inputMode="numeric" maxLength={11} required className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Unit<select name="unitId" value={bookingForm.unitId} onChange={handleBookingFieldChange} required className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 font-normal"><option value="">Select a unit</option>{unitOptions.map((unit) => <option key={unit.unit_id} value={unit.unit_id}>{unit.building_name || 'Property'} · {unit.unit_name}</option>)}</select></label>
+                <label className="text-sm font-medium">Guests<input name="guests" type="number" min="1" max="4" value={bookingForm.guests} onChange={handleBookingFieldChange} required className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Check-in<input name="checkIn" type="date" value={bookingForm.checkIn} onChange={handleBookingFieldChange} required className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Check-out<input name="checkOut" type="date" value={bookingForm.checkOut} onChange={handleBookingFieldChange} required className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Check-in time<input name="checkInTime" type="time" value={bookingForm.checkInTime} onChange={handleBookingFieldChange} className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Check-out time<input name="checkOutTime" type="time" value={bookingForm.checkOutTime} onChange={handleBookingFieldChange} className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Payment amount<input name="paymentAmount" type="number" min="0" step="0.01" value={bookingForm.paymentAmount} onChange={handleBookingFieldChange} placeholder="Auto-calculate" className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                <label className="text-sm font-medium">Payment method<select name="paymentMethod" value={bookingForm.paymentMethod} onChange={handleBookingFieldChange} className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 font-normal"><option value="cash">Cash</option><option value="e-wallet">E-wallet</option><option value="bank_transfer">Bank transfer</option><option value="card">Card</option></select></label>
+                <label className="text-sm font-medium">Payment status<select name="paymentStatus" value={bookingForm.paymentStatus} onChange={handleBookingFieldChange} className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 font-normal"><option value="verified">Paid / verified</option><option value="pending">Pending</option><option value="rejected">Rejected</option></select></label>
+                <label className="text-sm font-medium sm:col-span-2">Notes<textarea name="notes" value={bookingForm.notes} onChange={handleBookingFieldChange} rows="3" className="mt-1 w-full resize-none rounded-lg border border-neutral-300 px-3 py-2.5 font-normal" /></label>
+                {bookingError && <p className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{bookingError}</p>}
+                <div className="flex justify-end gap-2 sm:col-span-2"><button type="button" onClick={closeBookingModal} className="rounded-full border border-neutral-300 px-5 py-2.5 text-sm">Cancel</button><button type="submit" disabled={isSavingBooking} className="rounded-full bg-[#df766c] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isSavingBooking ? 'Saving...' : 'Save booking'}</button></div>
+              </form>
+            </section>
+          </div>
+        )}
 
         {error && <p role="alert" className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
         {isLoading ? (

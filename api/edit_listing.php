@@ -10,14 +10,7 @@ if (empty($data)) {
 $buildingId = (int) ($data['buildingId'] ?? 0);
 $buildingName = trim($data['buildingName'] ?? '');
 $propertyName = trim($data['propertyName'] ?? '');
-$location = trim($data['location'] ?? '');
-$locationSearch = trim($data['locationSearch'] ?? '');
-$country = trim($data['country'] ?? '');
-$state = trim($data['state'] ?? '');
-$city = trim($data['city'] ?? '');
-$street = trim($data['street'] ?? '');
-$unitLocation = trim($data['unitLocation'] ?? '');
-$zip = trim($data['zip'] ?? '');
+$googleMapsUrl = trim($data['googleMapsUrl'] ?? '');
 $tower = trim($data['tower'] ?? '');
 $unitNumber = trim($data['unitNumber'] ?? '');
 $description = trim($data['description'] ?? '');
@@ -46,14 +39,7 @@ $existingListing = $pdo->prepare(
     'SELECT
         b.building_name,
         b.property_name,
-        b.location,
-        b.location_search,
-        b.country,
-        b.state,
-        b.city,
-        b.street,
-        b.unit_location,
-        b.zip,
+        b.google_maps_url,
         u.tower,
         u.unit_number,
         u.description,
@@ -78,15 +64,8 @@ if (!$existing) {
 
 $buildingName = array_key_exists('buildingName', $data) ? $buildingName : ($existing['building_name'] ?? '');
 $propertyName = array_key_exists('propertyName', $data) ? $propertyName : ($existing['property_name'] ?? $buildingName);
-$location = array_key_exists('location', $data) ? $location : ($existing['location'] ?? '');
-$locationSearch = array_key_exists('locationSearch', $data)
-    ? $locationSearch : ($existing['location_search'] ?? '');
-$country = array_key_exists('country', $data) ? $country : ($existing['country'] ?? '');
-$state = array_key_exists('state', $data) ? $state : ($existing['state'] ?? '');
-$city = array_key_exists('city', $data) ? $city : ($existing['city'] ?? '');
-$street = array_key_exists('street', $data) ? $street : ($existing['street'] ?? '');
-$unitLocation = array_key_exists('unitLocation', $data) ? $unitLocation : ($existing['unit_location'] ?? '');
-$zip = array_key_exists('zip', $data) ? $zip : ($existing['zip'] ?? '');
+$googleMapsUrl = array_key_exists('googleMapsUrl', $data)
+    ? $googleMapsUrl : ($existing['google_maps_url'] ?? '');
 $tower = array_key_exists('tower', $data) ? $tower : ($existing['tower'] ?? '');
 $unitNumber = array_key_exists('unitNumber', $data) ? $unitNumber : ($existing['unit_number'] ?? '');
 $description = array_key_exists('description', $data) ? $description : ($existing['description'] ?? '');
@@ -98,9 +77,22 @@ $ratePerNight = array_key_exists('ratePerNight', $data) ? $ratePerNight : (float
 $availableFrom = array_key_exists('availableFrom', $data) ? $availableFrom : ($existing['available_from'] ?? '');
 $availableUntil = array_key_exists('availableUntil', $data) ? $availableUntil : ($existing['available_until'] ?? '');
 
-    if (!$buildingId || !$buildingName || !$propertyName || !$location || !$description || !$tower || !$unitNumber || $maxGuests < 1 || $maxGuests > 4 || $ratePerNight <= 0 || !$availableFrom || !$availableUntil) {
+    if (!$buildingId || !$buildingName || !$propertyName || !$description || !$tower || !$unitNumber || !$googleMapsUrl || $maxGuests < 1 || $maxGuests > 4 || $ratePerNight <= 0 || !$availableFrom || !$availableUntil) {
     http_response_code(400);
     echo json_encode(['error' => 'Complete the required listing fields, including tower and unit number. Maximum 4 guests per unit.']);
+    exit;
+}
+
+if (!filter_var($googleMapsUrl, FILTER_VALIDATE_URL)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Please provide a valid Google Maps link.']);
+    exit;
+}
+
+$googleMapsHost = strtolower((string) parse_url($googleMapsUrl, PHP_URL_HOST));
+if (!in_array($googleMapsHost, ['maps.app.goo.gl', 'maps.google.com', 'www.google.com', 'google.com'], true)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'A Google Maps link is required.']);
     exit;
 }
 
@@ -121,22 +113,13 @@ try {
 
     $building = $pdo->prepare(
         'UPDATE buildings
-         SET building_name = ?, property_name = ?, location = ?,
-             location_search = ?, country = ?, state = ?, city = ?,
-             street = ?, unit_location = ?, zip = ?
+         SET building_name = ?, property_name = ?, google_maps_url = ?
          WHERE building_id = ?'
     );
     $building->execute([
         $buildingName,
         $propertyName,
-        $location,
-        $locationSearch,
-        $country,
-        $state,
-        $city,
-        $street,
-        $unitLocation,
-        $zip,
+        $googleMapsUrl,
         $buildingId,
     ]);
 

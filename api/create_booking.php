@@ -9,6 +9,20 @@ header('Content-Type: application/json');
 
 $data = $_POST ?: (json_decode(file_get_contents('php://input'), true) ?? []);
 
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Only customer accounts can make bookings.']);
+    exit;
+}
+
+if (strtolower($_SESSION['role'] ?? '') !== 'customer') {
+    http_response_code(403);
+    echo json_encode(['error' => 'Only customer accounts can make bookings.']);
+    exit;
+}
+
+$isGuestCheckout = false;
+
 $unitId = (int) ($data['unitId'] ?? 0);
 $checkIn = trim($data['checkIn'] ?? '');
 $checkOut = trim($data['checkOut'] ?? '');
@@ -35,8 +49,7 @@ if (strlen($guestName) > 50 || !preg_match('/^[0-9]{11}$/', $guestContactNum)) {
     exit;
 }
 
-$isGuestCheckout = !isset($_SESSION['user_id']);
-if ($isGuestCheckout && (!filter_var($guestEmail, FILTER_VALIDATE_EMAIL) || strlen($guestEmail) > 50)) {
+if (!filter_var($guestEmail, FILTER_VALIDATE_EMAIL) || strlen($guestEmail) > 50) {
     http_response_code(400);
     echo json_encode(['error' => 'A valid email address of 50 characters or fewer is required for guest checkout']);
     exit;

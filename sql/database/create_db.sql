@@ -41,16 +41,7 @@ CREATE TABLE IF NOT EXISTS buildings (
     building_id INT AUTO_INCREMENT PRIMARY KEY,
     building_name VARCHAR(100) NOT NULL,
     property_name VARCHAR(100) NOT NULL,
-    location VARCHAR(150) NOT NULL,
-    location_search VARCHAR(255) NULL,
-    country VARCHAR(100) NULL,
-    state VARCHAR(100) NULL,
-    city VARCHAR(100) NULL,
-    street VARCHAR(150) NULL,
-    unit_location VARCHAR(50) NULL,
-    zip VARCHAR(20) NULL,
-    latitude DECIMAL(10, 7) NULL,
-    longitude DECIMAL(10, 7) NULL,
+    google_maps_url VARCHAR(500) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -105,6 +96,8 @@ CREATE TABLE IF NOT EXISTS bookings (
     unit_id INT NOT NULL,
     check_in_date DATE NOT NULL,
     check_out_date DATE NOT NULL,
+    check_in_time TIME NULL,
+    check_out_time TIME NULL,
     num_of_guests INT NOT NULL DEFAULT 1,
     cancellation_reason TEXT NULL,
     cancelled_at DATETIME NULL,

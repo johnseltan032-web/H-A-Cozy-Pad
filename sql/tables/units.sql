@@ -1,4 +1,4 @@
-create table units(
+CREATE TABLE IF NOT EXISTS units (
     unit_id int auto_increment primary key,
     building_id int not null,
     unit_name varchar(100) not null,

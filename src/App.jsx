@@ -43,7 +43,6 @@ import MobileTabBar from './components/MobileTabBar';
 // listing pages
 import PlaceOffer from './pages/listing_page/PlaceOffer';
 import UnitSelection from './pages/listing_page/UnitSelection';
-import PlaceLocation from './pages/listing_page/PlaceLocation';
 import PlaceRate from './pages/listing_page/PlaceRate';
 import PlaceDetail from './pages/listing_page/PlaceDetail';
 import ListingPublish from './pages/listing_page/ListingPublish';
@@ -96,7 +95,12 @@ function AppContent() {
 
     setIsAuthModalOpen(false);
 
-    navigate(loginRedirect || '/');
+    const role = String(userData?.role || '').toLowerCase();
+    if (role === 'admin' || role === 'super_admin') {
+      navigate('/host/overview');
+    } else if (loginRedirect) {
+      navigate(loginRedirect);
+    }
   };
 
   useEffect(() => {
@@ -140,7 +144,7 @@ function AppContent() {
               setIsMenuOpen={setIsMenuOpen}
               user={user}
               onLogout={() => setUser(null)}
-              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenSignIn={() => handleOpenAuth(null)}
               onOpenRegister={handleOpenRegister}
             />
           }
@@ -154,7 +158,7 @@ function AppContent() {
               setIsMenuOpen={setIsMenuOpen}
               user={user}
               onLogout={() => setUser(null)}
-              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenSignIn={() => handleOpenAuth(null)}
               onOpenRegister={handleOpenRegister}
             />
           }
@@ -183,7 +187,7 @@ function AppContent() {
               isMenuOpen={isMenuOpen}
               setIsMenuOpen={setIsMenuOpen}
               onLogout={() => setUser(null)}
-              onOpenSignIn={() => handleOpenAuth('/profile')}
+              onOpenSignIn={() => handleOpenAuth(null)}
               onOpenRegister={handleOpenRegister}
             />
           }
@@ -229,10 +233,6 @@ function AppContent() {
             element={<PlaceOffer />}
           />
           <Route
-            path="/host/listing/PlaceLocation"
-            element={<PlaceLocation />}
-          />
-          <Route
             path="/host/listing/PlaceRate"
             element={<PlaceRate />}
           />
@@ -273,7 +273,7 @@ function AppContent() {
               setIsMenuOpen={setIsMenuOpen}
               user={user}
               onLogout={() => setUser(null)}
-              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenSignIn={() => handleOpenAuth(null)}
               onOpenRegister={handleOpenRegister}
               onOpenChat={() => setIsChatOpen(true)}
             />
@@ -282,7 +282,7 @@ function AppContent() {
 
         <Route
           path="/trips"
-          element={<Trips onOpenSignIn={() => handleOpenAuth('/trips')} />}
+          element={<Trips onOpenSignIn={() => handleOpenAuth(null)} />}
         />
 
         <Route
@@ -293,7 +293,7 @@ function AppContent() {
               onLogout={() => setUser(null)}
               isMenuOpen={isMenuOpen}
               setIsMenuOpen={setIsMenuOpen}
-              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenSignIn={() => handleOpenAuth(null)}
               onOpenRegister={handleOpenRegister}
             />
           }
@@ -307,7 +307,7 @@ function AppContent() {
               onLogout={() => setUser(null)}
               isMenuOpen={isMenuOpen}
               setIsMenuOpen={setIsMenuOpen}
-              onOpenSignIn={() => handleOpenAuth('/')}
+              onOpenSignIn={() => handleOpenAuth(null)}
               onOpenRegister={handleOpenRegister}
             />
           }

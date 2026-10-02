@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer_Lite";
@@ -73,11 +73,26 @@ function CheckIcon() {
 function FileUploadBox({
   file,
   onChange,
+  onRemove,
   error,
   hint = "PNG or JPG, 1mb maximum file size",
 }) {
+  const [previewUrl, setPreviewUrl] = useState('');
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl('');
+      return undefined;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setPreviewUrl(nextPreviewUrl);
+
+    return () => URL.revokeObjectURL(nextPreviewUrl);
+  }, [file]);
+
   return (
-    <div>
+    <div className="relative w-28">
       <label
         className={`flex flex-col items-center justify-center gap-2 border rounded-xl w-28 h-28 cursor-pointer hover:bg-gray-50 ${
           error ? "border-red-500" : "border-gray-300"
@@ -90,20 +105,45 @@ function FileUploadBox({
           onChange={(e) => onChange(e.target.files?.[0] || null)}
         />
 
-        <span
-          className={`w-9 h-9 rounded-full border flex items-center justify-center ${
-            error
-              ? "border-red-300 text-red-500"
-              : "border-gray-300 text-gray-500"
-          }`}
-        >
-          <PlusIcon className="w-5 h-5" />
-        </span>
+        {file && previewUrl ? (
+          <img
+            src={previewUrl}
+            alt={file.name || 'Uploaded image'}
+            className="h-full w-full rounded-xl object-cover"
+          />
+        ) : (
+          <>
+            <span
+              className={`w-9 h-9 rounded-full border flex items-center justify-center ${
+                error
+                  ? "border-red-300 text-red-500"
+                  : "border-gray-300 text-gray-500"
+              }`}
+            >
+              <PlusIcon className="w-5 h-5" />
+            </span>
 
-        <span className="text-[10px] text-gray-400 text-center px-2 leading-tight">
-          {file ? file.name : hint}
-        </span>
+            <span className="text-[10px] text-gray-400 text-center px-2 leading-tight">
+              {file ? file.name : hint}
+            </span>
+          </>
+        )}
       </label>
+
+      {file && onRemove && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onRemove();
+          }}
+          aria-label={`Remove ${file.name}`}
+          className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-gray-200 bg-white p-0 text-base leading-none text-gray-900 shadow-md transition hover:bg-red-50 hover:text-red-600"
+        >
+          &times;
+        </button>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-600 max-w-28">
@@ -164,9 +204,14 @@ export default function AdditionalInformation({
   const navigate = useNavigate();
 
   const booking = location.state || {};
-  const property = booking.property || {};
+  const isCustomer = String(user?.role || '').toLowerCase() === 'customer';
+  const bookingProperties = Array.isArray(booking.properties) && booking.properties.length > 0
+    ? booking.properties
+    : [booking.property || {}];
+  const property = bookingProperties[0] || {};
 
   const [submitError, setSubmitError] = useState("");
+  const [accountError, setAccountError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBookingConfirmation, setShowBookingConfirmation] = useState(false);
   const [savedBookingId, setSavedBookingId] = useState(
@@ -549,6 +594,11 @@ export default function AdditionalInformation({
 
     if (booking.bookingId) return;
 
+    if (!isCustomer) {
+      setAccountError('Only customer accounts can make bookings.');
+      return;
+    }
+
     setSubmitError("");
 
     // Validate before sending request
@@ -581,128 +631,76 @@ export default function AdditionalInformation({
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
+      const totalGuests = Number(booking.guests || 1);
+      const createdBookings = [];
+      let remainingGuests = totalGuests;
 
-      formData.append(
-        "unitId",
-        property.unit_id || ""
-      );
+      for (const selectedProperty of bookingProperties) {
+        const guestsForUnit = Math.min(4, remainingGuests);
+        const formData = new FormData();
 
-      formData.append(
-        "checkIn",
-        booking.checkIn || ""
-      );
-
-      formData.append(
-        "checkOut",
-        booking.checkOut || ""
-      );
-
-      formData.append(
-        "guests",
-        booking.guests || "1"
-      );
-
-      formData.append(
-        "guestName",
-        `${firstName} ${lastName}`.trim()
-      );
-
-      formData.append(
-        "guestContactNum",
-        phone
-      );
-
-      formData.append(
-        "guestEmail",
-        email.trim().toLowerCase()
-      );
-
-      formData.append(
-        "vehicleType",
-        hasVehicle
-          ? vehicles
-              .map(
-                (vehicle) =>
-                  `${vehicle.type} (${vehicle.count})`
-              )
-              .join(", ")
-          : ""
-      );
-
-      formData.append(
-        "specialRequests",
-        specialRequest
-      );
-
-      if (govId) {
-        formData.append("govId", govId);
-      }
-
-      if (proofOfPayment) {
+        formData.append("unitId", selectedProperty.unit_id || "");
+        formData.append("checkIn", booking.checkIn || "");
+        formData.append("checkOut", booking.checkOut || "");
+        formData.append("guests", String(guestsForUnit));
+        formData.append("guestName", `${firstName} ${lastName}`.trim());
+        formData.append("guestContactNum", phone);
+        formData.append("guestEmail", email.trim().toLowerCase());
         formData.append(
-          "proofOfPayment",
-          proofOfPayment
+          "vehicleType",
+          hasVehicle
+            ? vehicles.map((vehicle) => `${vehicle.type} (${vehicle.count})`).join(", ")
+            : ""
         );
-      }
+        formData.append("specialRequests", specialRequest);
 
-      const response = await fetch(
-        `${API_BASE_URL}/create_booking.php`,
-        {
+        if (govId) formData.append("govId", govId);
+        if (proofOfPayment) formData.append("proofOfPayment", proofOfPayment);
+
+        const response = await fetch(`${API_BASE_URL}/create_booking.php`, {
           method: "POST",
           credentials: "include",
           body: formData,
-        }
-      );
+        });
+        const text = await response.text();
+        let data = {};
 
-      const text = await response.text();
-      let data = {};
-
-      if (text) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = { error: 'Unexpected server response. Please try again.' };
-        }
-      }
-
-      const bookingId = data.bookingId ?? data.booking_id;
-      const isBookingCreated = Boolean(data.success && bookingId);
-
-      if (isBookingCreated) {
-        const guestBooking = Boolean(data.guestBooking);
-        setIsGuestBooking(guestBooking);
-        setSavedBookingId(bookingId);
-
-        if (guestBooking) {
-          const guestName = `${firstName.trim()} ${lastName.trim()}`.trim();
-
-          persistGuestBooking({
-            bookingId: Number(bookingId),
-            status: data.status || "payment_review",
-            checkIn: booking.checkIn,
-            checkOut: booking.checkOut,
-            guests: Number(booking.guests || 1),
-            guestName,
-            guestContactNum: phone.trim(),
-            unitName: property?.unitName || property?.unit_name || property?.name || "Property stay",
-            propertyName: property?.buildingName || property?.building_name || property?.title || "Property",
-            createdAt: new Date().toISOString(),
-          });
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { error: 'Unexpected server response. Please try again.' };
+          }
         }
 
-        return;
+        const bookingId = data.bookingId ?? data.booking_id;
+        if (!response.ok || !data.success || !bookingId) {
+          throw new Error(data.error || 'Unable to create booking.');
+        }
+
+        createdBookings.push({ bookingId, data, selectedProperty });
+        remainingGuests -= guestsForUnit;
       }
 
-      if (!response.ok) {
-        throw new Error(
-          data.error || 'Unable to create booking.'
-        );
-      }
+      const firstBooking = createdBookings[0];
+      setIsGuestBooking(Boolean(firstBooking.data.guestBooking));
+      setSavedBookingId(firstBooking.bookingId);
 
-      throw new Error(
-        data.error || 'Unable to confirm that the booking was saved.'
-      );
+      if (firstBooking.data.guestBooking) {
+        const guestName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        persistGuestBooking({
+          bookingId: Number(firstBooking.bookingId),
+          status: firstBooking.data.status || "payment_review",
+          checkIn: booking.checkIn,
+          checkOut: booking.checkOut,
+          guests: totalGuests,
+          guestName,
+          guestContactNum: phone.trim(),
+          unitName: firstBooking.selectedProperty?.unit_name || "Property stay",
+          propertyName: firstBooking.selectedProperty?.property_name || firstBooking.selectedProperty?.building_name || "Property",
+          createdAt: new Date().toISOString(),
+        });
+      }
     } catch (error) {
       setSubmitError(
         error.message ||
@@ -725,22 +723,36 @@ export default function AdditionalInformation({
       />
 
       <main className="grow px-5 md:px-10 lg:px-[52px] py-10">
-        <div className="max-w-[640px] mx-auto">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="mb-6 text-sm underline"
-          >
-            Back
-          </button>
+        <div className="max-w-[640px] mx-auto md:max-w-[980px] xl:max-w-[1120px]">
+          <div className="mb-8 flex items-center justify-between gap-4">
+            <h2 className="text-2xl md:text-3xl font-bold">
+              Additional Information
+            </h2>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-100 cursor-pointer"
+            >
+              Back
+            </button>
+          </div>
 
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
-            Additional Information
-          </h2>
+          {!isCustomer && (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4" role="alert">
+              <p className="text-sm font-semibold text-amber-950">
+                {accountError || 'Only customer accounts can make bookings.'}
+              </p>
+              <p className="mt-1 text-sm text-amber-900">Please log in or create a customer account to continue.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" onClick={onOpenSignIn} className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">Log In</button>
+                <button type="button" onClick={onOpenRegister} className="rounded-full border border-amber-900 px-4 py-2 text-sm font-medium text-amber-950 hover:bg-amber-100">Sign Up</button>
+              </div>
+            </div>
+          )}
 
           <form
             onSubmit={handleSubmit}
-            className="space-y-8"
+            className="space-y-8 md:grid md:grid-cols-2 md:gap-x-10 md:gap-y-8 md:space-y-0"
           >
             {/* 1. Full Name */}
             <section>
@@ -888,6 +900,7 @@ export default function AdditionalInformation({
                 <FileUploadBox
                   file={govId}
                   onChange={handleGovIdChange}
+                  onRemove={() => { setGovId(null); clearFieldError("govId"); }}
                   error={errors.govId}
                 />
               </div>
@@ -909,13 +922,14 @@ export default function AdditionalInformation({
                 <FileUploadBox
                   file={proofOfPayment}
                   onChange={handleProofOfPaymentChange}
+                  onRemove={() => { setProofOfPayment(null); clearFieldError("proofOfPayment"); }}
                   error={errors.proofOfPayment}
                 />
               </div>
             </section>
 
             {/* 5. Vehicle Information */}
-            <section>
+            <section className="md:col-span-2">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">
                   5. Vehicle Information
@@ -1084,9 +1098,10 @@ export default function AdditionalInformation({
               type="submit"
               disabled={
                 isSubmitting ||
-                Boolean(savedBookingId)
+                Boolean(savedBookingId) ||
+                !isCustomer
               }
-              className="w-full sm:w-auto sm:mx-auto sm:block bg-gray-900 text-white text-sm font-medium rounded-full px-10 py-3 hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto sm:mx-auto sm:block md:col-span-2 bg-gray-900 text-white text-sm font-medium rounded-full px-10 py-3 hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {savedBookingId
                 ? "Booking saved"
@@ -1097,7 +1112,7 @@ export default function AdditionalInformation({
 
             {/* Server / unexpected error */}
             {submitError && (
-              <p className="text-sm text-red-600 text-center">
+              <p className="text-sm text-red-600 text-center md:col-span-2">
                 {submitError}
               </p>
             )}

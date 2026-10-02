@@ -12,6 +12,7 @@ export default function UnitSelection() {
   const [tower, setTower] = useState(draft.tower || '');
   const [unitNumber, setUnitNumber] = useState(draft.unitNumber || '');
   const [maxGuests, setMaxGuests] = useState(draft.maxGuests || 4);
+  const [googleMapsUrl, setGoogleMapsUrl] = useState(draft.googleMapsUrl || '');
 
   const saveAndExit = () => {
     updateListingDraft({
@@ -19,6 +20,7 @@ export default function UnitSelection() {
       tower: tower.trim(),
       unitNumber: unitNumber.trim(),
       maxGuests: Number(maxGuests),
+      googleMapsUrl: googleMapsUrl.trim(),
       unitSelection: [{ building, tower: tower.trim(), unitNumber: unitNumber.trim(), maxGuests: Number(maxGuests) }],
       unitCount: 1,
     });
@@ -26,7 +28,7 @@ export default function UnitSelection() {
   };
 
   const handleContinue = () => {
-    if (!building || !tower.trim() || !unitNumber.trim()) {
+    if (!building || !tower.trim() || !unitNumber.trim() || !googleMapsUrl.trim()) {
       return;
     }
 
@@ -35,6 +37,7 @@ export default function UnitSelection() {
       tower: tower.trim(),
       unitNumber: unitNumber.trim(),
       maxGuests: Number(maxGuests),
+      googleMapsUrl: googleMapsUrl.trim(),
       unitSelection: [{ building, tower: tower.trim(), unitNumber: unitNumber.trim(), maxGuests: Number(maxGuests) }],
       unitCount: 1,
     });
@@ -94,6 +97,18 @@ export default function UnitSelection() {
             </label>
 
             <label className="block text-[15px] font-medium">
+              Google Maps link
+              <input
+                type="url"
+                value={googleMapsUrl}
+                onChange={(event) => setGoogleMapsUrl(event.target.value)}
+                placeholder="https://maps.app.goo.gl/..."
+                className="mt-2 h-[52px] w-full rounded-full border border-black bg-white px-4 text-[15px] placeholder:text-neutral-400 outline-none focus:bg-neutral-50"
+                required
+              />
+            </label>
+
+            <label className="block text-[15px] font-medium">
               Max guests
               <select
                 value={maxGuests}
@@ -122,9 +137,9 @@ export default function UnitSelection() {
           <button
             type="button"
             onClick={handleContinue}
-            disabled={!building || !tower.trim() || !unitNumber.trim()}
+            disabled={!building || !tower.trim() || !unitNumber.trim() || !googleMapsUrl.trim()}
             className={`w-full sm:w-[142px] h-[50px] rounded-full border border-black text-[20px] transition ${
-              building && tower.trim() && unitNumber.trim()
+              building && tower.trim() && unitNumber.trim() && googleMapsUrl.trim()
                 ? 'bg-black text-white hover:bg-neutral-800 cursor-pointer'
                 : 'bg-neutral-200 text-black cursor-not-allowed'
             }`}

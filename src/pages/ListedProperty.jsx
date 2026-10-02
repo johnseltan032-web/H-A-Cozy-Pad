@@ -1,24 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapContainer, Marker, TileLayer } from 'react-leaflet';
-import L from 'leaflet';
-
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Chatbot from '../components/Chatbot';
 import { API_BASE_URL } from '../lib/api';
-
-import 'leaflet/dist/leaflet.css';
-import markerIconPng from 'leaflet/dist/images/marker-icon.png';
-import markerShadowPng from 'leaflet/dist/images/marker-shadow.png';
-
-delete L.Icon.Default.prototype._getIconUrl;
-
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIconPng,
-  iconUrl: markerIconPng,
-  shadowUrl: markerShadowPng,
-});
 
 const PLACEHOLDER_AMENITIES = Array.from(
   { length: 8 },
@@ -111,7 +96,7 @@ export default function PropertyDetail({
   const [showAllComments, setShowAllComments] =
     useState(false);
 
-  const [checkIn, setCheckIn] = useState('');
+  const [checkIn, setCheckIn] = useState(() => new Date().toISOString().split('T')[0]);
   const [checkOut, setCheckOut] = useState('');
   const [guests, setGuests] = useState(1);
 
@@ -438,9 +423,6 @@ export default function PropertyDetail({
 
                 <p className="text-neutral-600 mt-1">
                   {unit.building_name}
-                  {unit.tower ? ` · Tower ${unit.tower}` : ''}
-                  {unit.unit_number ? ` · Unit ${unit.unit_number}` : ''} ·{' '}
-                  {unit.location}
                 </p>
               </div>
               <button
@@ -452,7 +434,7 @@ export default function PropertyDetail({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
+            <div className="w-full">
 
               {/* Image Gallery */}
               <div className="relative grid grid-cols-2 gap-3">
@@ -546,46 +528,6 @@ export default function PropertyDetail({
 
               </div>
 
-              {/* Map */}
-              <div className="relative z-0 h-56 lg:h-full min-h-[220px] overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
-
-                {Number.isFinite(
-                  Number(unit.latitude)
-                ) &&
-                Number.isFinite(
-                  Number(unit.longitude)
-                ) ? (
-                  <MapContainer
-                    center={[
-                      Number(unit.latitude),
-                      Number(unit.longitude),
-                    ]}
-                    zoom={15}
-                    scrollWheelZoom={false}
-                    className="h-full w-full"
-                  >
-
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-
-                    <Marker
-                      position={[
-                        Number(unit.latitude),
-                        Number(unit.longitude),
-                      ]}
-                    />
-
-                  </MapContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-neutral-400">
-                    Location unavailable
-                  </div>
-                )}
-
-              </div>
-
             </div>
 
             {/* =====================================================
@@ -597,31 +539,27 @@ export default function PropertyDetail({
               {/* Details */}
               <div>
 
-                <h2 className="text-lg font-semibold mb-2">
-                  Description
-                </h2>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold">Description</h2>
+                  <a
+                    href={getGoogleMapsUrl(unit)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-neutral-700 underline underline-offset-2 hover:text-black"
+                  >
+                    <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#4285f4] text-xs font-bold text-white">G</span>
+                    Google Maps
+                  </a>
+                </div>
 
                 <p className="text-neutral-700 leading-relaxed">
-                  {unit.description ||
-                    'No description provided for this unit yet.'}
+                  {unit.description || 'No description provided for this unit yet.'}
                 </p>
 
                 <section className="mt-7 border-y border-neutral-200 py-6">
                   <h2 className="text-lg font-semibold mb-4">Property details</h2>
 
                   <div className="grid grid-cols-2 gap-x-5 gap-y-4 text-sm sm:grid-cols-3">
-                    <div>
-                      <p className="text-neutral-500">Building</p>
-                      <p className="mt-1 font-medium">{unit.building_name || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-neutral-500">Tower</p>
-                      <p className="mt-1 font-medium">{unit.tower || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-neutral-500">Unit number</p>
-                      <p className="mt-1 font-medium">{unit.unit_number || '—'}</p>
-                    </div>
                     <div>
                       <p className="text-neutral-500">Maximum guests</p>
                       <p className="mt-1 font-medium">{unit.max_guests ?? '—'}</p>
@@ -692,7 +630,7 @@ export default function PropertyDetail({
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
 
-                  <label className="border border-neutral-300 rounded-lg px-3 py-2 flex flex-col">
+                  <label className="border border-neutral-300 rounded-lg px-3 py-2 flex flex-col focus-within:border-neutral-300">
 
                     <span className="text-[11px] text-neutral-500 uppercase">
                       Check-in
@@ -705,12 +643,12 @@ export default function PropertyDetail({
                       max={availableUntil || undefined}
                       disabled={!hasListingAvailability}
                       onChange={handleCheckInChange}
-                      className="bg-transparent outline-none text-sm disabled:text-neutral-400"
+                      className="booking-input bg-transparent outline-none focus:outline-none focus-visible:outline-none focus:ring-0 text-sm disabled:text-neutral-400"
                     />
 
                   </label>
 
-                  <label className="border border-neutral-300 rounded-lg px-3 py-2 flex flex-col">
+                  <label className="border border-neutral-300 rounded-lg px-3 py-2 flex flex-col focus-within:border-neutral-300">
 
                     <span className="text-[11px] text-neutral-500 uppercase">
                       Check-out
@@ -728,7 +666,7 @@ export default function PropertyDetail({
                       max={availableUntil || undefined}
                       disabled={!hasListingAvailability}
                       onChange={handleCheckOutChange}
-                      className="bg-transparent outline-none text-sm disabled:text-neutral-400"
+                      className="booking-input bg-transparent outline-none focus:outline-none focus-visible:outline-none focus:ring-0 text-sm disabled:text-neutral-400"
                     />
 
                   </label>
@@ -736,7 +674,7 @@ export default function PropertyDetail({
                 </div>
 
                 {/* Guests */}
-                <label className="block border border-neutral-300 rounded-lg px-3 py-2 mb-4">
+                <label className="block border border-neutral-300 rounded-lg px-3 py-2 mb-4 focus-within:border-neutral-300">
 
                   <span className="text-[11px] text-neutral-500 uppercase block">
                     Guests
@@ -757,7 +695,7 @@ export default function PropertyDetail({
                         )
                       )
                     }
-                    className="bg-transparent outline-none text-sm w-full"
+                    className="booking-input bg-transparent outline-none focus:outline-none focus-visible:outline-none focus:ring-0 text-sm w-full"
                   />
 
                 </label>
@@ -1052,4 +990,8 @@ export default function PropertyDetail({
 
     </div>
   );
+}
+
+function getGoogleMapsUrl(unit) {
+  return unit?.google_maps_url || '#';
 }

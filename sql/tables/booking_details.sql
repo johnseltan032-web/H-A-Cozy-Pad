@@ -1,4 +1,4 @@
-create table booking_details(
+CREATE TABLE IF NOT EXISTS booking_details (
     booking_detail_id int auto_increment primary key,
     booking_id int not null unique,
     guest_name varchar(50) not null,

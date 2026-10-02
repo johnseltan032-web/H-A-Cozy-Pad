@@ -117,12 +117,12 @@ export default function HostHeader({
       <div className="host-header__actions flex items-center gap-4 justify-self-end">
         <button
           type="button"
-          aria-label="Create a new listing"
-          onClick={() => navigate('/host/listing')}
+          aria-label="Create a new booking"
+          onClick={() => navigate('/host/overview?newBooking=1')}
           className="host-header__new-listing inline-flex items-center gap-2 rounded-full bg-[#df766c] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#bd584f]"
         >
           <span className="text-lg leading-none">+</span>
-          <span>New listing</span>
+          <span>New Booking</span>
         </button>
 
         <NotificationBell />

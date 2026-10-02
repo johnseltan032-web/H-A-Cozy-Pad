@@ -1,9 +1,11 @@
-create table bookings(
+CREATE TABLE IF NOT EXISTS bookings (
     booking_id int auto_increment primary key,
     customer_id int null,
     unit_id int not null,
     check_in_date date not null,
     check_out_date date not null,
+    check_in_time time null,
+    check_out_time time null,
     num_of_guests int not null default 1,
     cancellation_reason text null,
     cancelled_at datetime null,

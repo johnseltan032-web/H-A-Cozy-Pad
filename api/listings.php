@@ -15,7 +15,7 @@
         'SELECT 
             b.building_id,
             b.building_name,
-            b.location,
+            b.google_maps_url,
             u.unit_id,
             u.unit_name,
             u.description,

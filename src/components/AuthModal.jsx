@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../lib/api';
-import { useNavigate } from 'react-router-dom';
 import GoogleAuthButton from './GoogleAuthButton';
 import { isGoogleConfigured } from '../lib/googleAuth';
 
@@ -16,8 +15,6 @@ export default function AuthModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasGoogleClient = isGoogleConfigured;
-
-  const navigate = useNavigate();
 
   // Lock body scroll and register escape key
   useEffect(() => {
@@ -88,8 +85,6 @@ export default function AuthModal({
       // Close the modal.
       onClose();
 
-      // Fallback redirect in case onLoginSuccess is not provided.
-      navigate('/');
     } catch (error) {
       console.error('Login failed:', error);
       setError('Could not reach the server. Is XAMPP running?');
@@ -137,8 +132,6 @@ export default function AuthModal({
 
       onClose();
 
-      // Redirect to index/home page
-      navigate('/');
     } catch (loginError) {
       console.error('Google login failed:', loginError);
 
@@ -233,7 +226,7 @@ export default function AuthModal({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 w-full py-4 text-xl sm:text-2xl font-bold text-white bg-black border border-black rounded-full hover:bg-neutral-800 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 w-full py-4 text-xl sm:text-2xl font-bold text-white bg-[#df766c] border border-[#ca635a] rounded-full hover:bg-[#bd584f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd584f] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Logging in...' : 'Log In'}
           </button>

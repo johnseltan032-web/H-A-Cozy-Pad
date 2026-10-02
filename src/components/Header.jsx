@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import logo from '../images/logo.png';
 import NotificationBell from './NotificationBell';
@@ -15,11 +15,12 @@ export default function Header({
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
   const logoutRefreshTimer = useRef(null);
-  const navigate = useNavigate();
+  const welcomeTimer = useRef(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [showLogoutSuccess, setShowLogoutSuccess] = useState(false);
+  const [showLoginSuccess, setShowLoginSuccess] = useState(false);
   const fullName = user?.fullName || user?.name || user?.full_name || '';
-  const displayName = fullName.trim().split(/\s+/)[0] || 'User';
+  const displayName = fullName || 'User';
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -45,6 +46,26 @@ export default function Header({
     if (logoutRefreshTimer.current) {
       clearTimeout(logoutRefreshTimer.current);
     }
+    if (welcomeTimer.current) {
+      clearTimeout(welcomeTimer.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleAuthChange = (event) => {
+      if (!event.detail?.loggedIn || !event.detail?.user) return;
+
+      setShowLoginSuccess(true);
+      if (welcomeTimer.current) {
+        clearTimeout(welcomeTimer.current);
+      }
+      welcomeTimer.current = setTimeout(() => {
+        setShowLoginSuccess(false);
+      }, 3000);
+    };
+
+    window.addEventListener('auth-changed', handleAuthChange);
+    return () => window.removeEventListener('auth-changed', handleAuthChange);
   }, []);
 
   const handleLogout = async () => {
@@ -56,19 +77,16 @@ export default function Header({
 
       onLogout();
       setIsMenuOpen(false);
-      navigate('/');
       setShowLogoutSuccess(true);
       logoutRefreshTimer.current = setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        window.location.assign('/');
+      }, 1500);
     } catch (error) {
       console.error('Logout failed:', error);
       setIsMenuOpen(false);
     }
   };
 
-  // Open login and tell the login component
-  // that the user should go to "/" after logging in.
   const handleSignIn = () => {
     setIsMenuOpen(false);
     onOpenSignIn('/');
@@ -110,20 +128,15 @@ export default function Header({
       </nav>
 
       <div className="flex items-center gap-3">
-        {!user && (
-          <button
-            onClick={() => setIsContactOpen(true)}
-            className="hidden md:block px-6 py-2.5 text-lg border border-black rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer"
-          >
-            Contact us
-          </button>
-        )}
+        <button
+          onClick={() => setIsContactOpen(true)}
+          className="hidden md:block px-2 py-2.5 text-lg hover:underline bg-transparent border-0 cursor-pointer"
+        >
+          Contact us
+        </button>
 
         {user && (
           <>
-            <span className="hidden text-base font-medium text-neutral-700 md:inline">
-              {displayName} — Logged In
-            </span>
             <NotificationBell />
           </>
         )}
@@ -250,6 +263,16 @@ export default function Header({
         >
           <span aria-hidden="true" className="text-lg leading-none">✓</span>
           Logged out successfully. Refreshing...
+        </div>
+      )}
+
+      {showLoginSuccess && (
+        <div
+          role="status"
+          className="login-success-toast fixed bottom-6 left-1/2 z-[2200] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-green-700 px-5 py-3 text-sm font-medium text-white shadow-lg"
+        >
+          <span aria-hidden="true" className="text-lg leading-none">✓</span>
+          Welcome, {displayName}!
         </div>
       )}
     </header>
