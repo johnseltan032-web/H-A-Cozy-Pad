@@ -338,7 +338,7 @@ export default function DashboardListings() {
 
   return (
     <div className="bg-white text-black font-sans min-h-screen">
-      <HostHeader activeNav="Listing" />
+      <HostHeader activeNav="Listings" />
 
       <main className="px-5 md:px-10 lg:px-13 py-10">
         {toastMessage && (
@@ -347,18 +347,19 @@ export default function DashboardListings() {
           </div>
         )}
 
-        <div className="relative mb-5 sm:mb-10">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4 sm:mb-10">
           <h1 className="text-xl font-bold sm:text-2xl md:text-4xl">
-            Your Listing
+            Your Listings
           </h1>
 
           <button
             type="button"
-            onClick={() => navigate('/host/overview')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 sm:px-5 sm:text-base"
+            onClick={handleAddListing}
+            aria-label="Add listing"
+            title="Add listing"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#ca635a] bg-[#df766c] text-xl font-medium leading-none text-white transition hover:bg-[#bd584f] sm:h-11 sm:w-11 sm:text-2xl"
           >
-            <span aria-hidden="true">←</span>
-            Back to overview
+            <span aria-hidden="true" className="flex h-full w-full items-center justify-center leading-none">+</span>
           </button>
         </div>
 
@@ -447,7 +448,7 @@ export default function DashboardListings() {
                 <div><dt className="text-neutral-500">Tower</dt><dd className="mt-1 font-medium">{selectedListing.tower || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Unit number</dt><dd className="mt-1 font-medium">{selectedListing.unit_number || 'Not specified'}</dd></div>
                 <div className="col-span-2"><dt className="text-neutral-500">Google Maps link</dt><dd className="mt-1 break-all"><a href={selectedListing.google_maps_url || '#'} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">{selectedListing.google_maps_url || 'Not specified'}</a></dd></div>
-                <div><dt className="text-neutral-500">Guests</dt><dd className="mt-1 font-medium">{selectedListing.max_guests || 'Not specified'}</dd></div>
+                <div><dt className="text-neutral-500">Maximum simultaneous bookings</dt><dd className="mt-1 font-medium">{selectedListing.max_guests || 'Not specified'}</dd></div>
                 <div><dt className="text-neutral-500">Rate per night</dt><dd className="mt-1 font-medium">{selectedListing.rate_per_night ? `₱${Number(selectedListing.rate_per_night).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : 'Not specified'}</dd></div>
                 {selectedListing.description && <div className="col-span-2"><dt className="text-neutral-500">Description</dt><dd className="mt-1 whitespace-pre-wrap break-words">{selectedListing.description}</dd></div>}
               </dl>
@@ -476,8 +477,8 @@ export default function DashboardListings() {
       )}
 
       {isEditOpen && (
-        <div className="fixed inset-0 z-[3400] flex items-center justify-center bg-black/40 px-5 py-8">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-7">
+        <div className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5 py-8">
+          <div className="host-booking-editor-dialog max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neutral-500">Listing details</p>
@@ -636,7 +637,7 @@ export default function DashboardListings() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="block text-sm font-medium">
-                    Maximum guests
+                    Maximum simultaneous bookings
                     <input
                       name="maxGuests"
                       type="number"

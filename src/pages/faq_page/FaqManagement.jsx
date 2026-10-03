@@ -2,6 +2,37 @@ import { useEffect, useMemo, useState } from 'react';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 
+const CATEGORY_ICONS = [
+  { names: ['appliances'], icon: '🔌' },
+  { names: ['address & location', 'location'], icon: '📍' },
+  { names: ['getting here', 'directions'], icon: '🚗' },
+  { names: ['check-in & access', 'check in & access', 'check-in', 'check in'], icon: '🔑' },
+  { names: ['the unit', 'unit'], icon: '🛏️' },
+  { names: ['wi-fi & tv', 'wifi & tv', 'wi-fi', 'wifi'], icon: '📶' },
+  { names: ['aircon & hot shower', 'air conditioning'], icon: '❄️' },
+  { names: ['cooking'], icon: '🍳' },
+  { names: ['amenities'], icon: '🏊' },
+  { names: ['house rules', 'rules'], icon: '📋' },
+  { names: ['cleaning & housekeeping', 'cleaning'], icon: '🧹' },
+  { names: ['payment & booking', 'payments & booking', 'booking'], icon: '💳' },
+  { names: ['troubleshooting'], icon: '🛠️' },
+  { names: ['contact & support', 'contact'], icon: '💬' },
+  { names: ['check-out', 'check out'], icon: '🧳' },
+];
+const CATEGORY_ICON_OPTIONS = [...new Set([
+  ...CATEGORY_ICONS.map(({ icon }) => icon),
+  '📁', '🏠', '🏡', '🛋️', '🛏️', '🧺', '🚿', '🛁', '🧴', '🍽️',
+  '☕', '🥘', '🔥', '🧯', '🧻', '🗑️', '🚪', '🛜', '📱', '🎬',
+  '🎮', '🎧', '💸', '🏦', '💵', '🧾', '🗓️', '⏰', '🧭', '🗺️',
+  '🚙', '🅿️', '🛗', '🛎️', '🏖️', '🌡️', '🔧', '⚡', '🚨', '🐾',
+  '🚭', '🤫', '✅', '❓', '💡', '🧰',
+])];
+
+function getCategoryIcon(categoryName) {
+  const normalizedName = String(categoryName || '').trim().toLowerCase();
+  return CATEGORY_ICONS.find((item) => item.names.includes(normalizedName))?.icon || '❔';
+}
+
 const EMPTY_FORM = {
   question: '',
   answer: '',
@@ -15,12 +46,16 @@ export default function FaqManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingFaqId, setEditingFaqId] = useState(null);
   const [deleteFaqData, setDeleteFaqData] = useState(null);
+  const [deleteCategoryData, setDeleteCategoryData] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
+  const [categoryIcon, setCategoryIcon] = useState('📁');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [deleteCategoryError, setDeleteCategoryError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -237,10 +272,7 @@ export default function FaqManagement() {
 
   async function addCategory() {
     const trimmedName = categoryName.trim();
-
-    if (!trimmedName) {
-      return;
-    }
+    if (!trimmedName) return;
 
     try {
       setIsSaving(true);
@@ -256,6 +288,7 @@ export default function FaqManagement() {
           },
           body: JSON.stringify({
             categoryName: trimmedName,
+            categoryIcon,
           }),
         }
       );
@@ -269,6 +302,7 @@ export default function FaqManagement() {
       }
 
       setCategoryName('');
+      setCategoryIcon('📁');
       setIsCategoryFormOpen(false);
 
       await loadFaqData();
@@ -281,6 +315,39 @@ export default function FaqManagement() {
     }
   }
 
+  async function deleteCategory() {
+    if (!deleteCategoryData) return;
+
+    try {
+      setIsDeletingCategory(true);
+      setDeleteCategoryError('');
+      const response = await fetch(`${API_BASE_URL}/faq_categories.php`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: deleteCategoryData.categoryId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Unable to delete FAQ category');
+      }
+
+      if (selectedCategoryId === deleteCategoryData.categoryId) {
+        setIsFormOpen(false);
+        setForm(EMPTY_FORM);
+        setEditingFaqId(null);
+      }
+
+      setDeleteCategoryData(null);
+      await loadFaqData();
+    } catch (err) {
+      setDeleteCategoryError(err.message);
+    } finally {
+      setIsDeletingCategory(false);
+    }
+  }
+
   function closeCategoryForm() {
     if (isSaving) {
       return;
@@ -288,6 +355,7 @@ export default function FaqManagement() {
 
     setIsCategoryFormOpen(false);
     setCategoryName('');
+    setCategoryIcon('📁');
   }
 
   return (
@@ -325,8 +393,8 @@ export default function FaqManagement() {
             Loading FAQs...
           </p>
         ) : (
-          <div className="grid gap-4 sm:gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <aside className="border-0 bg-transparent p-0 h-fit md:border md:border-neutral-200 md:bg-neutral-50 md:p-5">
+          <div className="grid min-w-0 gap-4 sm:gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="h-fit min-w-0 border-0 bg-transparent p-0 md:border md:border-neutral-200 md:bg-neutral-50 md:p-5">
               <button
                 type="button"
                 onClick={() => setIsCategoryFormOpen(true)}
@@ -339,39 +407,49 @@ export default function FaqManagement() {
                 Categories
               </p>
 
-              <div className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:gap-1 md:overflow-visible">
+              <div className="grid min-w-0 grid-cols-2 gap-2 md:flex md:flex-col md:gap-1">
                 {categories.map((category) => {
                   const faqCount = faqs.filter(
                     (faq) => faq.categoryId === category.categoryId
                   ).length;
 
                   return (
-                    <button
-                      type="button"
-                      key={category.categoryId}
-                      onClick={() => {
-                        setSelectedCategoryId(category.categoryId);
-                        setSearch('');
-                        setIsFormOpen(false);
-                      }}
-                      className={`w-auto shrink-0 flex items-center justify-between gap-3 px-3 py-2 text-left text-xs sm:text-sm rounded-md cursor-pointer md:w-full md:py-2.5 ${
-                        selectedCategoryId === category.categoryId
-                          ? 'bg-black text-white'
-                          : 'bg-transparent text-neutral-700 hover:bg-neutral-200'
-                      }`}
-                    >
-                      <span>{category.categoryName}</span>
-
-                      <span
-                        className={
+                    <div key={category.categoryId} className="flex min-w-0 items-center gap-1 rounded-md md:w-full">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategoryId(category.categoryId);
+                          setSearch('');
+                          setIsFormOpen(false);
+                        }}
+                        className={`flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-2 text-left text-xs sm:px-3 sm:text-sm rounded-md cursor-pointer md:py-2.5 ${
                           selectedCategoryId === category.categoryId
-                            ? 'text-neutral-300'
-                            : 'text-neutral-500'
-                        }
+                            ? 'bg-black text-white'
+                            : 'bg-transparent text-neutral-700 hover:bg-neutral-200'
+                        }`}
                       >
-                        {faqCount}
-                      </span>
-                    </button>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span aria-hidden="true" className="text-base">{category.categoryIcon || getCategoryIcon(category.categoryName)}</span>
+                          <span className="break-words">{category.categoryName}</span>
+                        </span>
+                        <span className={selectedCategoryId === category.categoryId ? 'text-neutral-300' : 'text-neutral-500'}>
+                          {faqCount}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteCategoryData({ ...category, faqCount });
+                          setDeleteCategoryError('');
+                          setError('');
+                        }}
+                        aria-label={`Delete ${category.categoryName} category`}
+                        title="Delete category"
+                        className="shrink-0 rounded-md px-1.5 py-2 text-[10px] font-medium text-red-600 hover:bg-red-50 hover:text-red-800 sm:px-2 sm:text-xs"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   );
                 })}
 
@@ -409,81 +487,37 @@ export default function FaqManagement() {
                 </label>
               </div>
 
-              {isFormOpen && (
-                <form
-                  onSubmit={saveFaq}
-                  className="mb-6 border border-neutral-300 p-5"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">
-                      {editingFaqId
-                        ? 'Edit FAQ'
-                        : 'Add FAQ'}
-                    </h3>
+              <div className="space-y-3 sm:hidden">
+                {visibleFaqs.map((faq) => (
+                  <article key={faq.faqId} className="min-w-0 rounded-lg border border-neutral-200 p-3">
+                    <p className="m-0 break-words text-sm font-medium text-neutral-900">{faq.question}</p>
+                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap break-words text-sm text-neutral-600">{faq.answer}</p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditForm(faq)}
+                        className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteDialog(faq)}
+                        className="flex-1 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+                {visibleFaqs.length === 0 && (
+                  <p className="rounded-lg border border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">
+                    {search ? 'No FAQs match your search.' : 'No FAQs in this category yet.'}
+                  </p>
+                )}
+              </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsFormOpen(false);
-                        setForm(EMPTY_FORM);
-                        setEditingFaqId(null);
-                      }}
-                      disabled={isSaving}
-                      className="text-sm underline cursor-pointer bg-transparent border-0 disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-
-                  <div className="grid gap-4">
-                    <label className="text-sm font-medium">
-                      Question
-
-                      <input
-                        value={form.question}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            question: event.target.value,
-                          })
-                        }
-                        className="mt-2 w-full border border-neutral-300 rounded-md px-3 py-2.5 font-normal outline-none focus:border-black"
-                        required
-                      />
-                    </label>
-
-                    <label className="text-sm font-medium">
-                      Answer
-
-                      <textarea
-                        value={form.answer}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            answer: event.target.value,
-                          })
-                        }
-                        className="mt-2 w-full min-h-28 border border-neutral-300 rounded-md px-3 py-2.5 font-normal outline-none resize-y focus:border-black"
-                        required
-                      />
-                    </label>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="mt-4 px-5 py-2.5 text-sm font-medium bg-black text-white rounded-md hover:bg-neutral-800 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSaving
-                      ? 'Saving...'
-                      : editingFaqId
-                        ? 'Save changes'
-                        : 'Create FAQ'}
-                  </button>
-                </form>
-              )}
-
-              <div className="overflow-x-auto border border-neutral-200">
+              <div className="hidden overflow-x-auto border border-neutral-200 sm:block">
                 <table className="w-full min-w-[520px] border-collapse md:min-w-[620px]">
                   <thead className="bg-neutral-50">
                     <tr className="text-left border-b border-neutral-200">
@@ -549,18 +583,103 @@ export default function FaqManagement() {
         )}
       </main>
 
+      {isFormOpen && (
+        <div className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-4 py-4">
+          <form
+            onSubmit={saveFaq}
+            className="host-booking-editor-dialog max-h-[90vh] w-full max-w-lg overflow-y-auto border border-neutral-200 bg-white p-4 shadow-xl sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="faq-form-dialog-title"
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="mb-1 text-sm text-neutral-500">
+                  {selectedCategory?.categoryName || 'FAQ management'}
+                </p>
+                <h2 id="faq-form-dialog-title" className="text-2xl font-semibold">
+                  {editingFaqId ? 'Edit FAQ' : 'Add FAQ'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFormOpen(false);
+                  setForm(EMPTY_FORM);
+                  setEditingFaqId(null);
+                }}
+                disabled={isSaving}
+                aria-label="Close dialog"
+                className="text-2xl leading-none text-neutral-500 hover:text-black disabled:opacity-50"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="grid gap-4">
+              <label className="text-sm font-medium">
+                Question
+                <input
+                  autoFocus
+                  value={form.question}
+                  onChange={(event) =>
+                    setForm({ ...form, question: event.target.value })
+                  }
+                  className="mt-2 w-full rounded-md border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
+                  required
+                />
+              </label>
+
+              <label className="text-sm font-medium">
+                Answer
+                <textarea
+                  value={form.answer}
+                  onChange={(event) =>
+                    setForm({ ...form, answer: event.target.value })
+                  }
+                  className="mt-2 min-h-36 w-full resize-y rounded-md border border-neutral-300 px-3 py-2.5 font-normal outline-none focus:border-black"
+                  required
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFormOpen(false);
+                  setForm(EMPTY_FORM);
+                  setEditingFaqId(null);
+                }}
+                disabled={isSaving}
+                className="rounded-md border border-neutral-300 px-4 py-2.5 text-sm font-medium hover:bg-neutral-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-md bg-black px-5 py-2.5 text-sm font-medium text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : editingFaqId ? 'Save changes' : 'Create FAQ'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {isCategoryFormOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-4 py-4"
           role="presentation"
         >
           <div
-            className="w-full max-w-md bg-white border border-neutral-200 p-6 shadow-xl"
+            className="host-booking-editor-dialog flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden border border-neutral-200 bg-white p-4 shadow-xl sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="category-dialog-title"
           >
-            <div className="flex items-start justify-between gap-4 mb-6">
+            <div className="mb-5 flex shrink-0 items-start justify-between gap-4">
               <div>
                 <p className="text-sm text-neutral-500 mb-1">
                   FAQ management
@@ -586,6 +705,7 @@ export default function FaqManagement() {
             </div>
 
             <form
+              className="flex min-h-0 flex-col"
               onSubmit={(event) => {
                 event.preventDefault();
                 addCategory();
@@ -606,7 +726,37 @@ export default function FaqManagement() {
                 />
               </label>
 
-              <div className="flex justify-end gap-3 mt-6">
+              <fieldset className="mt-5 flex min-h-0 flex-col">
+                <legend className="shrink-0 text-sm font-medium">
+                  Choose an icon <span className="font-normal text-neutral-500">(scroll to see more)</span>
+                </legend>
+                <div
+                  className="mt-2 max-h-[min(36vh,18rem)] overflow-y-auto overscroll-contain rounded-md border border-neutral-200 p-2"
+                  aria-label="Available category icons"
+                  role="group"
+                >
+                  <div className="grid grid-cols-6 gap-2">
+                  {CATEGORY_ICON_OPTIONS.map((icon) => (
+                    <button
+                      key={icon}
+                      type="button"
+                      onClick={() => setCategoryIcon(icon)}
+                      aria-label={`Choose ${icon} category icon`}
+                      aria-pressed={categoryIcon === icon}
+                      className={`flex h-11 items-center justify-center rounded-md border text-xl ${
+                        categoryIcon === icon
+                          ? 'border-black bg-neutral-100 ring-1 ring-black'
+                          : 'border-neutral-200 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                  </div>
+                </div>
+              </fieldset>
+
+              <div className="mt-5 flex shrink-0 justify-end gap-3">
                 <button
                   type="button"
                   onClick={closeCategoryForm}
@@ -631,11 +781,11 @@ export default function FaqManagement() {
 
       {deleteFaqData && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
+          className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5"
           role="presentation"
         >
           <div
-            className="w-full max-w-md bg-white border border-neutral-200 p-6 shadow-xl"
+            className="host-booking-editor-dialog max-h-[90vh] w-full max-w-md overflow-y-auto bg-white border border-neutral-200 p-4 shadow-xl sm:p-6"
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-dialog-title"
@@ -680,6 +830,51 @@ export default function FaqManagement() {
                 className="px-4 py-2.5 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? 'Deleting...' : 'Delete FAQ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteCategoryData && (
+        <div         className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5" role="presentation">
+          <div
+            className="host-booking-editor-dialog max-h-[90vh] w-full max-w-md overflow-y-auto border border-neutral-200 bg-white p-4 shadow-xl sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-category-dialog-title"
+          >
+            <p className="mb-1 text-sm text-red-600">FAQ management</p>
+            <h2 id="delete-category-dialog-title" className="text-2xl font-semibold">Delete category?</h2>
+            <p className="mt-3 text-sm text-neutral-600">
+              Delete “{deleteCategoryData.categoryName}” and its {deleteCategoryData.faqCount} FAQ{deleteCategoryData.faqCount === 1 ? '' : 's'}? This cannot be undone.
+            </p>
+            {deleteCategoryError && (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                {deleteCategoryError}
+              </p>
+            )}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isDeletingCategory) {
+                    setDeleteCategoryData(null);
+                    setDeleteCategoryError('');
+                  }
+                }}
+                disabled={isDeletingCategory}
+                className="rounded-md border border-neutral-300 px-4 py-2.5 text-sm font-medium hover:bg-neutral-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={deleteCategory}
+                disabled={isDeletingCategory}
+                className="rounded-md bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeletingCategory ? 'Deleting...' : 'Delete category'}
               </button>
             </div>
           </div>

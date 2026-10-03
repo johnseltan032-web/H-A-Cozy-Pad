@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import HostHeader from '../../components/HostHeader';
 import { API_BASE_URL } from '../../lib/api';
 import noReservationsImage from '../../images/no-reservations.svg';
@@ -18,7 +17,6 @@ const buildAssetUrl = (path) => {
 };
 
 export default function DashboardReservations() {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('soon');
   const [reservations, setReservations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +28,7 @@ export default function DashboardReservations() {
   const [isCustomerLoading, setIsCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState('');
   const [paymentProof, setPaymentProof] = useState(null);
+  const [paymentProofTitle, setPaymentProofTitle] = useState('Proof of Payment');
   const [isPaymentProofOpen, setIsPaymentProofOpen] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [selectedModification, setSelectedModification] = useState(null);
@@ -206,6 +205,7 @@ export default function DashboardReservations() {
     setCustomerInfo(null);
     setCustomerError('');
     setPaymentProof(null);
+    setPaymentProofTitle('Proof of Payment');
     setPaymentDetails(null);
     setIsPaymentProofOpen(false);
     setIsCustomerLoading(true);
@@ -270,7 +270,19 @@ export default function DashboardReservations() {
     }
 
     setPaymentProof(buildAssetUrl(customerInfo.proofOfPaymentPath));
+    setPaymentProofTitle('Proof of Payment');
 
+    setIsPaymentProofOpen(true);
+  };
+
+  const handleViewGovernmentId = () => {
+    if (!customerInfo?.validIdPath || customerInfo.validIdPath === 'not_uploaded') {
+      setCustomerError('No government ID was uploaded for this booking.');
+      return;
+    }
+
+    setPaymentProof(buildAssetUrl(customerInfo.validIdPath));
+    setPaymentProofTitle('Government ID');
     setIsPaymentProofOpen(true);
   };
 
@@ -314,6 +326,7 @@ export default function DashboardReservations() {
     });
 
     setPaymentProof(buildAssetUrl(proofPath));
+    setPaymentProofTitle('Modification Proof of Payment');
     setIsPaymentProofOpen(true);
   };
 
@@ -326,6 +339,7 @@ export default function DashboardReservations() {
   const closePaymentProofModal = () => {
     setIsPaymentProofOpen(false);
     setPaymentProof(null);
+    setPaymentProofTitle('Proof of Payment');
   };
 
   const closeModificationModal = () => {
@@ -385,7 +399,7 @@ export default function DashboardReservations() {
 
   return (
     <div className="bg-white text-black font-sans min-h-screen flex flex-col">
-      <HostHeader activeNav="Today" />
+      <HostHeader activeNav="Reservations" />
 
       <main className="flex flex-col items-center px-5 pt-6 pb-28 md:pt-10 md:pb-10 grow">
         <div className="relative mb-10 w-full max-w-5xl">
@@ -426,14 +440,6 @@ export default function DashboardReservations() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/host/overview')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-2.5 text-base font-medium text-neutral-700 transition hover:bg-neutral-50"
-          >
-            <span aria-hidden="true">←</span>
-            Back to overview
-          </button>
         </div>
 
           <div className="mb-8 text-center">
@@ -515,6 +521,15 @@ export default function DashboardReservations() {
                   </div>
 
                   <div className="grid gap-3 border-t border-neutral-100 pt-4 text-sm text-neutral-600 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                        Booking ID
+                      </p>
+                      <p className="font-semibold text-neutral-900">
+                        BK-{reservation.booking_id}
+                      </p>
+                    </div>
+
                     <div>
                       <p className="font-semibold text-neutral-900">
                         Stay dates
@@ -1082,6 +1097,26 @@ export default function DashboardReservations() {
               </p>
             ) : customerInfo ? (
               <div className="mt-5 space-y-4 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 p-3">
+                  <div>
+                    <p className="font-semibold text-neutral-900">Government ID</p>
+                    <p className="text-neutral-600">
+                      {customerInfo.validIdPath && customerInfo.validIdPath !== 'not_uploaded'
+                        ? 'ID uploaded'
+                        : 'No ID uploaded'}
+                    </p>
+                  </div>
+                  {customerInfo.validIdPath && customerInfo.validIdPath !== 'not_uploaded' && (
+                    <button
+                      type="button"
+                      onClick={handleViewGovernmentId}
+                      className="rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+                    >
+                      View Government ID
+                    </button>
+                  )}
+                </div>
+
                 <div>
                   <p className="font-semibold text-neutral-900">
                     Full Name
@@ -1214,7 +1249,7 @@ export default function DashboardReservations() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-neutral-900">
-                  Proof of Payment
+                  {paymentProofTitle}
                 </h2>
 
                 {paymentDetails?.hasAdditionalPayment && (
@@ -1243,7 +1278,7 @@ export default function DashboardReservations() {
               {paymentProof ? (
                 <img
                   src={paymentProof}
-                  alt="Proof of payment"
+                  alt={paymentProofTitle}
                   className="max-h-[70vh] max-w-full rounded-lg object-contain"
                 />
               ) : (

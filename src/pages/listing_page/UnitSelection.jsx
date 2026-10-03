@@ -109,7 +109,7 @@ export default function UnitSelection() {
             </label>
 
             <label className="block text-[15px] font-medium">
-              Max guests
+              Maximum simultaneous bookings
               <select
                 value={maxGuests}
                 onChange={(event) => setMaxGuests(Number(event.target.value))}
@@ -117,7 +117,7 @@ export default function UnitSelection() {
               >
                 {[1, 2, 3, 4].map((option) => (
                   <option key={option} value={option}>
-                    {option} guest{option > 1 ? 's' : ''}
+                    {option} booking{option > 1 ? 's' : ''}
                   </option>
                 ))}
               </select>

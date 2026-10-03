@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import logo from '../../images/logo.png';
+import logo from '../../images/shore_logo_transparent.png';
 
 const nearbyDestinations = [
   'MOA',
@@ -51,7 +51,7 @@ export default function SearchSection({ onSearch }) {
     }
 
     const guestCount = Number(numOfGuests);
-    if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 12) {
+    if (!Number.isSafeInteger(guestCount) || guestCount < 0) {
       return;
     }
 
@@ -180,18 +180,15 @@ export default function SearchSection({ onSearch }) {
             </svg>
             <div className="flex flex-col w-full">
               <label htmlFor="num_of_guests" className="text-xs text-neutral-400 font-medium uppercase tracking-wider">Guests</label>
-              <select
+              <input
                 id="num_of_guests"
-                value={numOfGuests} 
-                onChange={(e) => setNumOfGuests(Number(e.target.value))}
-                className="search-field min-w-0 text-xs md:text-sm font-medium text-neutral-700 bg-transparent outline-none cursor-pointer w-full"
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-                  <option key={num} value={num}>
-                    {num} pax
-                  </option>
-                ))}
-              </select>
+                type="number"
+                min="0"
+                step="1"
+                value={numOfGuests}
+                onChange={(event) => setNumOfGuests(Number(event.target.value))}
+                className="search-field min-w-0 text-xs md:text-sm font-medium text-neutral-700 bg-transparent outline-none w-full"
+              />
             </div>
           </div>
         </div>

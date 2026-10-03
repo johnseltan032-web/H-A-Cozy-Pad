@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import logo from '../images/logo.png';
 import NotificationBell from './NotificationBell';
@@ -15,12 +16,8 @@ export default function Header({
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
   const logoutRefreshTimer = useRef(null);
-  const welcomeTimer = useRef(null);
   const [isContactOpen, setIsContactOpen] = useState(false);
-  const [showLogoutSuccess, setShowLogoutSuccess] = useState(false);
-  const [showLoginSuccess, setShowLoginSuccess] = useState(false);
-  const fullName = user?.fullName || user?.name || user?.full_name || '';
-  const displayName = fullName || 'User';
+  const navigate = useNavigate();
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -46,40 +43,25 @@ export default function Header({
     if (logoutRefreshTimer.current) {
       clearTimeout(logoutRefreshTimer.current);
     }
-    if (welcomeTimer.current) {
-      clearTimeout(welcomeTimer.current);
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleAuthChange = (event) => {
-      if (!event.detail?.loggedIn || !event.detail?.user) return;
-
-      setShowLoginSuccess(true);
-      if (welcomeTimer.current) {
-        clearTimeout(welcomeTimer.current);
-      }
-      welcomeTimer.current = setTimeout(() => {
-        setShowLoginSuccess(false);
-      }, 3000);
-    };
-
-    window.addEventListener('auth-changed', handleAuthChange);
-    return () => window.removeEventListener('auth-changed', handleAuthChange);
   }, []);
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_BASE_URL}/logout.php`, {
+      const response = await fetch(`${API_BASE_URL}/logout.php`, {
         method: 'POST',
         credentials: 'include',
       });
 
+      if (!response.ok) {
+        throw new Error('Unable to log out.');
+      }
+
       onLogout();
       setIsMenuOpen(false);
-      setShowLogoutSuccess(true);
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: { loggedIn: false } }));
+      window.dispatchEvent(new CustomEvent('app-status-toast', { detail: { message: 'Logged out successfully.' } }));
       logoutRefreshTimer.current = setTimeout(() => {
-        window.location.assign('/');
+        navigate('/');
       }, 1500);
     } catch (error) {
       console.error('Logout failed:', error);
@@ -130,7 +112,28 @@ export default function Header({
       <div className="flex items-center gap-3">
         <button
           onClick={() => setIsContactOpen(true)}
-          className="hidden md:block px-2 py-2.5 text-lg hover:underline bg-transparent border-0 cursor-pointer"
+          aria-label="Contact us"
+          title="Contact us"
+          className="flex h-9 w-9 items-center justify-center bg-transparent border-0 cursor-pointer md:hidden"
+        >
+          <svg
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3 7 9 6 9-6" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setIsContactOpen(true)}
+          className="hidden px-2 py-2.5 text-lg hover:underline bg-transparent border-0 cursor-pointer md:block"
         >
           Contact us
         </button>
@@ -256,25 +259,6 @@ export default function Header({
 
       <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} />
 
-      {showLogoutSuccess && (
-        <div
-          role="status"
-          className="fixed bottom-6 left-1/2 z-[2200] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-green-700 px-5 py-3 text-sm font-medium text-white shadow-lg"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">✓</span>
-          Logged out successfully. Refreshing...
-        </div>
-      )}
-
-      {showLoginSuccess && (
-        <div
-          role="status"
-          className="login-success-toast fixed bottom-6 left-1/2 z-[2200] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-green-700 px-5 py-3 text-sm font-medium text-white shadow-lg"
-        >
-          <span aria-hidden="true" className="text-lg leading-none">✓</span>
-          Welcome, {displayName}!
-        </div>
-      )}
     </header>
   );
 }

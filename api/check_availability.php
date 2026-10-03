@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require 'booking_slot_limit.php';
 
 $unitId = (int) ($_GET['unit_id'] ?? 0);
 $checkIn = trim($_GET['check_in'] ?? '');
@@ -67,24 +68,6 @@ if (!empty($unitData['available_until']) && $checkOut > $unitData['available_unt
     exit;
 }
 
-$stmt = $pdo->prepare(
-    'SELECT booking_id FROM bookings
-     WHERE unit_id = ?
-     AND status NOT IN (\'cancelled\', \'rejected\')
-     AND check_in_date < ? AND check_out_date > ?
-     LIMIT 1'
-);
-$stmt->execute([$unitId, $checkOut, $checkIn]);
-
-if ($stmt->fetch()) {
-    http_response_code(409);
-    echo json_encode([
-        'available' => false,
-        'error' => 'This unit is already booked for some or all of the selected dates.'
-    ]);
-    exit;
-}
-
 $blocked = $pdo->prepare(
     'SELECT reason, blocked_from, blocked_until
      FROM unit_blocked_dates
@@ -101,6 +84,15 @@ if ($blockedDate) {
     echo json_encode([
         'available' => false,
         'error' => 'This unit is blocked for the selected dates due to ' . str_replace('_', ' ', $blockedDate['reason']) . '.'
+    ]);
+    exit;
+}
+
+if (!hasBookingSlotForRange($pdo, $unitId, $checkIn, $checkOut)) {
+    http_response_code(409);
+    echo json_encode([
+        'available' => false,
+        'error' => 'This listing has reached its maximum number of overlapping reservations for at least one selected night.'
     ]);
     exit;
 }

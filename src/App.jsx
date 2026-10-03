@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BrowserRouter as Router,
   Routes,
@@ -26,7 +27,7 @@ import DashboardReservations from './pages/dashboard_page/DashboardReservations'
 import DashboardCalendar from './pages/dashboard_page/DashboardCalendar';
 import DashboardOverview from './pages/dashboard_page/dashboardOverview';
 import DashboardStatistics from './pages/dashboard_page/DashboardStatistics';
-import DashboardExpenses from './pages/dashboard_page/DashboardExpenses';
+import DashboardActivityLog from './pages/dashboard_page/DashboardActivityLog';
 import UserManagement from './pages/dashboard_page/UserManagement';
 import Inbox from './pages/dashboard_page/Inbox';
 
@@ -62,6 +63,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const isListingFlow = location.pathname.startsWith('/host/listing');
+  const isHostDashboard = location.pathname.startsWith('/host/');
 
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,6 +71,8 @@ function AppContent() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [statusToast, setStatusToast] = useState('');
+  const statusToastTimer = useRef(null);
 
   const [loginRedirect, setLoginRedirect] = useState('/');
 
@@ -121,17 +125,37 @@ function AppContent() {
     const handleAuthChange = (event) => {
       if (event.detail?.loggedIn && event.detail?.user) {
         setUser(event.detail.user);
+        const fullName = event.detail.user.fullName || event.detail.user.name || event.detail.user.full_name || 'User';
+        setStatusToast(`Welcome, ${fullName}!`);
       } else {
         setUser(null);
       }
     };
 
+    const handleStatusToast = (event) => {
+      if (typeof event.detail?.message === 'string') {
+        setStatusToast(event.detail.message);
+      }
+    };
+
     window.addEventListener('auth-changed', handleAuthChange);
+    window.addEventListener('app-status-toast', handleStatusToast);
 
     return () => {
       window.removeEventListener('auth-changed', handleAuthChange);
+      window.removeEventListener('app-status-toast', handleStatusToast);
+      if (statusToastTimer.current) clearTimeout(statusToastTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!statusToast) return undefined;
+    if (statusToastTimer.current) clearTimeout(statusToastTimer.current);
+    statusToastTimer.current = setTimeout(() => setStatusToast(''), 3000);
+    return () => {
+      if (statusToastTimer.current) clearTimeout(statusToastTimer.current);
+    };
+  }, [statusToast]);
 
   return (
     <>
@@ -171,7 +195,7 @@ function AppContent() {
             <ProtectedRoute
               user={user}
               isLoading={isLoading}
-              allowedRoles={['super_admin', 'admin']}
+              allowedRoles={['super_admin']}
             />
           }
         >
@@ -214,7 +238,18 @@ function AppContent() {
             }
           />
           <Route path="/host/statistics" element={<DashboardStatistics />} />
-          <Route path="/host/expenses" element={<DashboardExpenses />} />
+          <Route
+            element={
+              <ProtectedRoute
+                user={user}
+                isLoading={isLoading}
+                allowedRoles={['super_admin']}
+              />
+            }
+          >
+            <Route path="/host/activity-log" element={<DashboardActivityLog />} />
+          </Route>
+          <Route path="/host/expenses" element={<Navigate to="/host/statistics" replace />} />
           <Route path="/host/listings" element={<DashboardListings />} />
           <Route path="/listings" element={<DashboardListings />} />
           <Route path="/host/reservations" element={<DashboardReservations />} />
@@ -255,7 +290,7 @@ function AppContent() {
             <ProtectedRoute
               user={user}
               isLoading={isLoading}
-              allowedRoles={['super_admin']}
+              allowedRoles={['super_admin', 'admin']}
             />
           }
         >
@@ -313,6 +348,13 @@ function AppContent() {
           }
         />
       </Routes>
+      {statusToast && createPortal(
+        <div role="status" className="header-status-toast flex items-center gap-3 rounded-lg bg-green-700 px-5 py-3 text-sm font-medium text-white shadow-lg">
+          <span aria-hidden="true" className="text-lg leading-none">✓</span>
+          {statusToast}
+        </div>,
+        document.body
+      )}
 
       {!isListingFlow && <MobileTabBar onOpenChat={() => setIsChatOpen(true)} />}
 
@@ -328,7 +370,7 @@ function AppContent() {
         onClose={() => setIsRegisterModalOpen(false)}
       />
 
-      {!isListingFlow && (
+      {!isListingFlow && !isHostDashboard && (
         <Chatbot
           isOpen={isChatOpen}
           onOpen={() => setIsChatOpen(true)}

@@ -1,5 +1,7 @@
 <?php
 require 'db.php';
+require 'guest_count.php';
+require 'booking_slot_limit.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -26,14 +28,26 @@ $isGuestCheckout = false;
 $unitId = (int) ($data['unitId'] ?? 0);
 $checkIn = trim($data['checkIn'] ?? '');
 $checkOut = trim($data['checkOut'] ?? '');
-$guests = (int) ($data['guests'] ?? 1);
+$guests = parseGuestCount($data['guests'] ?? null);
 $guestName = trim($data['guestName'] ?? '');
 $guestContactNum = trim($data['guestContactNum'] ?? '');
 $guestEmail = strtolower(trim($data['guestEmail'] ?? ''));
+$submittedPaymentMethod = strtolower(trim($data['paymentMethod'] ?? 'gcash'));
+$paymentMethod = match ($submittedPaymentMethod) {
+    'gcash' => 'e-wallet',
+    'bank_transfer' => 'bank_transfer',
+    default => null,
+};
 $vehicleType = trim($data['vehicleType'] ?? '');
 $specialRequests = trim($data['specialRequests'] ?? '');
 
-if (!$unitId || !$checkIn || !$checkOut || $guests < 1 || !$guestName || !$guestContactNum) {
+if ($paymentMethod === null) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Select GCash or bank transfer as the payment method']);
+    exit;
+}
+
+if (!$unitId || !$checkIn || !$checkOut || $guests === null || !$guestName || !$guestContactNum) {
     http_response_code(400);
     echo json_encode([
         'error' => 'Unit, dates, guest count, name, and contact number are required'
@@ -100,7 +114,7 @@ try {
     }
 
     $unit = $pdo->prepare(
-        'SELECT u.unit_id, u.unit_name, u.max_guests, u.status, u.rate_per_night, u.available_from, u.available_until, b.building_name
+        'SELECT u.unit_id, u.unit_name, u.status, u.rate_per_night, u.available_from, u.available_until, b.building_name
          FROM units u
          JOIN buildings b ON b.building_id = u.building_id
          WHERE u.unit_id = ?'
@@ -151,14 +165,6 @@ try {
         exit;
     }
 
-    if ($guests > (int) $unitData['max_guests']) {
-        http_response_code(400);
-        echo json_encode([
-            'error' => 'Guest count exceeds the unit limit'
-        ]);
-        exit;
-    }
-
     if (
         !isset($_FILES['proofOfPayment']) ||
         $_FILES['proofOfPayment']['error'] === UPLOAD_ERR_NO_FILE
@@ -204,36 +210,12 @@ try {
 
     $pdo->beginTransaction();
 
-    $lockedUnit = $pdo->prepare(
-        'SELECT unit_id
-         FROM units
-         WHERE unit_id = ?
-         FOR UPDATE'
-    );
-    $lockedUnit->execute([$unitId]);
-
-    $overlap = $pdo->prepare(
-        'SELECT booking_id
-         FROM bookings
-         WHERE unit_id = ?
-         AND status NOT IN (\'cancelled\', \'rejected\')
-         AND check_in_date < ?
-         AND check_out_date > ?
-         LIMIT 1'
-    );
-    $overlap->execute([
-        $unitId,
-        $checkOut,
-        $checkIn
-    ]);
-
-    if ($overlap->fetch()) {
+    $lockUnit = $pdo->prepare('SELECT unit_id FROM units WHERE unit_id = ? FOR UPDATE');
+    $lockUnit->execute([$unitId]);
+    if (!hasBookingSlotForRange($pdo, $unitId, $checkIn, $checkOut)) {
         $pdo->rollBack();
-
         http_response_code(409);
-        echo json_encode([
-            'error' => 'This unit is already booked for some or all of the selected dates.'
-        ]);
+        echo json_encode(['error' => 'This listing has reached its maximum number of overlapping reservations for at least one selected night.']);
         exit;
     }
 
@@ -373,7 +355,7 @@ try {
     $payment->execute([
         $bookingId,
         $amount,
-        'e-wallet',
+        $paymentMethod,
         $proofOfPaymentPath
     ]);
 

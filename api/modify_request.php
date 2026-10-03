@@ -1,6 +1,8 @@
 <?php
 
 require 'db.php';
+require 'activity_log_helper.php';
+require 'booking_slot_limit.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -65,7 +67,7 @@ try {
             b.unit_id,
             b.status AS booking_status,
 
-            u.max_guests
+            u.unit_name
 
          FROM booking_requests br
 
@@ -114,6 +116,13 @@ try {
 
         $updateRequest->execute([$requestId]);
 
+        writeActivityLog(
+            $pdo,
+            'reject_booking_edit',
+            'rejected reservation edit request for Unit ' . $request['unit_name'] . ' (booking #BK-' . $request['booking_id'] . ')',
+            'booking',
+            (string) $request['booking_id']
+        );
         $pdo->commit();
 
         echo json_encode([
@@ -128,7 +137,8 @@ try {
     if (
         empty($request['requested_check_in']) ||
         empty($request['requested_check_out']) ||
-        (int) $request['requested_guests'] <= 0
+        $request['requested_guests'] === null ||
+        (int) $request['requested_guests'] < 0
     ) {
         $pdo->rollBack();
 
@@ -198,19 +208,6 @@ try {
         exit;
     }
 
-    if (
-        $request['max_guests'] !== null &&
-        (int) $request['requested_guests'] > (int) $request['max_guests']
-    ) {
-        $pdo->rollBack();
-
-        http_response_code(400);
-        echo json_encode([
-            'error' => 'The requested number of guests exceeds the unit capacity'
-        ]);
-        exit;
-    }
-
     if (in_array($request['booking_status'], ['cancelled', 'rejected'], true)) {
         $pdo->rollBack();
 
@@ -221,31 +218,18 @@ try {
         exit;
     }
 
-    $overlap = $pdo->prepare(
-        "SELECT booking_id
-         FROM bookings
-         WHERE unit_id = ?
-         AND booking_id <> ?
-         AND status NOT IN ('cancelled', 'rejected')
-         AND check_in_date < ?
-         AND check_out_date > ?
-         LIMIT 1"
-    );
-
-    $overlap->execute([
-        $request['unit_id'],
-        $request['booking_id'],
+    $lockUnit = $pdo->prepare('SELECT unit_id FROM units WHERE unit_id = ? FOR UPDATE');
+    $lockUnit->execute([$request['unit_id']]);
+    if (!hasBookingSlotForRange(
+        $pdo,
+        (int) $request['unit_id'],
+        $request['requested_check_in'],
         $request['requested_check_out'],
-        $request['requested_check_in']
-    ]);
-
-    if ($overlap->fetchColumn()) {
+        (int) $request['booking_id']
+    )) {
         $pdo->rollBack();
-
         http_response_code(409);
-        echo json_encode([
-            'error' => 'This unit is already booked for some or all of the requested dates.'
-        ]);
+        echo json_encode(['error' => 'This listing has reached its maximum number of overlapping reservations for at least one requested night.']);
         exit;
     }
 
@@ -308,6 +292,13 @@ try {
 
     $requestUpdate->execute([$requestId]);
 
+    writeActivityLog(
+        $pdo,
+        'approve_booking_edit',
+        'edited reservation for Unit ' . $request['unit_name'] . ' (booking #BK-' . $request['booking_id'] . ')',
+        'booking',
+        (string) $request['booking_id']
+    );
     $pdo->commit();
 
     echo json_encode([

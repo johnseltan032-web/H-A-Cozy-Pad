@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require 'activity_log_helper.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -43,6 +44,16 @@ if ($bookingId <= 0) {
 }
 
 try {
+    $pdo->beginTransaction();
+    $bookingInfo = $pdo->prepare(
+        'SELECT b.booking_id, u.unit_name
+         FROM bookings b
+         JOIN units u ON u.unit_id = b.unit_id
+         WHERE b.booking_id = ?'
+    );
+    $bookingInfo->execute([$bookingId]);
+    $booking = $bookingInfo->fetch(PDO::FETCH_ASSOC);
+
     $stmt = $pdo->prepare(
         'DELETE FROM bookings
          WHERE booking_id = ?
@@ -52,6 +63,7 @@ try {
     $stmt->execute([$bookingId]);
 
     if ($stmt->rowCount() === 0) {
+        $pdo->rollBack();
         http_response_code(404);
         echo json_encode([
             'error' => 'Booking not found or it cannot be removed yet'
@@ -59,11 +71,23 @@ try {
         exit;
     }
 
+    writeActivityLog(
+        $pdo,
+        'delete_booking',
+        'deleted booking #BK-' . $bookingId . ($booking ? ' for Unit ' . $booking['unit_name'] : ''),
+        'booking',
+        (string) $bookingId
+    );
+    $pdo->commit();
+
     echo json_encode([
         'success' => true,
         'bookingId' => $bookingId
     ]);
 } catch (Throwable $error) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     error_log('Booking delete failed: ' . $error->getMessage());
 
     http_response_code(500);

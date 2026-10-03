@@ -1,6 +1,7 @@
 <?php
 
 require 'db.php';
+require 'activity_log_helper.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -33,6 +34,7 @@ if ($method === 'GET') {
                 b.reason,
                 b.notes,
                 u.unit_name,
+                u.unit_number,
                 bu.building_name
             FROM unit_blocked_dates b
             JOIN units u ON u.unit_id = b.unit_id
@@ -131,15 +133,39 @@ if ($method === 'POST') {
     $adminStmt->execute([$_SESSION['user_id']]);
     $adminId = $adminStmt->fetchColumn();
 
-    $insert = $pdo->prepare(
-        'INSERT INTO unit_blocked_dates (unit_id, blocked_from, blocked_until, reason, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?)'
-    );
-    $insert->execute([$unitId, $blockedFrom, $blockedUntil, $reason, $notes, $adminId ?: null]);
+    $unitNameStmt = $pdo->prepare('SELECT unit_name FROM units WHERE unit_id = ?');
+    $unitNameStmt->execute([$unitId]);
+    $unitName = $unitNameStmt->fetchColumn();
+
+    try {
+        $pdo->beginTransaction();
+        $insert = $pdo->prepare(
+            'INSERT INTO unit_blocked_dates (unit_id, blocked_from, blocked_until, reason, notes, created_by)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $insert->execute([$unitId, $blockedFrom, $blockedUntil, $reason, $notes, $adminId ?: null]);
+        $blockedDateId = (int) $pdo->lastInsertId();
+        writeActivityLog(
+            $pdo,
+            'block_dates',
+            'blocked Unit ' . $unitName . ' from ' . $blockedFrom . ' to ' . $blockedUntil,
+            'blocked_dates',
+            (string) $blockedDateId
+        );
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Blocked dates creation failed: ' . $error->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => 'Unable to block these dates']);
+        exit;
+    }
 
     echo json_encode([
         'success' => true,
-        'blockedDateId' => (int) $pdo->lastInsertId(),
+        'blockedDateId' => $blockedDateId,
         'reason' => $reason
     ]);
     exit;
@@ -155,8 +181,41 @@ if ($method === 'DELETE') {
         exit;
     }
 
-    $delete = $pdo->prepare('DELETE FROM unit_blocked_dates WHERE blocked_date_id = ?');
-    $delete->execute([$blockedDateId]);
+    $blockedInfo = $pdo->prepare(
+        'SELECT b.unit_id, b.blocked_from, b.blocked_until, u.unit_name
+         FROM unit_blocked_dates b
+         JOIN units u ON u.unit_id = b.unit_id
+         WHERE b.blocked_date_id = ?'
+    );
+    $blockedInfo->execute([$blockedDateId]);
+    $blocked = $blockedInfo->fetch(PDO::FETCH_ASSOC);
+    if (!$blocked) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Blocked dates not found']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+        $delete = $pdo->prepare('DELETE FROM unit_blocked_dates WHERE blocked_date_id = ?');
+        $delete->execute([$blockedDateId]);
+        writeActivityLog(
+            $pdo,
+            'unblock_dates',
+            'unblocked Unit ' . $blocked['unit_name'] . ' for ' . $blocked['blocked_from'] . ' to ' . $blocked['blocked_until'],
+            'blocked_dates',
+            (string) $blockedDateId
+        );
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Blocked dates removal failed: ' . $error->getMessage());
+        http_response_code(500);
+        echo json_encode(['error' => 'Unable to unblock these dates']);
+        exit;
+    }
 
     echo json_encode(['success' => true, 'blockedDateId' => $blockedDateId]);
     exit;

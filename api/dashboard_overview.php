@@ -125,22 +125,6 @@ try {
         LIMIT 5
     ")->fetchAll(PDO::FETCH_ASSOC);
 
-    $conflictRows = $pdo->query("
-        SELECT DISTINCT b1.unit_id, u.unit_name, b1.booking_id, b2.booking_id AS overlap_booking_id,
-               b1.check_in_date, b1.check_out_date, b2.check_in_date AS overlap_check_in,
-               b2.check_out_date AS overlap_check_out
-        FROM bookings b1
-        INNER JOIN bookings b2
-          ON b1.unit_id = b2.unit_id
-         AND b1.booking_id < b2.booking_id
-         AND b1.status NOT IN ('cancelled', 'rejected')
-         AND b2.status NOT IN ('cancelled', 'rejected')
-         AND b1.check_in_date < b2.check_out_date
-         AND b1.check_out_date > b2.check_in_date
-        INNER JOIN units u ON u.unit_id = b1.unit_id
-        ORDER BY b1.check_in_date ASC
-    ")->fetchAll(PDO::FETCH_ASSOC);
-
     $arrivalTomorrowRows = $pdo->query("
         SELECT b.booking_id, b.check_in_date, u.unit_name, bu.building_name,
                COALESCE(bd.guest_name, cu.full_name, 'Guest') AS guest_name
@@ -166,22 +150,6 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     $alerts = [];
-
-    foreach ($conflictRows as $conflict) {
-        $alerts[] = [
-            'type' => 'conflict',
-            'severity' => 'high',
-            'title' => 'Booking conflict detected',
-            'message' => sprintf(
-                '%s has overlapping bookings from %s to %s and %s to %s.',
-                $conflict['unit_name'],
-                $conflict['check_in_date'],
-                $conflict['check_out_date'],
-                $conflict['overlap_check_in'],
-                $conflict['overlap_check_out']
-            ),
-        ];
-    }
 
     foreach ($arrivalTomorrowRows as $arrival) {
         $alerts[] = [

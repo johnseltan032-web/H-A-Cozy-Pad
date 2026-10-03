@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Chatbot from '../components/Chatbot';
@@ -12,14 +12,6 @@ const PLACEHOLDER_AMENITIES = Array.from(
     name: 'Kitchen',
   })
 );
-
-const PLACEHOLDER_CATEGORIES = [
-  'Category',
-  'Category',
-  'Category',
-  'Category',
-  'Category',
-];
 
 function normalizeAmenities(amenities) {
   if (!amenities) return [];
@@ -64,17 +56,6 @@ function formatAvailabilityDate(dateString) {
   }).format(date);
 }
 
-const PLACEHOLDER_REVIEWS = Array.from(
-  { length: 6 },
-  (_, i) => ({
-    id: i + 1,
-    name: 'Name',
-    dateRange: '00/00/0000 - 00/00/0000',
-    text:
-      'Secure your upcoming booking by filling out the details below. Please choose your preferred date, time, and total number of guests. You will be held for a maximum of fifteen minutes upon schedule.',
-  })
-);
-
 export default function PropertyDetail({
   isMenuOpen,
   setIsMenuOpen,
@@ -85,6 +66,7 @@ export default function PropertyDetail({
   onLogout,
 }) {
   const { unitId: routeUnitId } = useParams();
+  const location = useLocation();
 
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,12 +75,9 @@ export default function PropertyDetail({
   const [showAllAmenities, setShowAllAmenities] =
     useState(false);
 
-  const [showAllComments, setShowAllComments] =
-    useState(false);
-
-  const [checkIn, setCheckIn] = useState(() => new Date().toISOString().split('T')[0]);
-  const [checkOut, setCheckOut] = useState('');
-  const [guests, setGuests] = useState(1);
+  const [checkIn, setCheckIn] = useState(() => location.state?.checkIn || new Date().toISOString().split('T')[0]);
+  const [checkOut, setCheckOut] = useState(() => location.state?.checkOut || '');
+  const [guests, setGuests] = useState(() => Number(location.state?.guests ?? 1));
 
   const [isDateRangeAvailable, setIsDateRangeAvailable] =
     useState(null);
@@ -273,6 +252,8 @@ export default function PropertyDetail({
         checkIn
       )}&check_out=${encodeURIComponent(
         checkOut
+      )}&guests=${encodeURIComponent(
+        guests
       )}`,
       {
         signal: controller.signal,
@@ -314,6 +295,7 @@ export default function PropertyDetail({
     unit,
     checkIn,
     checkOut,
+    guests,
     availableFrom,
     availableUntil,
     hasListingAvailability,
@@ -369,11 +351,6 @@ export default function PropertyDetail({
       }
     );
   };
-
-  const visibleReviews =
-    showAllComments
-      ? PLACEHOLDER_REVIEWS
-      : PLACEHOLDER_REVIEWS.slice(0, 6);
 
   return (
     <div className="bg-white text-black font-sans min-h-screen flex flex-col">
@@ -561,10 +538,6 @@ export default function PropertyDetail({
 
                   <div className="grid grid-cols-2 gap-x-5 gap-y-4 text-sm sm:grid-cols-3">
                     <div>
-                      <p className="text-neutral-500">Maximum guests</p>
-                      <p className="mt-1 font-medium">{unit.max_guests ?? '—'}</p>
-                    </div>
-                    <div>
                       <p className="text-neutral-500">Bathrooms / toilets</p>
                       <p className="mt-1 font-medium">{unit.bathrooms ?? 0}</p>
                     </div>
@@ -677,16 +650,16 @@ export default function PropertyDetail({
                 <label className="block border border-neutral-300 rounded-lg px-3 py-2 mb-4 focus-within:border-neutral-300">
 
                   <span className="text-[11px] text-neutral-500 uppercase block">
-                    Guests
+                    Pax
+                  </span>
+                  <span className="mt-1 block text-xs text-neutral-500">
+                    Up to {unit.max_guests} reservations can overlap for this unit; pax per reservation is not capped.
                   </span>
 
                   <input
                     type="number"
-                    min={1}
-                    max={
-                      unit.max_guests ||
-                      undefined
-                    }
+                    min={0}
+                    step={1}
                     value={guests}
                     onChange={(event) =>
                       setGuests(
@@ -796,101 +769,6 @@ export default function PropertyDetail({
                   ? 'Show less'
                   : 'Show all amenities'}
               </button>
-
-            </section>
-
-            <hr className="border-neutral-200" />
-
-            {/* =====================================================
-                REVIEWS
-            ====================================================== */}
-            
-            <section>
-
-              <h2 className="text-xl font-bold text-center mb-2">
-                Overall Ratings
-              </h2>
-
-              <p className="text-3xl font-bold text-center mb-6">
-                5.0
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-3 mb-8">
-
-                {PLACEHOLDER_CATEGORIES.map(
-                  (category, index) => (
-                    <span
-                      key={index}
-                      className="px-4 py-1.5 text-sm border border-neutral-300 rounded-full text-neutral-600"
-                    >
-                      {category}
-                    </span>
-                  )
-                )}
-
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                {visibleReviews.map(
-                  (review) => (
-                    <div
-                      key={review.id}
-                      className="flex flex-col gap-2"
-                    >
-
-                      <div className="flex items-center gap-2">
-
-                        <div className="w-9 h-9 rounded-full bg-neutral-200" />
-
-                        <div>
-
-                          <p className="text-sm font-medium">
-                            {review.name}
-                          </p>
-
-                          <p className="text-xs text-neutral-500">
-                            {review.dateRange}
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                      <p className="text-sm text-neutral-600">
-                        {review.text}
-                      </p>
-
-                      <button
-                        type="button"
-                        className="text-sm font-medium underline self-start cursor-pointer"
-                      >
-                        Show more
-                      </button>
-
-                    </div>
-                  )
-                )}
-
-              </div>
-
-              <div className="text-center mt-8">
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowAllComments(
-                      (value) => !value
-                    )
-                  }
-                  className="px-8 py-3 border border-neutral-300 rounded-full font-medium hover:bg-neutral-100 cursor-pointer"
-                >
-                  {showAllComments
-                    ? 'Show less'
-                    : 'Show all comments'}
-                </button>
-
-              </div>
 
             </section>
 

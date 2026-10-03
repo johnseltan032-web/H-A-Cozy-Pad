@@ -2,27 +2,31 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../lib/api';
 import NotificationBell from './NotificationBell';
+import AdminBookingModal from './AdminBookingModal';
 
 export default function HostHeader({
   activeNav = 'Today',
   onLogout,
 }) {
-  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canViewActivityLog, setCanViewActivityLog] = useState(false);
   const [canViewStatistics, setCanViewStatistics] = useState(false);
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
+  const logoutTimer = useRef(null);
+  const navigate = useNavigate();
 
   const navItems = [
     { label: 'Dashboard', to: '/host/overview', key: 'Dashboard' },
     { label: 'Calendar', to: '/host/calendar', key: 'Calendar' },
-    { label: 'Expenses', to: '/host/expenses', key: 'Expenses' },
+    { label: 'Reservations', to: '/host/reservations', key: 'Reservations' },
+    { label: 'Listings', to: '/host/listings', key: 'Listings' },
     ...(canViewStatistics
       ? [{ label: 'Statistics', to: '/host/statistics', key: 'Statistics' }]
       : []),
-    { label: 'Settings', to: '/host/settings', key: 'Settings' },
   ];
 
   useEffect(() => {
@@ -37,13 +41,19 @@ export default function HostHeader({
           return;
         }
 
-        setIsAdmin(data.user?.role === 'super_admin');
+        setIsAdmin(['admin', 'super_admin'].includes(data.user?.role));
+        setCanViewActivityLog(data.user?.role === 'super_admin');
         setCanViewStatistics(Boolean(data.user?.can_view_statistics) || data.user?.role === 'super_admin');
       })
       .catch(() => {
         setIsAdmin(false);
         setCanViewStatistics(false);
+        setCanViewActivityLog(false);
       });
+  }, []);
+
+  useEffect(() => () => {
+    if (logoutTimer.current) clearTimeout(logoutTimer.current);
   }, []);
 
   
@@ -69,20 +79,24 @@ export default function HostHeader({
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_BASE_URL}/logout.php`, {
+      const response = await fetch(`${API_BASE_URL}/logout.php`, {
         method: 'POST',
         credentials: 'include',
       });
+      if (!response.ok) throw new Error('Unable to log out.');
+      window.dispatchEvent(new CustomEvent('app-status-toast', {
+        detail: { message: 'Logged out successfully.' },
+      }));
     } catch (error) {
       console.error('Logout failed:', error);
+      window.dispatchEvent(new CustomEvent('app-status-toast', {
+        detail: { message: 'Could not confirm logout. Please try again.' },
+      }));
     } finally {
-  
       onLogout?.();
-
       setIsMenuOpen(false);
-
-
-      window.location.href = '/';
+      window.dispatchEvent(new CustomEvent('auth-changed', { detail: { loggedIn: false } }));
+      logoutTimer.current = setTimeout(() => navigate('/'), 1500);
     }
   };
 
@@ -118,7 +132,7 @@ export default function HostHeader({
         <button
           type="button"
           aria-label="Create a new booking"
-          onClick={() => navigate('/host/overview?newBooking=1')}
+          onClick={() => setIsBookingModalOpen(true)}
           className="host-header__new-listing inline-flex items-center gap-2 rounded-full bg-[#df766c] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#bd584f]"
         >
           <span className="text-lg leading-none">+</span>
@@ -155,17 +169,17 @@ export default function HostHeader({
       {isMenuOpen && (
         <div
           ref={menuRef}
-          className="host-header-menu absolute left-auto right-5 top-[70px] w-[280px] bg-white rounded-2xl shadow-xl border border-neutral-100 py-3 z-[2100]"
+          className="host-header-menu absolute left-auto right-5 top-[70px] w-[280px] max-md:w-[240px] bg-white rounded-2xl max-md:rounded-xl shadow-xl border border-neutral-100 py-3 max-md:py-2 z-[2100]"
         >
           {/* Switch to guest */}
           <Link
             to="/"
             onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
+            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -184,11 +198,11 @@ export default function HostHeader({
           <Link
             to="/profile"
             onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
+            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -202,17 +216,59 @@ export default function HostHeader({
             Profile
           </Link>
 
+<Link
+            to="/host/inbox"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <polyline points="3 7 12 13 21 7" />
+            </svg>
+            Inbox
+          </Link>
+
+          <Link
+            to="/host/settings"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.96l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 .6 1.8 1.8 0 0 0-.42 1.17V21a2 2 0 1 1-4 0v-.08A1.8 1.8 0 0 0 9 19.4a1.8 1.8 0 0 0-1-.6 1.8 1.8 0 0 0-1.17.42l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-.6-1 1.8 1.8 0 0 0-1.17-.42H2.7a2 2 0 1 1 0-4h.08A1.8 1.8 0 0 0 4.6 9a1.8 1.8 0 0 0 .6-1 1.8 1.8 0 0 0-.42-1.17l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1-.6 1.8 1.8 0 0 0 .42-1.17V2.7a2 2 0 1 1 4 0v.08A1.8 1.8 0 0 0 15 4.6a1.8 1.8 0 0 0 1 .6 1.8 1.8 0 0 0 1.17-.42l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.8 1.8 0 0 0 19.4 9a1.8 1.8 0 0 0 .6 1 1.8 1.8 0 0 0 1.17.42h.08a2 2 0 1 1 0 4h-.08A1.8 1.8 0 0 0 19.4 15Z" />
+            </svg>
+            Settings
+          </Link>
+
           <hr className="my-2 border-neutral-200" />
 
           {/* Help Center Management */}
           <Link
             to="/host/faqs"
             onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
+            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -227,36 +283,14 @@ export default function HostHeader({
             Help Center Management
           </Link>
 
-          {/* Inbox */}
-          <Link
-            to="/host/inbox"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="5" width="18" height="14" rx="2" />
-              <polyline points="3 7 12 13 21 7" />
-            </svg>
-            Inbox
-          </Link>
-
           {isAdmin && (<Link
             to="/host/users"
             onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
+            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -270,7 +304,29 @@ export default function HostHeader({
             User Management
           </Link>
         )}
-          
+          {canViewActivityLog && (
+            <Link
+              to="/host/activity-log"
+              onClick={() => setIsMenuOpen(false)}
+              aria-current={activeNav === 'Activity Log' ? 'page' : undefined}
+              className="flex items-center gap-3 px-5 py-3 text-base font-medium hover:bg-neutral-100 text-black no-underline"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              Activity Log
+            </Link>
+          )}
 
           <hr className="my-2 border-neutral-200" />
 
@@ -278,12 +334,12 @@ export default function HostHeader({
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full text-left flex items-center gap-3 px-5 py-3 text-base font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer text-black"
+            className="w-full text-left flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-semibold hover:bg-neutral-100 bg-transparent border-0 cursor-pointer text-black"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
+              className="w-5 h-5 max-md:w-4 max-md:h-4"
+                            viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -297,6 +353,9 @@ export default function HostHeader({
             Log out
           </button>
         </div>
+      )}
+      {isBookingModalOpen && (
+        <AdminBookingModal onClose={() => setIsBookingModalOpen(false)} />
       )}
     </header>
   );

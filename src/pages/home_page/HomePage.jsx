@@ -62,7 +62,7 @@ export default function HomePage({
 
   // Filter properties dynamically when search parameters change
   const handleSearch = (searchParams) => {
-    const { query, num_of_guests } = searchParams;
+    const { query } = searchParams;
     setSearchParams(searchParams);
     const normalizedQuery = query?.trim().toLowerCase();
 
@@ -75,10 +75,7 @@ export default function HomePage({
       ].filter(Boolean).join(' ').toLowerCase();
       const matchesQuery = !normalizedQuery || searchableLocation.includes(normalizedQuery);
 
-      const matchesGuests =
-        !num_of_guests || (property.max_guests ? property.max_guests >= Math.min(num_of_guests, 4) : true);
-
-      return matchesQuery && matchesGuests;
+      return matchesQuery;
     });
 
     setFilteredProperties(filtered);

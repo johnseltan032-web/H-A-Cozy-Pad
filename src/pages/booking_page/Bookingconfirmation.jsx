@@ -157,10 +157,6 @@ export default function BookingConfirmation({
     : [booking.property || {}];
   const property = bookingProperties[0] || {};
   const bookingUnitIds = bookingProperties.map((selectedProperty) => selectedProperty.unit_id).join(',');
-  const maximumGuests = bookingProperties.reduce(
-    (totalCapacity, selectedProperty) => totalCapacity + Number(selectedProperty.max_guests || 0),
-    0
-  );
 
   const [checkIn, setCheckIn] = useState(
     booking.checkIn || ""
@@ -170,10 +166,10 @@ export default function BookingConfirmation({
     booking.checkOut || ""
   );
 
-  const guestCount = Number(booking.guests || 1);
+  const guestCount = Number(booking.guests ?? 1);
 
   const [guests, setGuests] = useState(
-    Math.max(1, guestCount)
+    Math.max(0, guestCount)
   );
 
   const [paymentType, setPaymentType] = useState("full_payment");
@@ -530,8 +526,8 @@ export default function BookingConfirmation({
 
     let isValid = true;
 
-    if (maximumGuests > 0 && guests > maximumGuests) {
-      newErrors.guests = `This property can accommodate a maximum of ${maximumGuests} guest${maximumGuests === 1 ? "" : "s"}.`;
+    if (!Number.isSafeInteger(guests) || guests < 0) {
+      newErrors.guests = "Guest count must be a nonnegative whole number.";
       isValid = false;
     }
 
@@ -730,16 +726,9 @@ export default function BookingConfirmation({
 
   const handleIncreaseGuests = () => {
     setGuests((value) => {
-      if (maximumGuests > 0 && value >= maximumGuests) {
-        setErrors((previousErrors) => ({
-          ...previousErrors,
-          guests: `This property can accommodate a maximum of ${maximumGuests} guest${maximumGuests === 1 ? "" : "s"}.`,
-        }));
-        return value;
-      }
-
       return value + 1;
     });
+    clearFieldError("guests");
   };
 
 
@@ -763,7 +752,7 @@ export default function BookingConfirmation({
 
     Promise.all(bookingProperties.map((selectedProperty) =>
       fetch(
-        `${API_BASE_URL}/check_availability.php?unit_id=${encodeURIComponent(selectedProperty.unit_id)}&check_in=${encodeURIComponent(checkIn)}&check_out=${encodeURIComponent(checkOut)}`,
+        `${API_BASE_URL}/check_availability.php?unit_id=${encodeURIComponent(selectedProperty.unit_id)}&check_in=${encodeURIComponent(checkIn)}&check_out=${encodeURIComponent(checkOut)}&guests=${encodeURIComponent(guests)}`,
         { signal: controller.signal }
       ).then(async (response) => {
         const data = await parseJsonResponse(response);
@@ -789,6 +778,7 @@ export default function BookingConfirmation({
     bookingUnitIds,
     checkIn,
     checkOut,
+    guests,
   ]);
 
   return (
@@ -885,18 +875,18 @@ export default function BookingConfirmation({
                   {errors.checkIn && <p className="mt-2 text-xs text-red-600">{errors.checkIn}</p>}
                   {errors.checkOut && <p className="mt-1 text-xs text-red-600">{errors.checkOut}</p>}
                   {availabilityError && <p className="mt-2 text-xs text-red-600">{availabilityError}</p>}
-                  {!availabilityError && isAvailable === false && <p className="mt-2 text-xs text-red-600">This room is already booked for the selected dates.</p>}
+                  {!availabilityError && isAvailable === false && <p className="mt-2 text-xs text-red-600">This room is not available for the selected dates.</p>}
                   {isAvailable === true && <p className="mt-2 text-xs text-green-600">Room is available.</p>}
                 </div>
 
                 <div className="text-right">
                   <p className="text-[11px] text-gray-500 mb-1">Number of guests</p>
                   <div className="flex items-center border border-gray-200 rounded-lg" data-error={errors.guests ? "true" : "false"}>
-                    <button type="button" onClick={() => { setGuests((value) => Math.max(1, value - 1)); clearFieldError("guests"); }} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Decrease guests">
+                    <button type="button" onClick={() => { setGuests((value) => Math.max(0, value - 1)); clearFieldError("guests"); }} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Decrease guests">
                       <MinusIcon />
                     </button>
                     <span className="w-5 text-center text-sm text-gray-900">{guests}</span>
-                    <button type="button" onClick={handleIncreaseGuests} disabled={maximumGuests > 0 && guests >= maximumGuests} className="p-2 text-gray-500 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Increase guests">
+                    <button type="button" onClick={handleIncreaseGuests} className="p-2 text-gray-500 hover:text-gray-900" aria-label="Increase guests">
                       <PlusIcon />
                     </button>
                   </div>
@@ -964,9 +954,9 @@ export default function BookingConfirmation({
               <PaymentRow
                 name="paymentMethod"
                 icon={<WalletIcon />}
-                label="Proof of Payment"
-                selected={paymentMethod === "proof"}
-                onSelect={() => setPaymentMethod("proof")}
+                label="Bank Transfer"
+                selected={paymentMethod === "bank_transfer"}
+                onSelect={() => setPaymentMethod("bank_transfer")}
               />
 
               <hr className="border-gray-100" />
@@ -985,7 +975,8 @@ export default function BookingConfirmation({
                   checkOut <= checkIn ||
                   !isCustomer ||
                   isAvailable !== true ||
-                  (maximumGuests > 0 && guests > maximumGuests) ||
+                  !Number.isSafeInteger(guests) ||
+                  guests < 0 ||
                   Object.values(errors).some(Boolean)
                 }
                 className="block w-full border border-transparent bg-[#f26b5e] text-white text-sm font-medium text-center rounded-full py-3 hover:bg-[#df5b4f] transition-colors cursor-pointer disabled:border-gray-300 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"

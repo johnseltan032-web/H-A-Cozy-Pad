@@ -1,0 +1,2 @@
+ALTER TABLE faqs_categories
+    ADD COLUMN category_icon VARCHAR(32) CHARACTER SET utf8mb4 DEFAULT NULL;

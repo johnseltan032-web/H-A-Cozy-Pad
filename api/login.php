@@ -1,5 +1,6 @@
 <?php
     require 'db.php';
+    require 'activity_log_helper.php';
 
     $data = json_decode(file_get_contents('php://input'), true);
 
@@ -37,6 +38,10 @@
     $_SESSION['full_name'] = $user['full_name'];
     $_SESSION['needs_setup'] = trim((string) ($user['contact_num'] ?? '')) === '';
     $_SESSION['can_view_statistics'] = $canViewStatistics;
+
+    if (in_array($role, ['super_admin', 'admin'], true)) {
+        writeActivityLog($pdo, 'login', 'logged in', 'session', (string) $user['user_id']);
+    }
 
     echo json_encode([
         'success' => true,

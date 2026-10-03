@@ -1,6 +1,13 @@
 <?php
 
 require 'db.php';
+require 'activity_log_helper.php';
+
+if (!isset($_SESSION['user_id']) || !in_array(strtolower($_SESSION['role'] ?? ''), ['super_admin', 'admin'], true)) {
+    http_response_code(isset($_SESSION['user_id']) ? 403 : 401);
+    echo json_encode(['error' => 'Administrator access required']);
+    exit;
+}
 
 header('Content-Type: application/json');
 
@@ -417,6 +424,13 @@ try {
         );
     }
 
+    writeActivityLog(
+        $pdo,
+        'add_listing',
+        'added listing for Unit ' . $unitLabel,
+        'unit',
+        (string) $unitId
+    );
     $pdo->commit();
 
     echo json_encode([

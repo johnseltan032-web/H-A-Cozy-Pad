@@ -1,6 +1,8 @@
 <?php
 
 require 'db.php';
+require 'guest_count.php';
+require 'booking_slot_limit.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -31,7 +33,7 @@ $requestReason = trim($_POST['requestReason'] ?? '');
 
 $requestedCheckIn = trim($_POST['requestedCheckIn'] ?? '');
 $requestedCheckOut = trim($_POST['requestedCheckOut'] ?? '');
-$requestedGuests = (int) ($_POST['requestedGuests'] ?? 0);
+$requestedGuests = parseGuestCount($_POST['requestedGuests'] ?? null);
 $requestedSpecialRequests = trim($_POST['requestedSpecialRequests'] ?? '');
 $requestedPaymentAmount = isset($_POST['paymentAmount']) && $_POST['paymentAmount'] !== '' ? (float) $_POST['paymentAmount'] : null;
 $requestedRefundAmount = isset($_POST['refundAmount']) && $_POST['refundAmount'] !== '' ? (float) $_POST['refundAmount'] : null;
@@ -69,10 +71,10 @@ if ($requestType === 'modification') {
         exit;
     }
 
-    if ($requestedGuests <= 0) {
+    if ($requestedGuests === null) {
         http_response_code(400);
         echo json_encode([
-            'error' => 'Number of guests must be greater than zero'
+            'error' => 'Guest count must be a nonnegative whole number'
         ]);
         exit;
     }
@@ -111,8 +113,7 @@ try {
             b.check_in_date,
             b.check_out_date,
             b.num_of_guests,
-            u.rate_per_night,
-            u.max_guests
+            u.rate_per_night
          FROM bookings b
          INNER JOIN units u ON u.unit_id = b.unit_id
          WHERE b.booking_id = ?
@@ -130,17 +131,6 @@ try {
         http_response_code(404);
         echo json_encode([
             'error' => 'Booking not found'
-        ]);
-        exit;
-    }
-
-    if (
-        $requestType === 'modification' &&
-        $requestedGuests > (int) $bookingData['max_guests']
-    ) {
-        http_response_code(400);
-        echo json_encode([
-            'error' => 'The requested number of guests exceeds the unit capacity'
         ]);
         exit;
     }
@@ -204,32 +194,6 @@ try {
             exit;
         }
 
-        $overlap = $pdo->prepare(
-            'SELECT booking_id
-             FROM bookings
-             WHERE unit_id = ?
-             AND booking_id != ?
-             AND status NOT IN (\'cancelled\', \'rejected\')
-             AND check_in_date < ?
-             AND check_out_date > ?
-             LIMIT 1'
-        );
-
-        $overlap->execute([
-            $bookingData['unit_id'],
-            $bookingId,
-            $requestedCheckOut,
-            $requestedCheckIn
-        ]);
-
-        if ($overlap->fetch()) {
-            http_response_code(409);
-            echo json_encode([
-                'error' => 'This unit is already booked for some or all of the requested dates.'
-            ]);
-            exit;
-        }
-
         $blocked = $pdo->prepare(
             'SELECT reason
              FROM unit_blocked_dates
@@ -245,6 +209,20 @@ try {
             http_response_code(409);
             echo json_encode([
                 'error' => 'This unit is blocked for the requested dates due to ' . str_replace('_', ' ', $blockedDate['reason']) . '.'
+            ]);
+            exit;
+        }
+
+        if (!hasBookingSlotForRange(
+            $pdo,
+            (int) $bookingData['unit_id'],
+            $requestedCheckIn,
+            $requestedCheckOut,
+            $bookingId
+        )) {
+            http_response_code(409);
+            echo json_encode([
+                'error' => 'This listing has reached its maximum number of overlapping reservations for at least one requested night.'
             ]);
             exit;
         }

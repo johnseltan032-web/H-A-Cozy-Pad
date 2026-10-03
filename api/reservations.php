@@ -56,6 +56,7 @@ try {
 
             u.unit_id,
             u.unit_name,
+            u.unit_number,
             u.rate_per_night,
 
             bu.building_name,

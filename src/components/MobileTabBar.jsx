@@ -3,15 +3,14 @@ import { NavLink, useLocation } from 'react-router-dom';
 const tabs = [
   { label: 'Explore', to: '/', icon: 'search' },
   { label: 'Reservations', to: '/trips', icon: 'trip' },
-  { label: 'Settings', to: '/profile', icon: 'profile' },
 ];
 
 const hostTabs = [
   { label: 'Dashboard', to: '/host/overview', icon: 'overview' },
   { label: 'Calendar', to: '/host/calendar', icon: 'calendar' },
-  { label: 'Expenses', to: '/host/expenses', icon: 'expenses' },
+  { label: 'Reservations', to: '/host/reservations', icon: 'trip' },
+  { label: 'Listings', to: '/host/listings', icon: 'home' },
   { label: 'Statistics', to: '/host/statistics', icon: 'stats' },
-  { label: 'Settings', to: '/host/settings', icon: 'settings' },
 ];
 
 function TabIcon({ name }) {
@@ -23,7 +22,6 @@ function TabIcon({ name }) {
     today: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9v11h14V9M9 20v-6h6v6" /></>,
     overview: <><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13" y="3" width="8" height="5" rx="1" /><rect x="13" y="10" width="8" height="11" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
-    expenses: <><path d="M12 1v22" /><path d="M17 5h-7a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H8" /><path d="M5 5h.01M5 19h.01" /></>,
     home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9M9 20v-6h6v6" /></>,
     stats: <><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20V8" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.96l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 .6 1.8 1.8 0 0 0-.42 1.17V21a2 2 0 1 1-4 0v-.08A1.8 1.8 0 0 0 9 19.4a1.8 1.8 0 0 0-1-.6 1.8 1.8 0 0 0-1.17.42l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-.6-1 1.8 1.8 0 0 0-1.17-.42H2.7a2 2 0 1 1 0-4h.08A1.8 1.8 0 0 0 4.6 9a1.8 1.8 0 0 0 .6-1 1.8 1.8 0 0 0-.42-1.17l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.8 1.8 0 0 0 9 4.6a1.8 1.8 0 0 0 1-.6 1.8 1.8 0 0 0 .42-1.17V2.7a2 2 0 1 1 4 0v.08A1.8 1.8 0 0 0 15 4.6a1.8 1.8 0 0 0 1 .6 1.8 1.8 0 0 0 1.17-.42l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.8 1.8 0 0 0 19.4 9a1.8 1.8 0 0 0 .6 1 1.8 1.8 0 0 0 1.17.42h.08a2 2 0 1 1 0 4h-.08A1.8 1.8 0 0 0 19.4 15Z" /></>,

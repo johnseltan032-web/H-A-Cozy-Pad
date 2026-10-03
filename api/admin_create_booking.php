@@ -1,5 +1,8 @@
 <?php
 require 'db.php';
+require 'activity_log_helper.php';
+require 'guest_count.php';
+require 'booking_slot_limit.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -26,7 +29,7 @@ $checkIn = trim((string) ($data['checkIn'] ?? ''));
 $checkOut = trim((string) ($data['checkOut'] ?? ''));
 $checkInTime = trim((string) ($data['checkInTime'] ?? ''));
 $checkOutTime = trim((string) ($data['checkOutTime'] ?? ''));
-$guests = (int) ($data['guests'] ?? 1);
+$guests = parseGuestCount($data['guests'] ?? null);
 $guestName = trim((string) ($data['guestName'] ?? ''));
 $guestContactNum = trim((string) ($data['guestContactNum'] ?? ''));
 $guestEmail = strtolower(trim((string) ($data['guestEmail'] ?? '')));
@@ -35,7 +38,7 @@ $paymentMethod = trim((string) ($data['paymentMethod'] ?? 'cash'));
 $paymentStatus = trim((string) ($data['paymentStatus'] ?? 'verified'));
 $notes = trim((string) ($data['notes'] ?? ''));
 
-if (!$unitId || !$checkIn || !$checkOut || $guests < 1 || !$guestName || !$guestContactNum) {
+if (!$unitId || !$checkIn || !$checkOut || $guests === null || !$guestName || !$guestContactNum) {
     http_response_code(400);
     echo json_encode(['error' => 'Unit, dates, guest count, name, and contact number are required']);
     exit;
@@ -44,12 +47,6 @@ if (!$unitId || !$checkIn || !$checkOut || $guests < 1 || !$guestName || !$guest
 if (!preg_match('/^[0-9]{11}$/', $guestContactNum)) {
     http_response_code(400);
     echo json_encode(['error' => 'Guest contact number must be 11 digits.']);
-    exit;
-}
-
-if ($guests > 4) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Maximum 4 guests per unit.']);
     exit;
 }
 
@@ -86,7 +83,7 @@ if ($checkInDate < $today) {
 }
 
 $unit = $pdo->prepare(
-    'SELECT u.unit_id, u.unit_name, u.max_guests, u.rate_per_night, u.available_from, u.available_until
+    'SELECT u.unit_id, u.unit_name, u.rate_per_night, u.available_from, u.available_until
      FROM units u
      WHERE u.unit_id = ?'
 );
@@ -99,12 +96,6 @@ if (!$unitData) {
     exit;
 }
 
-if ($guests > (int) $unitData['max_guests']) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Guest count exceeds the unit limit.']);
-    exit;
-}
-
 if (!empty($unitData['available_from']) && $checkIn < $unitData['available_from']) {
     http_response_code(400);
     echo json_encode(['error' => 'The selected check-in date is before this listing becomes available.']);
@@ -114,22 +105,6 @@ if (!empty($unitData['available_from']) && $checkIn < $unitData['available_from'
 if (!empty($unitData['available_until']) && $checkOut > $unitData['available_until']) {
     http_response_code(400);
     echo json_encode(['error' => 'The selected stay extends beyond this listing’s availability period.']);
-    exit;
-}
-
-$overlap = $pdo->prepare(
-    'SELECT booking_id
-     FROM bookings
-     WHERE unit_id = ?
-     AND status NOT IN (\'cancelled\', \'rejected\')
-     AND check_in_date < ?
-     AND check_out_date > ?
-     LIMIT 1'
-);
-$overlap->execute([$unitId, $checkOut, $checkIn]);
-if ($overlap->fetch()) {
-    http_response_code(409);
-    echo json_encode(['error' => 'This unit is already booked for some or all of the selected dates.']);
     exit;
 }
 
@@ -153,9 +128,18 @@ $customerId = null;
 try {
     $pdo->beginTransaction();
 
+    $lockUnit = $pdo->prepare('SELECT unit_id FROM units WHERE unit_id = ? FOR UPDATE');
+    $lockUnit->execute([$unitId]);
+    if (!hasBookingSlotForRange($pdo, $unitId, $checkIn, $checkOut)) {
+        $pdo->rollBack();
+        http_response_code(409);
+        echo json_encode(['error' => 'This listing has reached its maximum number of overlapping reservations for at least one selected night.']);
+        exit;
+    }
+
     $bookingInsert = $pdo->prepare(
         'INSERT INTO bookings (customer_id, unit_id, check_in_date, check_out_date, check_in_time, check_out_time, num_of_guests, status, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, \"confirmed\", ?)'
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $bookingInsert->execute([
         $customerId,
@@ -165,6 +149,7 @@ try {
         $checkInTime !== '' ? $checkInTime : null,
         $checkOutTime !== '' ? $checkOutTime : null,
         $guests,
+        'confirmed',
         $notes !== '' ? $notes : null,
     ]);
 
@@ -172,13 +157,14 @@ try {
 
     $detailsInsert = $pdo->prepare(
         'INSERT INTO booking_details (booking_id, guest_name, guest_contact_num, guest_email, valid_id_path, vehicle_type, special_requests)
-         VALUES (?, ?, ?, ?, \"not_uploaded\", NULL, NULL)'
+         VALUES (?, ?, ?, ?, ?, NULL, NULL)'
     );
     $detailsInsert->execute([
         $bookingId,
         $guestName,
         $guestContactNum,
         $guestEmail,
+        'not_uploaded',
     ]);
 
     $nights = (int) $checkOutDate->diff($checkInDate)->days;
@@ -186,16 +172,24 @@ try {
 
     $paymentInsert = $pdo->prepare(
         'INSERT INTO payments (booking_id, amount, payment_method, proof_of_payment, payment_status, verified_by, verified_at)
-         VALUES (?, ?, ?, \"manual-admin-booking\", ?, NULL, CASE WHEN ? = \"verified\" THEN NOW() ELSE NULL END)'
+         VALUES (?, ?, ?, ?, ?, NULL, CASE WHEN ? = \'verified\' THEN NOW() ELSE NULL END)'
     );
     $paymentInsert->execute([
         $bookingId,
         $paymentAmount ?? $amount,
         $paymentMethod,
+        'manual-admin-booking',
         $paymentStatus,
         $paymentStatus,
     ]);
 
+    writeActivityLog(
+        $pdo,
+        'create_booking',
+        'created booking #BK-' . $bookingId . ' for Unit ' . $unitData['unit_name'],
+        'booking',
+        (string) $bookingId
+    );
     $pdo->commit();
 
     echo json_encode([
@@ -209,5 +203,6 @@ try {
     }
 
     http_response_code(500);
+    error_log('admin_create_booking failed: ' . $error->getMessage());
     echo json_encode(['error' => 'Unable to create booking.']);
 }

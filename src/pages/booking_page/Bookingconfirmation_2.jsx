@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import gcashQrImage from "../../images/gcash_qr.jpg";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer_Lite";
 import { API_BASE_URL } from "../../lib/api";
@@ -226,6 +227,10 @@ export default function AdditionalInformation({
 
   const [govId, setGovId] = useState(null);
   const [proofOfPayment, setProofOfPayment] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(
+    booking.paymentMethod === 'bank_transfer' ? 'bank_transfer' : 'gcash'
+  );
+  const [isGcashQrOpen, setIsGcashQrOpen] = useState(false);
 
   const [hasVehicle, setHasVehicle] = useState(false);
   const [vehicles, setVehicles] = useState([
@@ -631,12 +636,12 @@ export default function AdditionalInformation({
     setIsSubmitting(true);
 
     try {
-      const totalGuests = Number(booking.guests || 1);
+      const totalGuests = Number(booking.guests ?? 0);
       const createdBookings = [];
       let remainingGuests = totalGuests;
 
       for (const selectedProperty of bookingProperties) {
-        const guestsForUnit = Math.min(4, remainingGuests);
+        const guestsForUnit = totalGuests;
         const formData = new FormData();
 
         formData.append("unitId", selectedProperty.unit_id || "");
@@ -646,6 +651,7 @@ export default function AdditionalInformation({
         formData.append("guestName", `${firstName} ${lastName}`.trim());
         formData.append("guestContactNum", phone);
         formData.append("guestEmail", email.trim().toLowerCase());
+        formData.append("paymentMethod", paymentMethod);
         formData.append(
           "vehicleType",
           hasVehicle
@@ -906,11 +912,57 @@ export default function AdditionalInformation({
               </div>
             </section>
 
-            {/* 4. Proof of Payment */}
+            {/* 4. Payment method and proof */}
             <section>
-              <h3 className="text-sm font-semibold mb-3">
-                4. Proof of Payment
-              </h3>
+              <h3 className="mb-3 text-sm font-semibold">4. Payment method and proof</h3>
+              <div className="mb-4 space-y-3 rounded-xl border border-gray-200 p-4">
+                <p className="m-0 text-sm font-medium text-gray-900">Choose how you paid</p>
+                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
+                  <span className="text-sm text-gray-800">GCash</span>
+                  <input
+                    type="radio"
+                    name="guestPaymentMethod"
+                    value="gcash"
+                    checked={paymentMethod === 'gcash'}
+                    onChange={() => setPaymentMethod('gcash')}
+                    className="h-4 w-4 accent-neutral-900"
+                  />
+                </label>
+                <label className="flex cursor-pointer items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5">
+                  <span className="text-sm text-gray-800">Bank Transfer</span>
+                  <input
+                    type="radio"
+                    name="guestPaymentMethod"
+                    value="bank_transfer"
+                    checked={paymentMethod === 'bank_transfer'}
+                    onChange={() => setPaymentMethod('bank_transfer')}
+                    className="h-4 w-4 accent-neutral-900"
+                  />
+                </label>
+                {paymentMethod === 'gcash' ? (
+                  <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsGcashQrOpen(true)}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+                    >
+                      Generate GCash QR Code
+                    </button>
+                    <p className="m-0 text-sm leading-relaxed text-gray-600">Open the GCash QR code, pay the amount shown in your booking, then upload your payment receipt below.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+                    <div className="flex min-h-36 items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white p-4 text-center">
+                      <p className="m-0 max-w-xs text-sm text-gray-500">Official bank-transfer QR code will be displayed here once provided.</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-600">
+                      <p className="m-0 font-medium text-gray-800">Bank details</p>
+                      <p className="mb-0 mt-2">Bank name, account name, and account number will be provided here.</p>
+                    </div>
+                    <p className="m-0 text-sm leading-relaxed text-gray-600">Transfer the amount shown in your booking using the official bank details, then upload your transfer receipt below. Payment details are not available yet.</p>
+                  </div>
+                )}
+              </div>
 
               <div
                 data-error={
@@ -1122,6 +1174,42 @@ export default function AdditionalInformation({
 
       <Footer />
 
+      {isGcashQrOpen && (
+        <div
+          className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 px-4 py-6"
+          role="presentation"
+          onClick={() => setIsGcashQrOpen(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="gcash-qr-title"
+            className="relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 id="gcash-qr-title" className="m-0 text-lg font-semibold text-gray-900">GCash QR Code</h2>
+              <button
+                type="button"
+                onClick={() => setIsGcashQrOpen(false)}
+                aria-label="Close GCash QR code"
+                className="rounded-full px-2 py-1 text-2xl leading-none text-gray-500 hover:bg-gray-100"
+              >
+                &times;
+              </button>
+            </div>
+            <img
+              src={gcashQrImage}
+              alt="GCash payment QR code"
+              className="mx-auto h-auto max-h-[70vh] w-full max-w-64 object-contain"
+            />
+            <p className="mb-0 mt-4 text-sm leading-relaxed text-gray-600">
+              Scan this QR code, pay the amount shown in your booking, then upload your payment receipt.
+            </p>
+          </section>
+        </div>
+      )}
+
       {showBookingConfirmation && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5"
@@ -1137,7 +1225,7 @@ export default function AdditionalInformation({
               Are you sure about the booking details?
             </h2>
             <p className="mt-3 text-sm text-gray-600">
-              {booking.checkIn} to {booking.checkOut} · {booking.guests || 1} guest{Number(booking.guests || 1) === 1 ? "" : "s"}
+              {booking.checkIn} to {booking.checkOut} · {booking.guests ?? 0} guest{Number(booking.guests ?? 0) === 1 ? "" : "s"}
             </p>
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button

@@ -120,16 +120,16 @@ export default function NotificationBell() {
       {isOpen && (
         <div
           ref={popupRef}
-          className="absolute right-0 top-12 z-[2100] max-h-[min(320px,45dvh)] w-[min(280px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl border border-neutral-100 bg-white py-2 shadow-xl md:max-h-[420px] md:w-[min(340px,calc(100vw-2rem))]"
+          className="absolute right-0 top-12 z-[2100] max-h-[min(280px,40dvh)] w-[min(240px,calc(100vw-1rem))] overflow-y-auto rounded-xl border border-neutral-100 bg-white py-1.5 shadow-xl md:max-h-[420px] md:w-[min(340px,calc(100vw-2rem))] md:rounded-2xl md:py-2"
         >
-          <div className="flex items-center justify-between gap-2 px-4 py-2">
-            <span className="text-base font-semibold text-neutral-900">Notifications</span>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-1.5 px-3 py-1.5 md:gap-2 md:px-4 md:py-2">
+            <span className="text-sm font-semibold text-neutral-900 md:text-base">Notifications</span>
+            <div className="flex items-center gap-1.5 md:gap-2">
               {notifications.length > 0 && (
                 <button
                   type="button"
                   onClick={clearAllNotifications}
-                  className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500"
+                  className="cursor-pointer border-0 bg-transparent p-0 text-[10px] font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500 md:text-xs"
                 >
                   Clear all
                 </button>
@@ -138,7 +138,7 @@ export default function NotificationBell() {
                 <button
                   type="button"
                   onClick={markAllRead}
-                  className="cursor-pointer border-0 bg-transparent p-0 text-xs font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500"
+                  className="cursor-pointer border-0 bg-transparent p-0 text-[10px] font-semibold text-neutral-900 underline underline-offset-2 hover:text-neutral-500 md:text-xs"
                 >
                   Mark all as read
                 </button>
@@ -147,19 +147,19 @@ export default function NotificationBell() {
           </div>
 
           {notifications.length === 0 ? (
-            <p className="m-0 px-4 py-6 text-center text-sm text-neutral-500">No notifications yet.</p>
+            <p className="m-0 px-3 py-4 text-center text-xs text-neutral-500 md:px-4 md:py-6 md:text-sm">No notifications yet.</p>
           ) : (
             notifications.map((notification) => (
               <button
                 key={notification.notification_id}
                 type="button"
                 onClick={() => markRead(notification)}
-                className={`block w-full cursor-pointer border-0 px-4 py-3 text-left text-sm hover:bg-neutral-100 ${
+                className={`block w-full cursor-pointer border-0 px-3 py-2 text-left text-xs hover:bg-neutral-100 md:px-4 md:py-3 md:text-sm ${
                   notification.is_read ? 'bg-white text-neutral-500' : 'bg-neutral-50 font-medium text-neutral-900'
                 }`}
               >
                 {notification.message}
-                <span className="mt-1 block text-[11px] font-normal text-neutral-400">
+                <span className="mt-1 block text-[10px] font-normal text-neutral-400 md:text-[11px]">
                   {formatTime(notification.sent_at)}
                 </span>
               </button>

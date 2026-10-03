@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require 'activity_log_helper.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -87,17 +88,30 @@ try {
         $adminProfile = $pdo->prepare('SELECT admin_id FROM admin_profiles WHERE user_id = ?');
         $adminProfile->execute([$_SESSION['user_id']]);
         $createdBy = $adminProfile->fetchColumn();
+        $unitName = $pdo->prepare('SELECT unit_name FROM units WHERE unit_id = ?');
+        $unitName->execute([$unitId]);
+        $unitLabel = (string) $unitName->fetchColumn();
 
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare(
             'INSERT INTO unit_expenses (unit_id, expense_date, category, amount, notes, created_by)
              VALUES (?, ?, ?, ?, ?, ?)'
         );
 
         $stmt->execute([$unitId, $expenseDate, $category, $amount, $notes, $createdBy]);
+        $expenseId = (int) $pdo->lastInsertId();
+        writeActivityLog(
+            $pdo,
+            'add_expense',
+            'added an expense of PHP ' . number_format($amount, 2) . ' for Unit ' . $unitLabel,
+            'expense',
+            (string) $expenseId
+        );
+        $pdo->commit();
 
         echo json_encode([
             'message' => 'Expense recorded successfully',
-            'expense_id' => (int) $pdo->lastInsertId(),
+            'expense_id' => $expenseId,
         ]);
         exit;
     }
@@ -135,7 +149,11 @@ try {
         $adminProfile = $pdo->prepare('SELECT admin_id FROM admin_profiles WHERE user_id = ?');
         $adminProfile->execute([$_SESSION['user_id']]);
         $createdBy = $adminProfile->fetchColumn();
+        $unitName = $pdo->prepare('SELECT unit_name FROM units WHERE unit_id = ?');
+        $unitName->execute([$unitId]);
+        $unitLabel = (string) $unitName->fetchColumn();
 
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare(
             'UPDATE unit_expenses
              SET unit_id = ?, expense_date = ?, category = ?, amount = ?, notes = ?, created_by = ?
@@ -145,11 +163,20 @@ try {
         $stmt->execute([$unitId, $expenseDate, $category, $amount, $notes, $createdBy, $expenseId]);
 
         if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
             http_response_code(404);
             echo json_encode(['error' => 'Expense not found']);
             exit;
         }
 
+        writeActivityLog(
+            $pdo,
+            'edit_expense',
+            'edited an expense for Unit ' . $unitLabel,
+            'expense',
+            (string) $expenseId
+        );
+        $pdo->commit();
         echo json_encode(['message' => 'Expense updated successfully']);
         exit;
     }
@@ -164,15 +191,39 @@ try {
             exit;
         }
 
-        $stmt = $pdo->prepare('DELETE FROM unit_expenses WHERE expense_id = ?');
-        $stmt->execute([$expenseId]);
-
-        if ($stmt->rowCount() === 0) {
+        $expenseInfo = $pdo->prepare(
+            'SELECT e.unit_id, e.amount, u.unit_name
+             FROM unit_expenses e
+             JOIN units u ON u.unit_id = e.unit_id
+             WHERE e.expense_id = ?'
+        );
+        $expenseInfo->execute([$expenseId]);
+        $expense = $expenseInfo->fetch(PDO::FETCH_ASSOC);
+        if (!$expense) {
             http_response_code(404);
             echo json_encode(['error' => 'Expense not found']);
             exit;
         }
 
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare('DELETE FROM unit_expenses WHERE expense_id = ?');
+        $stmt->execute([$expenseId]);
+
+        if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
+            http_response_code(404);
+            echo json_encode(['error' => 'Expense not found']);
+            exit;
+        }
+
+        writeActivityLog(
+            $pdo,
+            'delete_expense',
+            'deleted an expense of PHP ' . number_format((float) $expense['amount'], 2) . ' for Unit ' . $expense['unit_name'],
+            'expense',
+            (string) $expenseId
+        );
+        $pdo->commit();
         echo json_encode(['message' => 'Expense deleted successfully']);
         exit;
     }
@@ -180,6 +231,9 @@ try {
     http_response_code(405);
     echo json_encode(['error' => 'Method not allowed']);
 } catch (Throwable $error) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(500);
     echo json_encode([
         'error' => 'Server error',

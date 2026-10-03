@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     check_out_date date not null,
     check_in_time time null,
     check_out_time time null,
-    num_of_guests int not null default 1,
+    num_of_guests bigint unsigned not null default 0,
     cancellation_reason text null,
     cancelled_at datetime null,
     status enum('pending', 'awaiting_payment', 'payment_review', 'confirmed', 'checked_in', 'checked_out', 

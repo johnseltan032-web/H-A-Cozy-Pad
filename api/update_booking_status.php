@@ -1,5 +1,8 @@
 <?php
 require 'db.php';
+require 'activity_log_helper.php';
+require 'booking_slot_limit.php';
+
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -46,6 +49,39 @@ if (!in_array($status, ['confirmed', 'rejected'], true)) {
 
 try {
     $pdo->beginTransaction();
+
+    $bookingCheck = $pdo->prepare(
+        'SELECT unit_id, check_in_date, check_out_date, num_of_guests
+         FROM bookings
+         WHERE booking_id = ?
+         FOR UPDATE'
+    );
+    $bookingCheck->execute([$bookingId]);
+    $bookingData = $bookingCheck->fetch(PDO::FETCH_ASSOC);
+
+    if (!$bookingData) {
+        $pdo->rollBack();
+        http_response_code(404);
+        echo json_encode(['error' => 'Booking not found']);
+        exit;
+    }
+
+    if ($status === 'confirmed') {
+        $lockUnit = $pdo->prepare('SELECT unit_id FROM units WHERE unit_id = ? FOR UPDATE');
+        $lockUnit->execute([$bookingData['unit_id']]);
+        if (!hasBookingSlotForRange(
+            $pdo,
+            (int) $bookingData['unit_id'],
+            $bookingData['check_in_date'],
+            $bookingData['check_out_date'],
+            $bookingId
+        )) {
+            $pdo->rollBack();
+            http_response_code(409);
+            echo json_encode(['error' => 'This listing has reached its maximum number of overlapping reservations for at least one selected night.']);
+            exit;
+        }
+    }
 
     $admin = $pdo->prepare(
         'SELECT admin_id
@@ -164,6 +200,19 @@ try {
         exit;
     }
 
+    $activityInfo = $pdo->prepare(
+        'SELECT b.unit_id, u.unit_name FROM bookings b JOIN units u ON u.unit_id = b.unit_id WHERE b.booking_id = ?'
+    );
+    $activityInfo->execute([$bookingId]);
+    $activityUnit = $activityInfo->fetch(PDO::FETCH_ASSOC);
+    $activityVerb = $status === 'confirmed' ? 'approved' : 'rejected';
+    writeActivityLog(
+        $pdo,
+        $activityVerb . '_booking',
+        $activityVerb . ' booking #BK-' . $bookingId . ($activityUnit ? ' for Unit ' . $activityUnit['unit_name'] : ''),
+        'booking',
+        (string) $bookingId
+    );
     $pdo->commit();
 
     // Notify the customer after commit so a mail problem never undoes the

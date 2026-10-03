@@ -43,7 +43,7 @@ async function parseJsonResponse(response, fallbackMessage) {
   }
 }
 
-export default function DashboardExpenses() {
+export default function DashboardExpenses({ embedded = false }) {
   const [units, setUnits] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -225,14 +225,15 @@ export default function DashboardExpenses() {
   const totalExpenses = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      <HostHeader activeNav="Expenses" />
+    <div className={embedded ? 'space-y-4 text-neutral-900' : 'min-h-screen bg-neutral-50 text-neutral-900'}>
+      {!embedded && <HostHeader activeNav="Statistics" />}
 
-      <main className="mx-auto max-w-7xl space-y-6 px-5 py-8 md:px-10">
+      <main className={embedded ? 'space-y-5' : 'mx-auto max-w-7xl space-y-6 px-5 py-8 md:px-10'}>
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Operations</p>
-            <h1 className="mt-2 text-3xl font-semibold">Unit Expenses</h1>
+            <p className="m-0 text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">{embedded ? 'Financials' : 'Operations'}</p>
+            <h1 className={embedded ? 'mb-0 mt-2 text-2xl font-semibold' : 'mt-2 text-3xl font-semibold'}>Unit Expenses</h1>
+            {embedded && <p className="mb-0 mt-2 text-sm text-neutral-600">Record and review expenses associated with each unit.</p>}
           </div>
           <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 shadow-sm">
             Total recorded: <span className="font-semibold text-neutral-900">₱{formatMoney(totalExpenses)}</span>

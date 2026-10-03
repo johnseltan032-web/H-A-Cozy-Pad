@@ -19,12 +19,15 @@ const getRoleLabel = (role) => {
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -50,10 +53,14 @@ export default function UserManagement() {
       }
 
       setCurrentUserId(Number(data.user.user_id));
-      setIsAdmin(data.user.role === 'super_admin');
+      const role = String(data.user.role || '').toLowerCase();
+      setIsAdmin(['admin', 'super_admin'].includes(role));
+      setIsSuperAdmin(role === 'super_admin');
     } catch (fetchError) {
       console.error('Error checking current user:', fetchError);
       setError('Unable to verify user session');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -103,6 +110,8 @@ export default function UserManagement() {
   };
 
   const openEditModal = () => {
+    if (!isSuperAdmin) return;
+
     const user = users.find((item) => item.user_id === selectedUserId);
 
     if (!user) {
@@ -119,6 +128,7 @@ export default function UserManagement() {
     });
 
     setModal('edit');
+    setIsUserDetailsOpen(false);
     setError('');
   };
 
@@ -164,8 +174,8 @@ export default function UserManagement() {
         full_name: form.full_name,
         email: form.email,
         contact_num: form.contact_num,
-        role: isEditingCurrentUser ? 'super_admin' : form.role,
-        statistics_access: form.role !== 'customer' && form.statistics_access,
+        role: isEditingCurrentUser ? 'super_admin' : (isSuperAdmin ? form.role : 'customer'),
+        statistics_access: isSuperAdmin && form.role !== 'customer' && form.statistics_access,
       };
 
       if (isEditing) {
@@ -200,7 +210,7 @@ export default function UserManagement() {
   };
 
   const deleteUser = async () => {
-    if (!selectedUserId) {
+    if (!isSuperAdmin || !selectedUserId) {
       return;
     }
 
@@ -238,6 +248,7 @@ export default function UserManagement() {
       );
 
       setSelectedUserId(null);
+      setIsUserDetailsOpen(false);
       setModal(null);
     } catch (deleteError) {
       setError(deleteError.message);
@@ -255,7 +266,7 @@ export default function UserManagement() {
     selectedUser &&
     Number(selectedUser.user_id) === Number(currentUserId);
 
-  if (!isAdmin && !loading) {
+  if (!isAdmin && !authLoading) {
     return (
       <div className="bg-white text-black font-sans min-h-screen">
         <HostHeader activeNav="Users" />
@@ -275,36 +286,18 @@ export default function UserManagement() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 sm:mb-10">
           <h1 className="text-2xl font-bold sm:text-4xl">User Management</h1>
 
-          <div className="flex w-auto flex-wrap gap-2 sm:gap-3">
-            <button
-              type="button"
-              disabled={!selectedUserId || isSaving}
-              onClick={() => setModal('delete')}
-              className="px-3 py-2 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed sm:px-6 sm:py-2.5 sm:text-base"
-            >
-              Delete
-            </button>
-
-            <button
-              type="button"
-              disabled={!selectedUserId || isSaving}
-              onClick={openEditModal}
-              className="px-3 py-2 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed sm:px-6 sm:py-2.5 sm:text-base"
-            >
-              Edit
-            </button>
-
-            <button
-              type="button"
-              onClick={openAddModal}
-              className="px-3 py-2 text-sm font-medium border border-neutral-300 rounded-md hover:bg-neutral-100 bg-transparent cursor-pointer sm:px-6 sm:py-2.5 sm:text-base"
-            >
-              Add
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={openAddModal}
+            aria-label="Add user"
+            title="Add user"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#ca635a] bg-[#df766c] text-xl font-medium leading-none text-white transition hover:bg-[#bd584f] sm:h-11 sm:w-11 sm:text-2xl"
+          >
+            <span aria-hidden="true" className="flex h-full w-full items-center justify-center leading-none">+</span>
+          </button>
         </div>
 
-        {loading ? (
+        {loading || authLoading ? (
           <p>Loading users...</p>
         ) : error ? (
           <p className="text-red-600">{error}</p>
@@ -314,7 +307,37 @@ export default function UserManagement() {
             <p className="mt-2">Add a user to see them here.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="space-y-3 sm:hidden">
+            {users.map((user) => {
+              return (
+                <article
+                  key={user.user_id}
+                  className="flex min-w-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words text-sm font-semibold text-neutral-900">
+                      {user.full_name}
+                    </span>
+                    <span className="mt-0.5 block break-all text-xs text-neutral-600">
+                      {user.email}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId(user.user_id);
+                      setIsUserDetailsOpen(true);
+                    }}
+                    className="shrink-0 rounded-full border border-neutral-300 px-3 py-2 text-xs font-medium text-neutral-900 transition hover:bg-neutral-50"
+                  >
+                    Details
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[680px] border-collapse">
             <thead>
               <tr className="text-left border-b border-neutral-200">
@@ -362,6 +385,7 @@ export default function UserManagement() {
             </tbody>
           </table>
           </div>
+          </>
         )}
 
         {error && !loading && users.length > 0 && (
@@ -369,9 +393,96 @@ export default function UserManagement() {
         )}
       </main>
 
+      {isUserDetailsOpen && selectedUser && (
+        <div
+          className="fixed inset-0 z-[3200] flex items-end justify-center bg-black/40 sm:items-center sm:px-5 sm:py-8"
+          onClick={() => {
+            setIsUserDetailsOpen(false);
+            setSelectedUserId(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="user-details-title"
+            className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-w-lg sm:rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="overflow-y-auto p-5 sm:p-7">
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm text-neutral-500">User details</p>
+                  <h2 id="user-details-title" className="mt-1 break-words text-xl font-semibold">
+                    {selectedUser.full_name}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserDetailsOpen(false);
+                    setSelectedUserId(null);
+                  }}
+                  aria-label="Close user details"
+                  className="text-2xl leading-none text-neutral-500"
+                >
+                  &times;
+                </button>
+              </div>
+
+              <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                <div className="min-w-0">
+                  <dt className="text-neutral-500">Email</dt>
+                  <dd className="mt-1 break-all font-medium">{selectedUser.email || 'Not provided'}</dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Contact</dt>
+                  <dd className="mt-1 font-medium">{selectedUser.contact_num || 'Not provided'}</dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Role</dt>
+                  <dd className="mt-1 font-medium">{getRoleLabel(selectedUser.role)}</dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Created</dt>
+                  <dd className="mt-1 font-medium">{new Date(selectedUser.created_at).toLocaleDateString()}</dd>
+                </div>
+                {selectedUser.role !== 'customer' && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-neutral-500">Statistics access</dt>
+                    <dd className="mt-1 font-medium">{selectedUser.can_view_statistics ? 'Allowed' : 'Not allowed'}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            {isSuperAdmin && (
+              <div className="flex shrink-0 justify-end gap-2 border-t border-neutral-200 bg-white px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-7">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserDetailsOpen(false);
+                    setModal('delete');
+                  }}
+                  className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={openEditModal}
+                  className="rounded-lg bg-black px-4 py-2.5 text-sm font-medium text-white"
+                >
+                  Edit
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
       {modal === 'add' && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-5 z-50">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 sm:p-7">
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5" onClick={closeModal}>
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 sm:p-7" onClick={(event) => event.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-6">Add User</h2>
 
             <form onSubmit={saveUser} className="space-y-4">
@@ -431,23 +542,24 @@ export default function UserManagement() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Role
-                </label>
-                <select
-                  name="role"
-                  value={form.role}
-                  onChange={handleChange}
-                  className="w-full border border-neutral-300 rounded-md px-3 py-2.5 outline-none focus:border-black bg-white"
-                >
-                  <option value="customer">Customer</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
-              </div>
-
-              {form.role !== 'customer' && (
+              {isSuperAdmin && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Role
+                    </label>
+                    <select
+                      name="role"
+                      value={form.role}
+                      onChange={handleChange}
+                      className="w-full border border-neutral-300 rounded-md px-3 py-2.5 outline-none focus:border-black bg-white"
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="admin">Admin</option>
+                      <option value="super_admin">Super Admin</option>
+                    </select>
+                  </div>
+                  {form.role !== 'customer' && (
                 <label className="flex items-center gap-3 rounded-md border border-neutral-300 px-3 py-2.5">
                   <input
                     type="checkbox"
@@ -460,6 +572,8 @@ export default function UserManagement() {
                   />
                   <span className="text-sm font-medium">Allow access to Statistics/KPIs</span>
                 </label>
+                  )}
+                </>
               )}
 
               {error && (
@@ -489,9 +603,9 @@ export default function UserManagement() {
         </div>
       )}
 
-      {modal === 'edit' && selectedUser && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-5 z-50">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 sm:p-7">
+      {isSuperAdmin && modal === 'edit' && selectedUser && (
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5" onClick={closeModal}>
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 sm:p-7" onClick={(event) => event.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-6">Edit User</h2>
 
             <form onSubmit={saveUser} className="space-y-4">
@@ -602,9 +716,9 @@ export default function UserManagement() {
         </div>
       )}
 
-      {modal === 'delete' && selectedUser && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center px-5 z-50">
-          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 sm:p-7">
+      {isSuperAdmin && modal === 'delete' && selectedUser && (
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5" onClick={closeModal}>
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 sm:p-7" onClick={(event) => event.stopPropagation()}>
             <h2 className="text-2xl font-bold mb-3">Delete User</h2>
 
             <p className="text-neutral-600">

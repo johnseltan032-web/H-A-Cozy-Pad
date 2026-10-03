@@ -51,6 +51,7 @@ try {
             'SELECT
                 category_id,
                 category_name,
+                category_icon,
                 created_at
              FROM faqs_categories
              ORDER BY category_name ASC'
@@ -63,6 +64,7 @@ try {
                 return [
                     'categoryId' => (int) $category['category_id'],
                     'categoryName' => $category['category_name'],
+                    'categoryIcon' => $category['category_icon'],
                     'createdAt' => $category['created_at']
                 ];
             },
@@ -82,6 +84,7 @@ try {
         $data = getRequestData();
 
         $categoryName = trim($data['categoryName'] ?? '');
+        $categoryIcon = trim($data['categoryIcon'] ?? '');
 
         if ($categoryName === '') {
             http_response_code(400);
@@ -95,6 +98,14 @@ try {
             http_response_code(400);
             echo json_encode([
                 'error' => 'Category name must not exceed 50 characters'
+            ]);
+            exit;
+        }
+
+        if ($categoryIcon === '' || mb_strlen($categoryIcon) > 8) {
+            http_response_code(400);
+            echo json_encode([
+                'error' => 'A valid category icon is required'
             ]);
             exit;
         }
@@ -117,11 +128,11 @@ try {
 
         $stmt = $pdo->prepare(
             'INSERT INTO faqs_categories
-                (category_name)
-             VALUES (?)'
+                (category_name, category_icon)
+             VALUES (?, ?)'
         );
 
-        $stmt->execute([$categoryName]);
+        $stmt->execute([$categoryName, $categoryIcon]);
 
         $categoryId = (int) $pdo->lastInsertId();
 
@@ -129,7 +140,59 @@ try {
             'success' => true,
             'message' => 'FAQ category created successfully',
             'categoryId' => $categoryId,
-            'categoryName' => $categoryName
+            'categoryName' => $categoryName,
+            'categoryIcon' => $categoryIcon
+        ]);
+        exit;
+    }
+
+    if ($method === 'DELETE') {
+        $data = getRequestData();
+        $categoryId = filter_var(
+            $data['categoryId'] ?? null,
+            FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1]]
+        );
+
+        if ($categoryId === false || $categoryId === null) {
+            http_response_code(400);
+            echo json_encode([
+                'error' => 'A valid category ID is required'
+            ]);
+            exit;
+        }
+
+        $pdo->beginTransaction();
+        $category = $pdo->prepare(
+            'SELECT category_id, category_name
+             FROM faqs_categories
+             WHERE category_id = ?
+             FOR UPDATE'
+        );
+        $category->execute([$categoryId]);
+        $categoryData = $category->fetch(PDO::FETCH_ASSOC);
+
+        if (!$categoryData) {
+            $pdo->rollBack();
+            http_response_code(404);
+            echo json_encode([
+                'error' => 'FAQ category not found'
+            ]);
+            exit;
+        }
+
+        $delete = $pdo->prepare(
+            'DELETE FROM faqs_categories
+             WHERE category_id = ?'
+        );
+        $delete->execute([$categoryId]);
+        $pdo->commit();
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'FAQ category and its FAQs deleted successfully',
+            'categoryId' => (int) $categoryData['category_id'],
+            'categoryName' => $categoryData['category_name']
         ]);
         exit;
     }
@@ -139,6 +202,10 @@ try {
         'error' => 'Method not allowed'
     ]);
 } catch (Throwable $error) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     http_response_code(500);
 
     echo json_encode([

@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require 'activity_log_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
@@ -7,13 +8,20 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-if ($_SESSION['role'] !== 'super_admin') {
+$method = $_SERVER['REQUEST_METHOD'];
+$requesterRole = strtolower($_SESSION['role'] ?? '');
+
+if (!in_array($requesterRole, ['super_admin', 'admin'], true)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Administrator access required']);
+    exit;
+}
+
+if (in_array($method, ['PUT', 'DELETE'], true) && $requesterRole !== 'super_admin') {
     http_response_code(403);
     echo json_encode(['error' => 'Super admin access required']);
     exit;
 }
-
-$method = $_SERVER['REQUEST_METHOD'];
 
 function getRequestData() {
     $data = $_POST;
@@ -98,6 +106,12 @@ try {
             exit;
         }
 
+        if ($requesterRole !== 'super_admin' && $role !== 'customer') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Admins can only create customer accounts']);
+            exit;
+        }
+
         if (!in_array($role, ['super_admin', 'admin', 'customer'], true)) {
             http_response_code(400);
             echo json_encode(['error' => 'Invalid role']);
@@ -119,6 +133,7 @@ try {
 
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare("
             INSERT INTO users (
                 full_name,
@@ -141,6 +156,14 @@ try {
         $userId = $pdo->lastInsertId();
 
         syncUserProfile($pdo, $userId, $role, $canViewStatistics && $role !== 'customer');
+        writeActivityLog(
+            $pdo,
+            'create_user',
+            'created user account for ' . $fullName . ' with role ' . $role,
+            'user',
+            (string) $userId
+        );
+        $pdo->commit();
 
         echo json_encode([
             'message' => 'User created successfully',
@@ -177,9 +200,10 @@ try {
             exit;
         }
 
-        $currentRoleStatement = $pdo->prepare('SELECT role FROM users WHERE user_id = ?');
+        $currentRoleStatement = $pdo->prepare('SELECT role, full_name FROM users WHERE user_id = ?');
         $currentRoleStatement->execute([$userId]);
-        $currentRole = $currentRoleStatement->fetchColumn();
+        $currentUser = $currentRoleStatement->fetch(PDO::FETCH_ASSOC);
+        $currentRole = $currentUser['role'] ?? null;
 
         if ($currentRole === 'customer' && $role !== 'customer') {
             $bookingCount = getCustomerBookingCount($pdo, $userId);
@@ -217,6 +241,7 @@ try {
             exit;
         }
 
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare("
             UPDATE users
             SET
@@ -236,6 +261,14 @@ try {
         ]);
 
         syncUserProfile($pdo, $userId, $role, $canViewStatistics && $role !== 'customer');
+        writeActivityLog(
+            $pdo,
+            'change_user_permissions',
+            'updated account details and permissions for ' . $fullName . ' (role: ' . $role . ', statistics access: ' . ($canViewStatistics && $role !== 'customer' ? 'enabled' : 'disabled') . ')',
+            'user',
+            (string) $userId
+        );
+        $pdo->commit();
 
         echo json_encode([
             'message' => 'User updated successfully'
@@ -272,6 +305,16 @@ try {
             exit;
         }
 
+        $userNameStatement = $pdo->prepare('SELECT full_name FROM users WHERE user_id = ?');
+        $userNameStatement->execute([$userId]);
+        $deletedUserName = $userNameStatement->fetchColumn();
+        if ($deletedUserName === false) {
+            http_response_code(404);
+            echo json_encode(['error' => 'User not found']);
+            exit;
+        }
+
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare("
             DELETE FROM users
             WHERE user_id = ?
@@ -280,10 +323,20 @@ try {
         $stmt->execute([$userId]);
 
         if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
             http_response_code(404);
             echo json_encode(['error' => 'User not found']);
             exit;
         }
+
+        writeActivityLog(
+            $pdo,
+            'delete_user',
+            'deleted user account for ' . $deletedUserName,
+            'user',
+            (string) $userId
+        );
+        $pdo->commit();
 
         echo json_encode([
             'message' => 'User deleted successfully'
@@ -295,6 +348,9 @@ try {
     echo json_encode(['error' => 'Method not allowed']);
 
 } catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     http_response_code(500);
     echo json_encode([
         'error' => 'Server error',

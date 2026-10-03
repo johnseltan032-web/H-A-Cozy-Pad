@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     check_out_date DATE NOT NULL,
     check_in_time TIME NULL,
     check_out_time TIME NULL,
-    num_of_guests INT NOT NULL DEFAULT 1,
+    num_of_guests BIGINT UNSIGNED NOT NULL DEFAULT 0,
     cancellation_reason TEXT NULL,
     cancelled_at DATETIME NULL,
     status ENUM('pending', 'awaiting_payment', 'payment_review', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'rejected') NOT NULL DEFAULT 'pending',
@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS chatbot_logs (
 CREATE TABLE IF NOT EXISTS faqs_categories (
     category_id INT AUTO_INCREMENT PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL UNIQUE,
+    category_icon VARCHAR(32) CHARACTER SET utf8mb4 DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -270,7 +271,7 @@ CREATE TABLE IF NOT EXISTS booking_requests (
     request_status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     requested_check_in DATE NULL,
     requested_check_out DATE NULL,
-    requested_guests INT NULL,
+    requested_guests BIGINT UNSIGNED NULL,
     requested_special_requests TEXT NULL,
     payment_amount DECIMAL(10,2) NULL,
     refund_amount DECIMAL(10,2) NULL,
@@ -329,4 +330,3 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_created (created_at)
 );
-

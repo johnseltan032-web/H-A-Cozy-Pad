@@ -6,6 +6,16 @@ const CALENDAR_API_URL = (
   import.meta.env.VITE_GOOGLE_CALENDAR_URL ||
   (import.meta.env.DEV ? 'http://localhost:3001' : '')
 ).replace(/\/+$/, '');
+const BOOKING_STATUSES = [
+  'pending',
+  'awaiting_payment',
+  'payment_review',
+  'confirmed',
+  'checked_in',
+  'checked_out',
+  'cancelled',
+  'rejected',
+];
 
 function formatMonth(date) {
   return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -49,20 +59,36 @@ function calendarRange(date, viewMode) {
   return { start: dateKey(start), endExclusive: dateKey(endExclusive) };
 }
 
-function reservationEvents(reservations) {
+function bookingColors(reservations) {
+  const bookingIds = [...new Set(reservations.map((reservation) => String(reservation.booking_id)))]
+    .sort((first, second) => Number(first) - Number(second));
+
+  return Object.fromEntries(
+    bookingIds.map((bookingId, index) => [
+      bookingId,
+      `hsl(${(index * 137.508) % 360} 68% 38%)`,
+    ])
+  );
+}
+
+function reservationEvents(reservations, colors) {
   return reservations
     .filter((reservation) => !['cancelled', 'rejected'].includes(reservation.status))
     .map((reservation) => {
-      const bookerName = reservation.booked_guest_name || reservation.guest_name || 'Guest';
-      const shortName = bookerName.length > 12 ? `${bookerName.slice(0, 11)}...` : bookerName;
-      const shortProperty = (reservation.building_name || reservation.unit_name || 'Booking').slice(0, 12);
+      const guestName = String(
+        reservation.booked_guest_name || reservation.guest_name || 'Guest'
+      ).trim();
+      const firstName = guestName.split(/\s+/)[0] || 'Guest';
+      const pax = Number(reservation.num_of_guests ?? 0);
+
       return {
         id: `booking-${reservation.booking_id}`,
-        summary: `${shortProperty} · ${shortName}`,
+        summary: `${firstName} - ${pax} pax`,
         startDate: reservation.check_in_date,
         endDateExclusive: reservation.check_out_date,
         detail: reservation.unit_name || '',
         source: 'booking',
+        color: colors[String(reservation.booking_id)],
         unit_id: reservation.unit_id,
       };
     });
@@ -72,12 +98,9 @@ function modificationRequestEvents(reservations) {
   return reservations
     .filter((reservation) => reservation.modification_request_id && reservation.requested_check_in && reservation.requested_check_out)
     .map((reservation) => {
-      const bookerName = reservation.booked_guest_name || reservation.guest_name || 'Guest';
-      const shortName = bookerName.length > 12 ? `${bookerName.slice(0, 11)}...` : bookerName;
-      const shortProperty = (reservation.building_name || reservation.unit_name || 'Request').slice(0, 12);
       return {
         id: `modification-${reservation.modification_request_id}`,
-        summary: `Modify • ${shortProperty} · ${shortName}`,
+        summary: reservation.unit_number || reservation.unit_name || '',
         startDate: reservation.requested_check_in,
         endDateExclusive: reservation.requested_check_out,
         detail: reservation.modification_reason || 'Customer modification request',
@@ -193,6 +216,14 @@ export default function DashboardCalendar() {
   const reservationById = useMemo(() => Object.fromEntries(
     reservations.map((reservation) => [reservation.booking_id, reservation])
   ), [reservations]);
+  const colorsByBookingId = useMemo(() => bookingColors(reservations), [reservations]);
+  const bookingSummary = useMemo(() => {
+    const summary = Object.fromEntries(BOOKING_STATUSES.map((status) => [status, 0]));
+    reservations.forEach(({ status }) => {
+      if (status) summary[status] = (summary[status] || 0) + 1;
+    });
+    return summary;
+  }, [reservations]);
 
   const loadEvents = async () => {
     setIsLoading(true);
@@ -208,7 +239,7 @@ export default function DashboardCalendar() {
       if (unitsResponse.ok && Array.isArray(unitsData)) {
         setUnitOptions(unitsData.filter((unit) => unit && unit.unit_id).map((unit) => ({
           value: Number(unit.unit_id),
-          label: `${unit.building_name || 'Property'} · ${unit.unit_name || 'Unit'}`,
+          label: unit.unit_number || unit.unit_name || `Unit ${unit.unit_id}`,
         })));
       }
 
@@ -298,7 +329,7 @@ export default function DashboardCalendar() {
   };
 
   const calendarEvents = [
-    ...reservationEvents(reservations),
+    ...reservationEvents(reservations, colorsByBookingId),
     ...modificationRequestEvents(reservations),
     ...blockedDatesEvents(blockedDates),
     ...googleCalendarEvents(events),
@@ -315,7 +346,7 @@ export default function DashboardCalendar() {
   const unitRows = Array.from(new Map(
     [...reservations, ...blockedDates].filter((item) => item.unit_id).map((item) => [item.unit_id, {
       id: Number(item.unit_id),
-      name: item.unit_name || item.unitName || `Unit ${item.unit_id}`,
+      name: item.unit_number || item.unit_name || item.unitName || `Unit ${item.unit_id}`,
       building: item.building_name || item.buildingName || 'Property',
     }])
   ).values());
@@ -448,7 +479,7 @@ export default function DashboardCalendar() {
         unitId: Number(reservation.unit_id || 0),
         checkIn: reservation.check_in_date || '',
         checkOut: reservation.check_out_date || '',
-        guests: Number(reservation.num_of_guests || 1),
+        guests: Number(reservation.num_of_guests ?? 0),
         paymentAmount: customer.paymentAmount ?? '',
         paymentMethod: customer.paymentMethod || 'cash',
         paymentStatus: customer.paymentStatus || 'pending',
@@ -467,7 +498,7 @@ export default function DashboardCalendar() {
         unitId: Number(reservation.unit_id || 0),
         checkIn: reservation.check_in_date || '',
         checkOut: reservation.check_out_date || '',
-        guests: Number(reservation.num_of_guests || 1),
+        guests: Number(reservation.num_of_guests ?? 0),
         paymentAmount: '',
         paymentMethod: 'cash',
         paymentStatus: 'pending',
@@ -500,7 +531,7 @@ export default function DashboardCalendar() {
           unitId: Number(editingBooking.unitId),
           checkIn: editingBooking.checkIn,
           checkOut: editingBooking.checkOut,
-          guests: Number(editingBooking.guests || 1),
+          guests: Number(editingBooking.guests ?? 0),
           paymentAmount: editingBooking.paymentAmount,
           paymentMethod: editingBooking.paymentMethod,
           paymentStatus: editingBooking.paymentStatus,
@@ -525,18 +556,18 @@ export default function DashboardCalendar() {
   return (
     <div className="min-h-screen bg-white text-black font-sans">
       <HostHeader activeNav="Calendar" />
-      <main className="mx-auto max-w-6xl px-5 py-10 md:px-10">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <main className="mx-auto max-w-6xl px-3 py-5 sm:px-5 sm:py-10 md:px-10">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3 sm:mb-8 sm:items-end sm:gap-4">
           <div>
-            <h1 className="mt-1 text-3xl font-bold">Calendar</h1>
-            <p className="mt-2 text-sm text-neutral-500">View and manage your Google Calendar bookings.</p>
+            <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Calendar</h1>
+            <p className="mt-2 text-xs text-neutral-500 sm:text-sm">View and manage your Google Calendar bookings.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:gap-3">
             <button
               type="button"
               onClick={connectCalendar}
               disabled={isLoading || isConnected}
-              className={`rounded-full px-5 py-3 text-sm font-semibold text-white ${
+              className={`rounded-full px-3 py-2 text-xs font-semibold text-white sm:px-5 sm:py-3 sm:text-sm ${
                 isConnected
                   ? 'bg-emerald-700 cursor-default'
                   : 'bg-black hover:bg-neutral-800 cursor-pointer disabled:opacity-60'
@@ -548,7 +579,7 @@ export default function DashboardCalendar() {
               <button
                 type="button"
                 onClick={disconnectCalendar}
-                className="rounded-full border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer"
+                className="rounded-full border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer sm:px-5 sm:py-3 sm:text-sm"
               >
                 Disconnect
               </button>
@@ -558,8 +589,84 @@ export default function DashboardCalendar() {
 
         {error && <p className="mb-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
-        <section className="mb-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-          <h2 className="mb-3 text-lg font-semibold">Block dates</h2>
+        <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+          <div className="flex flex-col gap-3 border-b border-neutral-200 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between lg:flex-nowrap">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar view">
+                {[
+                  ['month', 'Month'],
+                  ['week', 'Week'],
+                  ['agenda', 'Agenda'],
+                ].map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={viewMode === mode}
+                    onClick={() => { setViewMode(mode); setSelectedDate(null); }}
+                    className={`rounded px-2 py-1.5 text-xs cursor-pointer sm:px-3 sm:text-sm ${viewMode === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar layout">
+                  {[
+                    ['classic', 'Classic'],
+                    ['units', 'Timeline'],
+                  ].map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={calendarLayout === mode}
+                      onClick={() => setCalendarLayout(mode)}
+                      className={`rounded px-2 py-1.5 text-xs cursor-pointer sm:px-3 sm:text-sm ${calendarLayout === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="m-0 hidden text-sm text-neutral-500 sm:block">
+                  {calendarLayout === 'classic'
+                    ? 'View reservations in a traditional calendar format.'
+                    : 'See all units and reservations across dates.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:justify-start">
+              <h2 className="m-0 mr-1 whitespace-nowrap text-xs font-semibold sm:mr-2 sm:text-sm">{heading}</h2>
+              <button type="button" onClick={() => shiftPeriod(-1)} className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-50 cursor-pointer sm:px-3 sm:py-2 sm:text-sm" aria-label="Previous period">Previous</button>
+              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDate(null); }} className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-50 cursor-pointer sm:px-3 sm:py-2 sm:text-sm">Today</button>
+              <button type="button" onClick={() => shiftPeriod(1)} className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs hover:bg-neutral-50 cursor-pointer sm:px-3 sm:py-2 sm:text-sm" aria-label="Next period">Next</button>
+            </div>
+          </div>
+          {isLoading ? (
+            <p className="px-5 py-12 text-center text-sm text-neutral-500">Loading calendar...</p>
+          ) : (
+            viewMode === 'agenda' ? (
+              <AgendaView events={visibleEvents} onModificationClick={openModificationDialog} />
+            ) : (
+              <div className="overflow-x-auto p-2 sm:p-4">
+                <CalendarGrid
+                  weeks={viewMode === 'week'
+                    ? [Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))]
+                    : monthWeeks(currentDate)}
+                  events={calendarEvents}
+                  selectedDate={selectedDate}
+                  visibleMonth={viewMode === 'month' ? currentDate.getMonth() : null}
+                  onSelectDate={setSelectedDate}
+                  onBookingClick={openBookingEditor}
+                  onModificationClick={openModificationDialog}
+                  units={viewMode === 'month' ? unitRows : []}
+                  monthDays={viewMode === 'month' ? monthDays(currentDate) : []}
+                  layout={calendarLayout}
+                />
+              </div>
+            )
+          )}
+        </section>
+        <section className="mt-6 rounded-2xl border border-neutral-200 bg-neutral-50 p-3 sm:mt-8 sm:p-4">
+          <h2 className="mb-3 text-base font-semibold sm:text-lg">Block dates</h2>
           <form onSubmit={handleBlockSubmit} className="grid gap-3 md:grid-cols-5">
             <select
               value={blockForm.unitId}
@@ -611,7 +718,7 @@ export default function DashboardCalendar() {
               {blockedDates.map((entry) => (
                 <div key={entry.blocked_date_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm">
                   <span>
-                    <strong>{entry.unit_name}</strong> · {entry.blocked_from} to {entry.blocked_until} · {entry.reason?.replace('_', ' ')}
+                    <strong>{entry.unit_number || entry.unit_name}</strong> · {entry.blocked_from} to {entry.blocked_until} · {entry.reason?.replace('_', ' ')}
                   </span>
                   <button
                     type="button"
@@ -623,76 +730,6 @@ export default function DashboardCalendar() {
                 </div>
               ))}
             </div>
-          )}
-        </section>
-
-        <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 px-5 py-4">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => shiftPeriod(-1)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 cursor-pointer" aria-label="Previous period">Previous</button>
-              <button type="button" onClick={() => { setCurrentDate(new Date()); setSelectedDate(null); }} className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 cursor-pointer">Today</button>
-              <button type="button" onClick={() => shiftPeriod(1)} className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 cursor-pointer" aria-label="Next period">Next</button>
-              <h2 className="ml-2 m-0 text-base font-semibold">{heading}</h2>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar layout">
-                {[
-                  ['classic', 'Classic'],
-                  ['units', 'Units rows'],
-                ].map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={calendarLayout === mode}
-                    onClick={() => setCalendarLayout(mode)}
-                    className={`rounded px-3 py-1.5 text-sm cursor-pointer ${calendarLayout === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="inline-flex rounded-md border border-neutral-300 p-1" role="group" aria-label="Calendar view">
-                {[
-                  ['month', 'Month'],
-                  ['week', 'Week'],
-                  ['agenda', 'Agenda'],
-                ].map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={viewMode === mode}
-                    onClick={() => { setViewMode(mode); setSelectedDate(null); }}
-                    className={`rounded px-3 py-1.5 text-sm cursor-pointer ${viewMode === mode ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-100'}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          {isLoading ? (
-            <p className="px-5 py-12 text-center text-sm text-neutral-500">Loading calendar...</p>
-          ) : (
-            viewMode === 'agenda' ? (
-              <AgendaView events={visibleEvents} onModificationClick={openModificationDialog} />
-            ) : (
-              <div className="overflow-x-auto p-4">
-                <CalendarGrid
-                  weeks={viewMode === 'week'
-                    ? [Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))]
-                    : monthWeeks(currentDate)}
-                  events={calendarEvents}
-                  selectedDate={selectedDate}
-                  visibleMonth={viewMode === 'month' ? currentDate.getMonth() : null}
-                  onSelectDate={setSelectedDate}
-                  onBookingClick={openBookingEditor}
-                  onModificationClick={openModificationDialog}
-                  units={viewMode === 'month' ? unitRows : []}
-                  monthDays={viewMode === 'month' ? monthDays(currentDate) : []}
-                  layout={calendarLayout}
-                />
-              </div>
-            )
           )}
         </section>
         {zoomedImage && (
@@ -747,11 +784,11 @@ export default function DashboardCalendar() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-neutral-500">Current guests</p>
-                    <p className="mt-1 font-medium">{selectedCalendarModification.num_of_guests || 1}</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.num_of_guests ?? 0}</p>
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-neutral-500">Requested guests</p>
-                    <p className="mt-1 font-medium">{selectedCalendarModification.requested_guests || 1}</p>
+                    <p className="mt-1 font-medium">{selectedCalendarModification.requested_guests ?? 0}</p>
                   </div>
                 </div>
 
@@ -819,8 +856,14 @@ export default function DashboardCalendar() {
         )}
 
         {editingBooking && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
-            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+          <div
+            className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-4 py-6"
+            onClick={() => setEditingBooking(null)}
+          >
+            <div
+              className="host-booking-editor-dialog max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Booking editor</p>
@@ -898,8 +941,8 @@ export default function DashboardCalendar() {
                   Pax
                   <input
                     type="number"
-                    min="1"
-                    max="4"
+                    min="0"
+                    step="1"
                     value={editingBooking.guests}
                     onChange={(event) => setEditingBooking((current) => ({ ...current, guests: Number(event.target.value) }))}
                     className="mt-1 w-full rounded-xl border border-neutral-300 px-3 py-2.5 text-sm focus:border-neutral-900 focus:outline-none"
@@ -1065,11 +1108,18 @@ export default function DashboardCalendar() {
                           openBookingEditor(bookingId);
                         }
                       }}
-                      className={`flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 ${bookingId || isModification ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+                      className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-3 sm:px-3 ${bookingId || isModification ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
                     >
-                      <span className="font-medium">{event.summary}</span>
-                      <span className="text-sm text-neutral-600">{event.detail || (event.source === 'google' ? 'Google Calendar' : '')}</span>
-                      <span className="w-full text-xs text-neutral-500">
+                      {event.source === 'booking' && (
+                        <span
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: event.color }}
+                        />
+                      )}
+                      <span className="text-sm font-medium sm:text-base">{event.summary}</span>
+                      <span className="text-xs text-neutral-600 sm:text-sm">{event.detail || (event.source === 'google' ? 'Google Calendar' : '')}</span>
+                      <span className="w-full text-[11px] text-neutral-500 sm:text-xs">
                         {event.startDate} to {dateKey(addDays(parseDateKey(event.endDateExclusive), -1))}
                       </span>
                     </li>
@@ -1079,6 +1129,19 @@ export default function DashboardCalendar() {
             ) : <p className="text-sm text-neutral-500">No bookings on this date.</p>}
           </section>
         )}
+
+        <section className="mt-8 rounded-lg border border-neutral-200 bg-white p-5">
+          <h2 className="mb-1 text-lg font-semibold">Booking summary</h2>
+          <p className="mb-4 mt-0 text-sm text-neutral-500">Bookings by current status.</p>
+          <ul className="m-0 divide-y divide-neutral-200 border-y border-neutral-200 p-0">
+            {Object.entries(bookingSummary).map(([status, total]) => (
+              <li key={status} className="flex items-center justify-between gap-4 py-3 text-sm capitalize">
+                <span>{status.replaceAll('_', ' ')}</span>
+                <span className="font-semibold tabular-nums">{total}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
     </div>
   );
@@ -1095,9 +1158,9 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
       <div className="overflow-x-auto rounded-lg border border-neutral-200">
         <div className="min-w-[920px]">
           <div className="grid border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(36px, 1fr))' }}>
-            <div className="border-r border-neutral-200 px-3 py-3">Unit</div>
+            <div className="border-r border-neutral-200 px-2 py-2 sm:px-3 sm:py-3">Unit</div>
             {monthDayList.map((day) => (
-              <div key={dateKey(day)} className={`border-r border-neutral-200 px-2 py-3 text-center ${day.getDate() === 1 ? 'font-bold text-neutral-700' : ''}`}>
+              <div key={dateKey(day)} className={`border-r border-neutral-200 px-1 py-2 text-center sm:px-2 sm:py-3 ${day.getDate() === 1 ? 'font-bold text-neutral-700' : ''}`}>
                 <div>{day.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                 <div className={`mt-1 ${selectedDate === dateKey(day) ? 'rounded-full bg-emerald-600 px-1.5 py-0.5 text-white' : ''}`}>
                   {day.getDate()}
@@ -1117,7 +1180,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                 <button
                   type="button"
                   onClick={() => onSelectDate(null)}
-                  className="cursor-default border-r border-neutral-200 bg-white px-3 py-4 text-left text-sm font-medium text-neutral-800"
+                  className="cursor-default border-r border-neutral-200 bg-white px-2 py-2 text-left text-sm font-medium text-neutral-800 sm:px-3 sm:py-4"
                 >
                   <div>{unit.name}</div>
                   <div className="mt-1 text-xs text-neutral-500">{unit.building}</div>
@@ -1133,7 +1196,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                         key={`${unit.id}-${key}`}
                         type="button"
                         onClick={() => onSelectDate(key)}
-                        className={`min-h-[76px] border-r border-neutral-100 px-1 py-1 text-left ${isToday ? 'bg-amber-50' : 'bg-white'} ${isSelected ? 'ring-1 ring-inset ring-emerald-600' : ''}`}
+                        className={`min-h-[56px] border-r border-neutral-100 px-1 py-1 text-left sm:min-h-[76px] ${isToday ? 'bg-amber-50' : 'bg-white'} ${isSelected ? 'ring-1 ring-inset ring-emerald-600' : ''}`}
                         aria-label={`${unit.name} on ${key}`}
                       />
                     );
@@ -1145,7 +1208,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                     const startOffset = Math.max(0, Math.round((startDate - monthStart) / 86400000));
                     const endOffset = Math.min(monthDayList.length, Math.round((endDate - monthStart) / 86400000));
                     const leftPercent = (startOffset / monthDayList.length) * 100;
-                    const widthPercent = Math.max(((endOffset - startOffset) / monthDayList.length) * 100, 8);
+                    const widthPercent = (Math.max(0, endOffset - startOffset) / monthDayList.length) * 100;
 
                     return (
                       <button
@@ -1162,10 +1225,11 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                           }
                           onSelectDate(event.startDate);
                         }}
-                        className={`absolute top-2 z-10 overflow-hidden rounded-md border px-2 py-1 text-left text-[10px] font-semibold text-white shadow-sm ${event.source === 'google' ? 'border-slate-800 bg-slate-800/90 hover:bg-slate-800' : event.source === 'blocked' ? 'border-amber-700 bg-amber-700/90 hover:bg-amber-700' : event.source === 'modification' ? 'border-violet-700 bg-violet-700/90 hover:bg-violet-700' : 'border-emerald-700 bg-emerald-700/90 hover:bg-emerald-700'}`}
+                        className={`absolute top-1 z-10 overflow-hidden rounded-md border px-1 py-0.5 text-left text-[10px] font-semibold text-white shadow-sm sm:top-2 sm:px-2 sm:py-1 ${event.source === 'google' ? 'border-slate-800 bg-slate-800/90 hover:bg-slate-800' : event.source === 'blocked' ? 'border-amber-700 bg-amber-700/90 hover:bg-amber-700' : event.source === 'modification' ? 'border-violet-700 bg-violet-700/90 hover:bg-violet-700' : 'hover:brightness-90'}`}
                         style={{
                           left: `${leftPercent}%`,
                           width: `${widthPercent}%`,
+                          ...(event.source === 'booking' ? { backgroundColor: event.color, borderColor: event.color } : {}),
                           whiteSpace: 'nowrap',
                           textOverflow: 'ellipsis',
                           overflow: 'hidden',
@@ -1186,7 +1250,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
   }
 
   return (
-    <div className="min-w-[680px] overflow-hidden rounded-lg border border-neutral-200">
+    <div className="w-full min-w-[320px] overflow-hidden rounded-lg border border-neutral-200 sm:min-w-[680px]">
       <div className="grid grid-cols-7 border-b border-neutral-200 bg-neutral-50 text-center text-xs font-semibold text-neutral-500">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <div key={day} className="py-2">{day}</div>)}
       </div>
@@ -1212,7 +1276,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
         const visibleSegments = placedSegments.filter((segment) => segment.lane < 3);
 
         return (
-          <div key={weekStartKey} className="grid grid-cols-7 border-b border-neutral-200 last:border-b-0" style={{ gridTemplateRows: '34px repeat(3, 25px)' }}>
+          <div key={weekStartKey} className="grid grid-cols-7 grid-rows-[30px_repeat(3,22px)] border-b border-neutral-200 last:border-b-0 sm:grid-rows-[34px_repeat(3,25px)]">
             {week.map((day, column) => {
               const key = dateKey(day);
               const dayEvents = dateEvents(events, key);
@@ -1229,7 +1293,11 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                   style={{ gridColumn: column + 1, gridRow: 1 }}
                 >
                   <span className="font-semibold">{day.getDate()}</span>
-                  {hiddenCount > 0 && <span className="ml-1 text-[10px] font-semibold text-emerald-800">+{hiddenCount} more</span>}
+                  {hiddenCount > 0 && (
+                    <span className="ml-1 whitespace-nowrap text-[10px] font-semibold text-emerald-800">
+                      +{hiddenCount}<span className="hidden sm:inline"> more</span>
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1249,10 +1317,11 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                   }
                   onSelectDate(event.startDate < weekStartKey ? weekStartKey : event.startDate);
                 }}
-                className={`mx-0.5 my-0.5 min-w-0 overflow-hidden rounded px-1 text-left text-[10px] font-medium text-white cursor-pointer ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : event.source === 'modification' ? 'bg-violet-700 hover:bg-violet-800' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+                className={`mx-0.5 my-0.5 min-w-0 overflow-hidden rounded px-0.5 text-left text-[8px] font-medium text-white cursor-pointer sm:px-1 sm:text-[10px] ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : event.source === 'modification' ? 'bg-violet-700 hover:bg-violet-800' : 'hover:brightness-90'}`}
                 style={{
                   gridColumn: `${startColumn + 1} / ${endColumn + 1}`,
                   gridRow: lane + 2,
+                  ...(event.source === 'booking' ? { backgroundColor: event.color } : {}),
                   whiteSpace: 'nowrap',
                   textOverflow: 'ellipsis',
                   overflow: 'hidden',
@@ -1285,9 +1354,18 @@ function AgendaView({ events, onModificationClick }) {
           }}
           className={`flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 px-5 py-4 ${event.source === 'modification' ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
         >
-          <div>
+          <div className="flex items-start gap-2">
+            {event.source === 'booking' && (
+              <span
+                aria-hidden="true"
+                className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: event.color }}
+              />
+            )}
+            <div>
             <p className="m-0 font-semibold">{event.summary}</p>
             {event.detail && <p className="mt-1 text-sm text-neutral-500">{event.detail}</p>}
+            </div>
           </div>
           <p className="m-0 text-sm text-neutral-600">
             {parseDateKey(event.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

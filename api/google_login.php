@@ -1,5 +1,6 @@
 <?php
 require 'db.php';
+require 'activity_log_helper.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 $credential = $data['credential'] ?? '';
@@ -80,6 +81,10 @@ $_SESSION['role'] = $role;
 $_SESSION['full_name'] = $user['full_name'];
 $_SESSION['needs_setup'] = $needsSetup;
 $_SESSION['can_view_statistics'] = $canViewStatistics;
+
+if (in_array($role, ['super_admin', 'admin'], true)) {
+    writeActivityLog($pdo, 'login', 'logged in with Google', 'session', (string) $user['user_id']);
+}
 
 echo json_encode([
     'success' => true,

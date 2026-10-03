@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS booking_requests (
     request_status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
     requested_check_in DATE NULL,
     requested_check_out DATE NULL,
-    requested_guests INT NULL,
+    requested_guests BIGINT UNSIGNED NULL,
     requested_special_requests TEXT NULL,
     payment_amount DECIMAL(10,2) NULL,
     refund_amount DECIMAL(10,2) NULL,

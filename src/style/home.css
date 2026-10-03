@@ -136,9 +136,33 @@ textarea {
   width: min(280px, calc(100vw - 24px));
 }
 
+.header-status-toast {
+  position: fixed;
+  z-index: 4000;
+  bottom: 24px;
+  left: 50%;
+  max-width: calc(100vw - 24px);
+  transform: translateX(-50%);
+}
+
 @media (max-width: 767px) {
   body {
     padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .header-status-toast {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .host-booking-editor-overlay {
+    align-items: center;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 68px 12px calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .host-booking-editor-dialog {
+    max-height: calc(100vh - 144px - env(safe-area-inset-bottom));
   }
 
   .mobile-tabbar {
@@ -148,7 +172,7 @@ textarea {
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     min-height: calc(64px + env(safe-area-inset-bottom));
     padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
     border-top: 1px solid #e8e8e8;
@@ -333,7 +357,33 @@ textarea {
   }
 
   .host-header-menu {
+    top: 48px;
     right: 12px;
+    width: min(210px, calc(100vw - 24px));
+    max-height: calc(100dvh - 84px);
+    overflow-y: auto;
+    padding: 4px 0;
+    border-radius: 12px;
+  }
+
+  .host-header-menu > a,
+  .host-header-menu > button {
+    min-height: 30px;
+    gap: 8px;
+    padding: 6px 11px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .host-header-menu > a svg,
+  .host-header-menu > button svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+  }
+
+  .host-header-menu > hr {
+    margin: 3px 0;
   }
 
   .host-header {
@@ -354,6 +404,10 @@ textarea {
     gap: 8px;
   }
 
+  .host-header__actions > div + div {
+    margin-left: 4px;
+  }
+
   .host-header__actions > div {
     width: 32px;
     height: 32px;
@@ -370,11 +424,15 @@ textarea {
   }
 
   .host-header__actions > .host-header__new-listing {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
     justify-content: center;
     padding: 0;
+  }
+
+  .host-header__new-listing > span:first-child {
+    font-size: 16px;
   }
 
   .host-header__new-listing > span:last-child {

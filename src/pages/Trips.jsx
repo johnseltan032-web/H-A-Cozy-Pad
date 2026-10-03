@@ -189,7 +189,7 @@ function openModificationBox() {
   setModificationForm({
     checkIn: booking.checkIn || "",
     checkOut: booking.checkOut || "",
-    guests: booking.guests || "",
+    guests: booking.guests ?? "",
     specialRequests: "",
     reason: "",
   });
@@ -222,10 +222,16 @@ async function handleModificationRequest() {
   if (
     !modificationForm.checkIn ||
     !modificationForm.checkOut ||
-    !modificationForm.guests ||
+    modificationForm.guests === "" ||
     !String(modificationForm.reason || '').trim()
   ) {
     setError("Please complete the required modification details.");
+    return;
+  }
+
+  const requestedGuestCount = Number(modificationForm.guests);
+  if (!Number.isSafeInteger(requestedGuestCount) || requestedGuestCount < 0) {
+    setError("Guest count must be a nonnegative whole number.");
     return;
   }
 
@@ -306,7 +312,7 @@ async function handleModificationRequest() {
     );
     formData.append(
       "requestedGuests",
-      Number(modificationForm.guests)
+      requestedGuestCount
     );
     formData.append(
       "requestedSpecialRequests",
@@ -734,7 +740,8 @@ const modificationDifference =
 
                 <input
                   type="number"
-                  min="1"
+                  min="0"
+                  step="1"
                   value={modificationForm.guests}
                   onChange={(e) =>
                     setModificationForm((current) => ({
@@ -899,7 +906,9 @@ const modificationDifference =
                     isSubmittingModification ||
                     !modificationForm.checkIn ||
                     !modificationForm.checkOut ||
-                    !modificationForm.guests ||
+                    modificationForm.guests === "" ||
+                    !Number.isSafeInteger(Number(modificationForm.guests)) ||
+                    Number(modificationForm.guests) < 0 ||
                     !modificationForm.reason.trim() ||
                     (modificationDifference > 0 && !proofOfPayment)
                   }

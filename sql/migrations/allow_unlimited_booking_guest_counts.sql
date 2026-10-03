@@ -1,0 +1,5 @@
+ALTER TABLE bookings
+    MODIFY COLUMN num_of_guests BIGINT UNSIGNED NOT NULL DEFAULT 0;
+
+ALTER TABLE booking_requests
+    MODIFY COLUMN requested_guests BIGINT UNSIGNED NULL;

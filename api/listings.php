@@ -18,6 +18,7 @@
             b.google_maps_url,
             u.unit_id,
             u.unit_name,
+            u.unit_number,
             u.description,
             u.max_guests,
             u.rate_per_night,

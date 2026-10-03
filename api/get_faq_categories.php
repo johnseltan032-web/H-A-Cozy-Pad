@@ -8,6 +8,7 @@ try {
         'SELECT
             category_id,
             category_name,
+            category_icon,
             created_at
          FROM faqs_categories
          ORDER BY category_name ASC'
@@ -20,6 +21,7 @@ try {
             return [
                 'categoryId' => (int) $category['category_id'],
                 'categoryName' => $category['category_name'],
+                'categoryIcon' => $category['category_icon'],
                 'createdAt' => $category['created_at']
             ];
         },
