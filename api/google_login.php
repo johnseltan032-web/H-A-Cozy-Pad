@@ -65,6 +65,13 @@ if ($user['contact_num'] === '00000000000') {
 }
 
 $role = strtolower($user['role'] ?? 'customer');
+if ($role === 'customer') {
+    $customerProfile = $pdo->prepare(
+        'INSERT IGNORE INTO customer_profiles (user_id) VALUES (?)'
+    );
+    $customerProfile->execute([$user['user_id']]);
+}
+
 $canViewStatistics = $role === 'super_admin';
 
 if ($role !== 'customer' && !$canViewStatistics) {

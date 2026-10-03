@@ -338,7 +338,7 @@ export default function UserManagement() {
             })}
           </div>
           <div className="hidden overflow-x-auto sm:block">
-          <table className="w-full min-w-[680px] border-collapse">
+          <table className="w-full min-w-[760px] border-collapse">
             <thead>
               <tr className="text-left border-b border-neutral-200">
                 <th className="pb-3 font-semibold text-base">Name</th>
@@ -346,6 +346,7 @@ export default function UserManagement() {
                 <th className="pb-3 font-semibold text-base">Contact</th>
                 <th className="pb-3 font-semibold text-base">Role</th>
                 <th className="pb-3 font-semibold text-base">Created</th>
+                <th className="pb-3 text-right font-semibold text-base">Actions</th>
               </tr>
             </thead>
 
@@ -379,6 +380,19 @@ export default function UserManagement() {
 
                   <td className="py-4 text-base">
                     {new Date(user.created_at).toLocaleDateString()}
+                  </td>
+
+                  <td className="py-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUserId(user.user_id);
+                        setIsUserDetailsOpen(true);
+                      }}
+                      className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-neutral-50"
+                    >
+                      Details
+                    </button>
                   </td>
                 </tr>
               ))}
