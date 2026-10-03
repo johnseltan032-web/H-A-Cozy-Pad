@@ -49,6 +49,8 @@ try {
             bd.vehicle_type,
             bd.special_requests,
 
+            bu.building_name,
+            bu.property_name,
             u.unit_name,
             u.rate_per_night
 
@@ -59,6 +61,9 @@ try {
 
          LEFT JOIN units u
             ON u.unit_id = b.unit_id
+
+         LEFT JOIN buildings bu
+            ON bu.building_id = u.building_id
 
          WHERE b.customer_id = ?
 
@@ -74,6 +79,7 @@ try {
             return [
                 'bookingId' => (int) $booking['booking_id'],
                 'unitId' => (int) $booking['unit_id'],
+                'propertyName' => $booking['property_name'] ?: ($booking['building_name'] ?: $booking['unit_name']),
                 'unitName' => $booking['unit_name'],
                 'ratePerNight' => (float) ($booking['rate_per_night'] ?? 0),
 

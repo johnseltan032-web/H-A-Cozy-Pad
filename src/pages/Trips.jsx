@@ -22,6 +22,20 @@ function GuestIcon() {
   );
 }
 
+function daysUntilCheckIn(checkIn) {
+  const [year, month, day] = String(checkIn || "").slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const checkInDay = Date.UTC(year, month - 1, day);
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.floor((checkInDay - today) / 86400000);
+}
+
+function bookingReference(bookingNumber) {
+  return `#${bookingNumber}`;
+}
+
 const allowedProofImageTypes = new Set([
   "image/jpeg",
   "image/jpg",
@@ -62,11 +76,18 @@ export default function Trips({ onOpenSignIn }) {
 
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const getBookingNumber = (bookingId) => {
+    const bookingIndex = bookings.findIndex(
+      (booking) => booking.bookingId === bookingId
+    );
+    return bookingIndex === -1 ? "" : bookingIndex + 1;
+  };
 
   const [showCancelBox, setShowCancelBox] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
 
+  const [showModificationReminder, setShowModificationReminder] = useState(false);
   const [showModifyBox, setShowModifyBox] = useState(false);
   const [modificationForm, setModificationForm] = useState({
     checkIn: "",
@@ -76,12 +97,14 @@ export default function Trips({ onOpenSignIn }) {
     reason: "",
   });
   const [isSubmittingModification, setIsSubmittingModification] = useState(false);
+  const [modificationRequestError, setModificationRequestError] = useState("");
   const [proofOfPayment, setProofOfPayment] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [requiresSignIn, setRequiresSignIn] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [modificationSuccessMessage, setModificationSuccessMessage] = useState("");
 
   const GUEST_BOOKINGS_KEY = "guest_bookings_cache";
 
@@ -99,22 +122,22 @@ export default function Trips({ onOpenSignIn }) {
   };
 
   useEffect(() => {
+    let isCurrent = true;
+    let latestRequest = 0;
+
     function handleAuthChange(event) {
       if (event.detail?.loggedIn && event.detail?.user) {
         setUser(event.detail.user);
       } else {
         setUser(null);
       }
+      loadBookings();
     }
-
-    fetch(`${API_BASE_URL}/check_auth.php`, { credentials: "include" })
-      .then((response) => response.json())
-      .then((data) => setUser(data.authenticated ? data.user : null))
-      .catch(() => setUser(null));
 
     window.addEventListener("auth-changed", handleAuthChange);
 
     async function loadBookings() {
+      const requestId = ++latestRequest;
       try {
         setIsLoading(true);
         setError("");
@@ -125,6 +148,8 @@ export default function Trips({ onOpenSignIn }) {
 
         const authData = await authResponse.json().catch(() => ({}));
         const isAuthenticated = Boolean(authData.authenticated || authData.user);
+        if (!isCurrent || requestId !== latestRequest) return;
+        setUser(isAuthenticated ? authData.user : null);
 
         if (!isAuthenticated) {
           const cachedGuestBookings = readGuestBookings();
@@ -142,6 +167,7 @@ export default function Trips({ onOpenSignIn }) {
         );
 
         const data = await response.json();
+        if (!isCurrent || requestId !== latestRequest) return;
 
         if (response.status === 401) {
           const cachedGuestBookings = readGuestBookings();
@@ -157,16 +183,20 @@ export default function Trips({ onOpenSignIn }) {
         setRequiresSignIn(false);
         setBookings(data.bookings || []);
       } catch (err) {
+        if (!isCurrent || requestId !== latestRequest) return;
         console.error("Trips error:", err);
         setError(err.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent && requestId === latestRequest) setIsLoading(false);
       }
     }
 
     loadBookings();
 
-    return () => window.removeEventListener("auth-changed", handleAuthChange);
+    return () => {
+      isCurrent = false;
+      window.removeEventListener("auth-changed", handleAuthChange);
+    };
   }, []);
 
 function openModificationBox() {
@@ -182,8 +212,9 @@ function openModificationBox() {
     return;
   }
 
-  setError("");
+  setModificationRequestError("");
   setSuccessMessage("");
+  setModificationSuccessMessage("");
   setProofOfPayment(null);
 
   setModificationForm({
@@ -203,6 +234,7 @@ function closeModificationBox() {
   }
 
   setShowModifyBox(false);
+  setModificationRequestError("");
   setProofOfPayment(null);
 
   setModificationForm({
@@ -225,18 +257,18 @@ async function handleModificationRequest() {
     modificationForm.guests === "" ||
     !String(modificationForm.reason || '').trim()
   ) {
-    setError("Please complete the required modification details.");
+    setModificationRequestError("Please complete the required modification details.");
     return;
   }
 
   const requestedGuestCount = Number(modificationForm.guests);
   if (!Number.isSafeInteger(requestedGuestCount) || requestedGuestCount < 0) {
-    setError("Guest count must be a nonnegative whole number.");
+    setModificationRequestError("Guest count must be a nonnegative whole number.");
     return;
   }
 
   if (modificationForm.checkOut <= modificationForm.checkIn) {
-    setError("Check-out date must be after check-in date.");
+    setModificationRequestError("Check-out date must be after check-in date.");
     return;
   }
 
@@ -245,7 +277,7 @@ async function handleModificationRequest() {
   );
 
   if (!booking) {
-    setError("Unable to find the selected booking.");
+    setModificationRequestError("Unable to find the selected booking.");
     return;
   }
 
@@ -276,7 +308,7 @@ async function handleModificationRequest() {
   const difference = (newNights - oldNights) * ratePerNight;
 
   if (difference > 0 && !proofOfPayment) {
-    setError("Please upload your proof of payment for the additional amount.");
+    setModificationRequestError("Please upload your proof of payment for the additional amount.");
     return;
   }
 
@@ -284,14 +316,14 @@ async function handleModificationRequest() {
     const validationError = validateProofImage(proofOfPayment);
 
     if (validationError) {
-      setError(validationError);
+      setModificationRequestError(validationError);
       return;
     }
   }
 
   try {
     setIsSubmittingModification(true);
-    setError("");
+    setModificationRequestError("");
     setSuccessMessage("");
 
     const formData = new FormData();
@@ -366,14 +398,14 @@ async function handleModificationRequest() {
     });
 
     if (difference > 0) {
-      setSuccessMessage(
+      setModificationSuccessMessage(
         `Modification request submitted. Additional payment of PHP ${difference.toLocaleString(
           "en-PH",
           { minimumFractionDigits: 2 }
         )} has been submitted for verification.`
       );
     } else if (difference < 0) {
-      setSuccessMessage(
+      setModificationSuccessMessage(
         `Modification request submitted. You are eligible for a refund of PHP ${Math.abs(
           difference
         ).toLocaleString("en-PH", {
@@ -381,13 +413,13 @@ async function handleModificationRequest() {
         })}. Please wait for the owner to process the refund.`
       );
     } else {
-      setSuccessMessage(
-        `Modification request for booking #${selectedBooking} has been submitted.`
+      setModificationSuccessMessage(
+        `Modification request for booking ${bookingReference(getBookingNumber(selectedBooking))} has been submitted.`
       );
     }
   } catch (err) {
     console.error("Modification request error:", err);
-    setError(err.message);
+    setModificationRequestError(err.message);
   } finally {
     setIsSubmittingModification(false);
   }
@@ -484,7 +516,7 @@ const modificationDifference =
       setShowCancelBox(false);
       setCancelReason("");
       setSuccessMessage(
-        `Booking #${selectedBooking} has been cancelled successfully.`
+        `Booking ${bookingReference(getBookingNumber(selectedBooking))} has been cancelled successfully.`
       );
     } catch (err) {
       console.error("Cancel booking error:", err);
@@ -519,7 +551,7 @@ const modificationDifference =
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="mb-1 text-sm font-medium text-gray-600 transition hover:text-black"
+              className="inline-flex shrink-0 items-center justify-center rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm transition hover:bg-neutral-100 cursor-pointer"
             >
               <span aria-hidden="true">←</span> Back to home
             </button>
@@ -562,7 +594,7 @@ const modificationDifference =
                 <span className="text-xs text-gray-500">{bookings.length} total</span>
               </div>
               <div className="space-y-3">
-                {bookings.map((booking) => (
+                {bookings.map((booking, index) => (
                   <label
                     key={booking.bookingId}
                     className={`block cursor-pointer rounded-xl border bg-white p-4 transition hover:border-gray-400 ${
@@ -579,8 +611,8 @@ const modificationDifference =
                         className="mt-1 h-4 w-4 accent-black"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">Booking #{booking.bookingId}</p>
-                        <p className="mt-1 truncate text-sm text-gray-600">{booking.unitName || "Cozy Pad stay"}</p>
+                        <p className="text-sm font-semibold">Booking {bookingReference(index + 1)}</p>
+                        <p className="mt-1 truncate text-sm text-gray-600">{booking.propertyName || booking.unitName || "Cozy Pad stay"}</p>
                         <p className="mt-3 text-xs text-gray-500">{booking.checkIn} - {booking.checkOut}</p>
                       </div>
                     </div>
@@ -597,8 +629,8 @@ const modificationDifference =
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-7">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Booking #{booking.bookingId}</p>
-                          <h2 className="mt-2 text-3xl font-semibold tracking-tight">{booking.unitName || "Your Cozy Pad stay"}</h2>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Booking {bookingReference(getBookingNumber(booking.bookingId))}</p>
+                          <h2 className="mt-2 text-3xl font-semibold tracking-tight">{booking.propertyName || booking.unitName || "Your Cozy Pad stay"}</h2>
                         </div>
                         <span className="rounded-full bg-[#fff0c2] px-3 py-1.5 text-xs font-semibold capitalize text-[#765400]">{booking.status.replaceAll("_", " ")}</span>
                       </div>
@@ -614,8 +646,31 @@ const modificationDifference =
                         {booking.vehicleType && <p><span className="text-gray-500">Vehicle</span><br /><span className="mt-1 inline-block font-medium">{booking.vehicleType}</span></p>}
                       </div>
 
-                      <div className="flex flex-wrap gap-3">
-                        <button type="button" onClick={openModificationBox} className="rounded-lg bg-black px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800">Request to change</button>
+                      <div className="flex flex-wrap items-start gap-3">
+                        {(() => {
+                          const eligibleToReschedule = daysUntilCheckIn(booking.checkIn) >= 15;
+                          return (
+                            <div>
+                              {!eligibleToReschedule && (
+                                <p className="mb-2 max-w-sm text-sm text-amber-700" role="status">
+                                  Rescheduling is available only at least 15 days before check-in.
+                                </p>
+                              )}
+                              <button
+                                type="button"
+                                disabled={!eligibleToReschedule}
+                                onClick={() => setShowModificationReminder(true)}
+                                className={`rounded-lg px-5 py-3 text-sm font-semibold transition ${
+                                  eligibleToReschedule
+                                    ? "bg-black text-white hover:bg-gray-800"
+                                    : "cursor-not-allowed bg-gray-200 text-gray-500"
+                                }`}
+                              >
+                                Request to change
+                              </button>
+                            </div>
+                          );
+                        })()}
                         <button type="button" onClick={() => { setError(""); setSuccessMessage(""); setShowCancelBox(true); }} className="rounded-lg border border-gray-300 px-5 py-3 text-sm font-semibold transition hover:border-red-500 hover:text-red-600">Cancel booking</button>
                       </div>
                     </>
@@ -638,7 +693,7 @@ const modificationDifference =
               </h2>
 
               <p className="mt-2 text-sm text-gray-600">
-                Are you sure you want to cancel booking #{selectedBooking}?
+                Are you sure you want to cancel booking {bookingReference(getBookingNumber(selectedBooking))}?
               </p>
 
               <label className="mt-5 block text-sm font-medium text-gray-700">
@@ -682,16 +737,77 @@ const modificationDifference =
           </div>
         )}
 
+        {showModificationReminder && (
+          <div
+            className="fixed inset-0 z-[4000] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modification-reminder-title"
+          >
+            <section className="max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-7">
+              <h2 id="modification-reminder-title" className="text-xl font-semibold text-gray-900">
+                Rescheduling policy
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Please review these terms before requesting a booking change:
+              </p>
+              <ul className="mt-5 space-y-3 text-sm leading-6 text-gray-700">
+                <li><strong>15-day notice:</strong> Rescheduling requests must be made at least 15 days before check-in.</li>
+                <li><strong>Same length of stay:</strong> The number of nights must remain the same.</li>
+                <li><strong>Subject to availability:</strong> The original unit is not guaranteed for your new dates.</li>
+                <li><strong>Rates may change:</strong> New dates may have different rates, including weekends, holidays, and peak seasons.</li>
+                <li><strong>Non-refundable cancellations:</strong> Cancelled bookings are non-refundable.</li>
+              </ul>
+              <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+                The host may have turned down other inquiries to reserve your dates. Changes made close to check-in can make those dates difficult to rebook.
+              </p>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModificationReminder(false)}
+                  className="w-full rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                >
+                  Go back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModificationReminder(false);
+                    openModificationBox();
+                  }}
+                  className="w-full rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
+                >
+                  Continue
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
         {showModifyBox && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
-            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6">
+          <div
+            className="host-booking-editor-overlay fixed inset-0 z-[4000] flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modify-booking-title"
+          >
+            <div className="host-booking-editor-dialog max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
               <h2 className="text-xl font-semibold">
-                Request to change booking
+                <span id="modify-booking-title">Request to change booking</span>
               </h2>
 
               <p className="mt-2 text-sm text-gray-600">
                 Submit the changes you would like the owner to review.
               </p>
+
+              {modificationRequestError && (
+                <p
+                  className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                  role="alert"
+                >
+                  {modificationRequestError}
+                </p>
+              )}
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
                 <div>
@@ -847,12 +963,12 @@ const modificationDifference =
 
         if (validationError) {
           setProofOfPayment(null);
-          setError(validationError);
+          setModificationRequestError(validationError);
           e.target.value = "";
           return;
         }
 
-        setError("");
+        setModificationRequestError("");
         setProofOfPayment(selectedFile);
       }}
       disabled={isSubmittingModification}
@@ -920,6 +1036,43 @@ const modificationDifference =
                     : "Submit request"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {modificationSuccessMessage && (
+          <div
+            className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modification-success-title"
+          >
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 text-center shadow-2xl sm:p-7">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m5 12 4 4L19 6" />
+                </svg>
+              </div>
+              <h2 id="modification-success-title" className="text-xl font-semibold text-gray-900">
+                Request submitted
+              </h2>
+              <p className="mt-2 text-sm text-gray-500">{modificationSuccessMessage}</p>
+              <button
+                type="button"
+                onClick={() => setModificationSuccessMessage("")}
+                className="mt-6 w-full rounded-full bg-gray-900 px-5 py-3 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                Done
+              </button>
             </div>
           </div>
         )}

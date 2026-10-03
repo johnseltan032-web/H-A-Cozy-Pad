@@ -135,6 +135,17 @@ try {
         exit;
     }
 
+    if (
+        $requestType === 'modification' &&
+        $bookingData['check_in_date'] < (new DateTimeImmutable('today'))->modify('+15 days')->format('Y-m-d')
+    ) {
+        http_response_code(409);
+        echo json_encode([
+            'error' => 'Rescheduling requests must be submitted at least 15 days before the original check-in date.'
+        ]);
+        exit;
+    }
+
     $existingRequest = $pdo->prepare(
         'SELECT request_id
          FROM booking_requests

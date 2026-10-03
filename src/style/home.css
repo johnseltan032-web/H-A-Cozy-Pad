@@ -34,6 +34,12 @@ textarea {
   outline: none;
 }
 
+.auth-modal input:focus,
+.auth-modal input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .booking-input:focus,
 .booking-input:focus-visible {
   outline: none !important;

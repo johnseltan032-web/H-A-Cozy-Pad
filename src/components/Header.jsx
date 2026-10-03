@@ -96,12 +96,6 @@ export default function Header({
           </li>
 
           <li>
-            <Link to="/" className="text-xl hover:underline">
-              Homes
-            </Link>
-          </li>
-
-          <li>
             <Link to="/trips" className="text-xl hover:underline">
               Reservations
             </Link>

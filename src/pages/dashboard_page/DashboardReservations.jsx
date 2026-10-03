@@ -460,7 +460,7 @@ export default function DashboardReservations() {
             Loading customer bookings...
           </p>
         ) : visibleReservations.length > 0 ? (
-          <div className="grid w-full max-w-5xl grid-cols-[repeat(auto-fit,minmax(min(100%,300px),300px))] justify-center gap-4 lg:gap-5">
+          <div className="grid w-full max-w-5xl grid-cols-2 justify-center gap-2 sm:grid-cols-[repeat(auto-fit,minmax(min(100%,300px),300px))] sm:gap-4 lg:gap-5">
             {visibleReservations.map((reservation) => {
               const isUpdating =
                 updatingBookingId === reservation.booking_id;
@@ -492,26 +492,26 @@ export default function DashboardReservations() {
               return (
                 <article
                   key={reservation.booking_id}
-                  className="w-full max-w-[300px] rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:max-w-[340px] md:p-5"
+                  className="min-w-0 w-full rounded-xl border border-neutral-200 bg-white p-2.5 shadow-sm sm:max-w-[300px] sm:rounded-2xl sm:p-4 md:max-w-[340px] md:p-5"
                 >
-                  <div className="mb-5 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  <div className="mb-2 flex min-w-0 flex-col items-start gap-2 sm:mb-5 sm:flex-row sm:justify-between sm:gap-3">
+                    <div className="min-w-0">
+                      <p className="hidden text-xs font-medium uppercase tracking-wide text-neutral-500 sm:block">
                         Booked property
                       </p>
 
-                      <h2 className="mt-1 text-lg font-semibold">
+                      <h2 className="line-clamp-1 text-sm font-semibold sm:mt-1 sm:text-lg">
                         {reservation.building_name}
                       </h2>
 
-                      <p className="text-sm text-neutral-600">
+                      <p className="hidden text-sm text-neutral-600 sm:block">
                         {reservation.unit_name} ·{' '}
                         {reservation.location}
                       </p>
                     </div>
 
                     <span
-                      className={`flex min-h-7 min-w-[118px] shrink-0 items-center justify-center rounded-full px-3 py-1 text-center text-xs font-semibold capitalize ${
+                      className={`flex min-h-5 max-w-full shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-center text-[10px] font-semibold capitalize sm:min-h-7 sm:min-w-[118px] sm:px-3 sm:py-1 sm:text-xs ${
                         statusClasses[reservation.status] ||
                         'bg-neutral-100 text-neutral-700'
                       }`}
@@ -520,8 +520,8 @@ export default function DashboardReservations() {
                     </span>
                   </div>
 
-                  <div className="grid gap-3 border-t border-neutral-100 pt-4 text-sm text-neutral-600 sm:grid-cols-2">
-                    <div>
+                  <div className="grid gap-1.5 border-t border-neutral-100 pt-2 text-xs text-neutral-600 sm:grid-cols-2 sm:gap-3 sm:pt-4 sm:text-sm">
+                    <div className="hidden sm:block">
                       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
                         Booking ID
                       </p>
@@ -530,18 +530,18 @@ export default function DashboardReservations() {
                       </p>
                     </div>
 
-                    <div>
-                      <p className="font-semibold text-neutral-900">
+                    <div className="min-w-0">
+                      <p className="hidden font-semibold text-neutral-900 sm:block">
                         Stay dates
                       </p>
 
-                      <p>
+                      <p className="line-clamp-1 text-[11px] sm:text-sm">
                         {formatDate(reservation.check_in_date)} to{' '}
                         {formatDate(reservation.check_out_date)}
                       </p>
                     </div>
 
-                    <div>
+                    <div className="hidden sm:block">
                       <p className="font-semibold text-neutral-900">
                         Customer
                       </p>
@@ -557,7 +557,7 @@ export default function DashboardReservations() {
                       </p>
                     </div>
 
-                    <div>
+                    <div className="hidden sm:block">
                       <p className="font-semibold text-neutral-900">
                         Guests
                       </p>
@@ -571,7 +571,7 @@ export default function DashboardReservations() {
                     </div>
 
                     {reservation.special_requests && (
-                      <div>
+                      <div className="hidden sm:block">
                         <p className="font-semibold text-neutral-900">
                           Special request
                         </p>
@@ -582,27 +582,28 @@ export default function DashboardReservations() {
                   </div>
 
                   {hasModification && (
-                    <div className="mt-5 border-t border-neutral-100 pt-4">
+                    <div className="mt-2 border-t border-neutral-100 pt-2 sm:mt-5 sm:pt-4">
                       <button
                         type="button"
                         onClick={() =>
                           setSelectedModification(reservation)
                         }
-                        className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
+                        className="w-fit max-w-full rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-left text-[11px] font-semibold leading-tight text-amber-900 transition hover:bg-amber-100 sm:w-full sm:px-4 sm:py-3 sm:text-sm"
                       >
-                        View Modification Request
+                        <span className="sm:hidden">View change</span>
+                        <span className="hidden sm:inline">View Modification Request</span>
                       </button>
                     </div>
                   )}
 
                   {canViewCustomer && (
-                    <div className="mt-5 flex w-full flex-wrap justify-center gap-2 border-t border-neutral-100 pt-4 sm:justify-end">
+                    <div className="mt-2 grid w-full grid-cols-2 gap-1.5 border-t border-neutral-100 pt-2 sm:mt-5 sm:flex sm:flex-wrap sm:justify-end sm:gap-2 sm:pt-4">
                       <button
                         type="button"
                         onClick={() =>
                           handleViewCustomer(reservation)
                         }
-                        className="min-w-[112px] flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 sm:flex-none"
+                        className="min-w-0 rounded-lg bg-blue-600 px-1.5 py-2 text-[10px] font-medium leading-tight text-white transition hover:bg-blue-700 sm:min-w-[112px] sm:flex-1 sm:px-3 sm:text-sm sm:leading-normal sm:flex-none"
                       >
                         View Customer
                       </button>
@@ -635,7 +636,7 @@ export default function DashboardReservations() {
                                   });
                                 }
                               }}
-                              className="min-w-[96px] flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                              className="min-w-0 rounded-lg bg-green-600 px-1.5 py-2 text-[10px] font-medium leading-tight text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[96px] sm:flex-1 sm:px-3 sm:text-sm sm:leading-normal sm:flex-none"
                             >
                               {isUpdating
                                 ? 'Updating...'
@@ -669,7 +670,7 @@ export default function DashboardReservations() {
                                   });
                                 }
                               }}
-                              className="min-w-[96px] flex-1 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                              className="min-w-0 rounded-lg border border-red-200 px-1.5 py-2 text-[10px] font-medium leading-tight text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[96px] sm:flex-1 sm:px-3 sm:text-sm sm:leading-normal sm:flex-none"
                             >
                               {isUpdating
                                 ? 'Updating...'
@@ -688,7 +689,7 @@ export default function DashboardReservations() {
                                   reservation.booking_id
                                 )
                               }
-                              className="min-w-[96px] flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                              className="min-w-0 rounded-lg border border-neutral-300 px-1.5 py-2 text-[10px] font-medium leading-tight text-neutral-700 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-[96px] sm:flex-1 sm:px-3 sm:text-sm sm:leading-normal sm:flex-none"
                             >
                               {deletingBookingId === reservation.booking_id
                                 ? 'Removing...'
@@ -723,11 +724,22 @@ export default function DashboardReservations() {
       </main>
 
       {selectedModification && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5 py-6">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/50 px-5 py-6"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closeModificationModal();
+          }}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modification-request-title"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-4 border-b border-neutral-200 p-6">
               <div>
-                <h2 className="text-xl font-semibold text-neutral-900">
+                <h2 id="modification-request-title" className="text-xl font-semibold text-neutral-900">
                   Modification Request
                 </h2>
 
@@ -873,23 +885,32 @@ export default function DashboardReservations() {
                       ).replaceAll('_', ' ')}
                     </p>
 
-                    {selectedModification.modification_proof_of_payment ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleViewModificationPayment(
-                            selectedModification
-                          )
-                        }
-                        className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                      >
-                        Show Payment Proof
-                      </button>
-                    ) : (
+                    {!selectedModification.modification_proof_of_payment && (
                       <p className="mt-3 text-sm font-medium text-red-600">
                         No payment proof uploaded.
                       </p>
                     )}
+                  </div>
+                )}
+
+                {selectedModification.modification_proof_of_payment && (
+                  <div className="rounded-xl border border-neutral-200 p-4">
+                    <p className="mb-3 text-sm font-semibold text-neutral-900">
+                      Modification Proof of Payment
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleViewModificationPayment(selectedModification)}
+                      className="block w-full cursor-zoom-in rounded-lg bg-neutral-50 p-2 transition hover:bg-neutral-100"
+                      aria-label="View full modification proof of payment"
+                    >
+                      <img
+                        src={buildAssetUrl(selectedModification.modification_proof_of_payment)}
+                        alt="Modification proof of payment"
+                        className="mx-auto max-h-72 w-full rounded-md object-contain"
+                        loading="lazy"
+                      />
+                    </button>
                   </div>
                 )}
 
@@ -1081,7 +1102,7 @@ export default function DashboardReservations() {
       )}
 
       {(customerInfo || isCustomerLoading || customerError) && (
-        <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 px-5">
+        <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/40 px-5">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-neutral-900">
               Customer Information
@@ -1244,11 +1265,22 @@ export default function DashboardReservations() {
       )}
 
       {isPaymentProofOpen && (
-        <div className="fixed inset-0 z-[3100] flex items-center justify-center bg-black/60 px-5">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/60 px-5"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) closePaymentProofModal();
+          }}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-proof-title"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-neutral-900">
+                <h2 id="payment-proof-title" className="text-lg font-semibold text-neutral-900">
                   {paymentProofTitle}
                 </h2>
 

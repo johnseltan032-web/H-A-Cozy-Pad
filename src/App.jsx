@@ -62,7 +62,8 @@ export default function App() {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const isListingFlow = location.pathname.startsWith('/host/listing');
+  const isListingFlow =
+    location.pathname === '/host/listing' || location.pathname.startsWith('/host/listing/');
   const isHostDashboard = location.pathname.startsWith('/host/');
 
   const [user, setUser] = useState(null);
@@ -125,8 +126,10 @@ function AppContent() {
     const handleAuthChange = (event) => {
       if (event.detail?.loggedIn && event.detail?.user) {
         setUser(event.detail.user);
-        const fullName = event.detail.user.fullName || event.detail.user.name || event.detail.user.full_name || 'User';
-        setStatusToast(`Welcome, ${fullName}!`);
+        if (!event.detail.suppressWelcomeToast) {
+          const fullName = event.detail.user.fullName || event.detail.user.name || event.detail.user.full_name || 'User';
+          setStatusToast(`Welcome, ${fullName}!`);
+        }
       } else {
         setUser(null);
       }

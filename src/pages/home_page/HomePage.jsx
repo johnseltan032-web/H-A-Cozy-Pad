@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../components/Header';
 import SearchSection from './SearchSection';
@@ -15,7 +15,6 @@ export default function HomePage({
   onLogout,
 }) {
   const [properties, setProperties] = useState([]);
-  const [filteredProperties, setFilteredProperties] = useState([]);
   const [searchParams, setSearchParams] = useState({
     check_in_date: '',
     check_out_date: '',
@@ -23,7 +22,21 @@ export default function HomePage({
   });
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/available_listings.php`, { credentials: 'include' })
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (searchParams.check_in_date && searchParams.check_out_date) {
+      params.set('check_in_date', searchParams.check_in_date);
+      params.set('check_out_date', searchParams.check_out_date);
+    }
+    if (searchParams.num_of_guests != null) {
+      params.set('num_of_guests', searchParams.num_of_guests);
+    }
+    const query = params.toString();
+
+    fetch(`${API_BASE_URL}/available_listings.php${query ? `?${query}` : ''}`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
       .then(async (response) => {
         const text = await response.text();
 
@@ -51,22 +64,21 @@ export default function HomePage({
       })
       .then((data) => {
         setProperties(data);
-        setFilteredProperties(data);
       })
       .catch((error) => {
+        if (error.name === 'AbortError') return;
         console.error(error);
         setProperties([]);
-        setFilteredProperties([]);
       });
-  }, []);
+    return () => controller.abort();
+  }, [searchParams.check_in_date, searchParams.check_out_date, searchParams.num_of_guests]);
 
-  // Filter properties dynamically when search parameters change
-  const handleSearch = (searchParams) => {
-    const { query } = searchParams;
-    setSearchParams(searchParams);
-    const normalizedQuery = query?.trim().toLowerCase();
+  const filteredProperties = useMemo(() => {
+    const normalizedQuery = searchParams.query?.trim().toLowerCase();
+    const guestCount = Number(searchParams.num_of_guests);
+    const hasDateRange = Boolean(searchParams.check_in_date && searchParams.check_out_date);
 
-    const filtered = properties.filter((property) => {
+    return properties.filter((property) => {
       const searchableLocation = [
         property.property_name,
         property.building_name,
@@ -74,11 +86,25 @@ export default function HomePage({
         property.unit_number,
       ].filter(Boolean).join(' ').toLowerCase();
       const matchesQuery = !normalizedQuery || searchableLocation.includes(normalizedQuery);
+      const matchesGuestCount =
+        !Number.isSafeInteger(guestCount) ||
+        guestCount <= 0 ||
+        Number(property.max_guests) >= guestCount;
+      const matchesCheckIn =
+        !hasDateRange ||
+        !property.available_from ||
+        searchParams.check_in_date >= property.available_from;
+      const matchesCheckOut =
+        !hasDateRange ||
+        !property.available_until ||
+        searchParams.check_out_date <= property.available_until;
 
-      return matchesQuery;
+      return matchesQuery && matchesGuestCount && matchesCheckIn && matchesCheckOut;
     });
+  }, [properties, searchParams]);
 
-    setFilteredProperties(filtered);
+  const handleSearch = (params) => {
+    setSearchParams(params);
   };
 
   return (

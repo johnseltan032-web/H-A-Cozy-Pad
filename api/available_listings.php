@@ -1,8 +1,41 @@
 <?php
 
 require 'db.php';
+require 'booking_slot_limit.php';
 
 header('Content-Type: application/json');
+
+$checkIn = trim((string) ($_GET['check_in_date'] ?? ''));
+$checkOut = trim((string) ($_GET['check_out_date'] ?? ''));
+$guestCount = null;
+if (isset($_GET['num_of_guests']) && $_GET['num_of_guests'] !== '') {
+    $guestCount = filter_var($_GET['num_of_guests'], FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1],
+    ]);
+    if ($guestCount === false) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Guest count must be a positive whole number.']);
+        exit;
+    }
+}
+
+if ($checkIn !== '' && $checkOut !== '') {
+    $checkInDate = DateTimeImmutable::createFromFormat('!Y-m-d', $checkIn);
+    $checkInErrors = DateTimeImmutable::getLastErrors();
+    $checkOutDate = DateTimeImmutable::createFromFormat('!Y-m-d', $checkOut);
+    $checkOutErrors = DateTimeImmutable::getLastErrors();
+    $datesValid = $checkInDate && $checkOutDate &&
+        (!$checkInErrors || ($checkInErrors['warning_count'] === 0 && $checkInErrors['error_count'] === 0)) &&
+        (!$checkOutErrors || ($checkOutErrors['warning_count'] === 0 && $checkOutErrors['error_count'] === 0)) &&
+        $checkInDate->format('Y-m-d') === $checkIn &&
+        $checkOutDate->format('Y-m-d') === $checkOut &&
+        $checkOutDate > $checkInDate;
+    if (!$datesValid) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Provide a valid check-in and check-out date range.']);
+        exit;
+    }
+}
 
 try {
     $tables = $pdo->query("SHOW TABLES LIKE 'buildings'")->fetchColumn();
@@ -83,6 +116,45 @@ try {
     );
 
     $listings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($guestCount !== null && $guestCount > 0) {
+        $listings = array_values(array_filter(
+            $listings,
+            static fn ($listing) => (int) $listing['max_guests'] >= $guestCount
+        ));
+    }
+
+    if ($checkIn !== '' && $checkOut !== '') {
+        $blockedQuery = $pdo->prepare(
+            'SELECT 1
+             FROM unit_blocked_dates
+             WHERE unit_id = ?
+               AND blocked_from <= ?
+               AND blocked_until >= ?
+             LIMIT 1'
+        );
+        $availableListings = [];
+        foreach ($listings as $listing) {
+            if (
+                (!empty($listing['available_from']) && $checkIn < $listing['available_from']) ||
+                (!empty($listing['available_until']) && $checkOut > $listing['available_until'])
+            ) {
+                continue;
+            }
+
+            $blockedQuery->execute([$listing['unit_id'], $checkOut, $checkIn]);
+            if ($blockedQuery->fetchColumn() || !hasBookingSlotForRange(
+                $pdo,
+                (int) $listing['unit_id'],
+                $checkIn,
+                $checkOut
+            )) {
+                continue;
+            }
+
+            $availableListings[] = $listing;
+        }
+        $listings = $availableListings;
+    }
 
     foreach ($listings as &$listing) {
         $listing['bedroom_details'] = json_decode($listing['bedroom_details'] ?? '[]', true) ?: [];

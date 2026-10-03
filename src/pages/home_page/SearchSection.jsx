@@ -18,7 +18,7 @@ export default function SearchSection({ onSearch }) {
   const today = new Date().toISOString().split('T')[0];
   const [checkInDate, setCheckInDate] = useState(today);
   const [checkOutDate, setCheckOutDate] = useState('');
-  const [numOfGuests, setNumOfGuests] = useState(1);
+  const [numOfGuests, setNumOfGuests] = useState('1');
   const [isNearbyOpen, setIsNearbyOpen] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState('');
   const nearbyRef = useRef(null);
@@ -51,7 +51,7 @@ export default function SearchSection({ onSearch }) {
     }
 
     const guestCount = Number(numOfGuests);
-    if (!Number.isSafeInteger(guestCount) || guestCount < 0) {
+    if (!Number.isSafeInteger(guestCount) || guestCount < 1) {
       return;
     }
 
@@ -59,7 +59,20 @@ export default function SearchSection({ onSearch }) {
       query: selectedDestination === 'Other' ? '' : selectedDestination,
       check_in_date: checkInDate,
       check_out_date: checkOutDate,
-      num_of_guests: selectedDestination === 'Other' ? null : guestCount,
+      num_of_guests: guestCount,
+    });
+  };
+
+  const handleResetSearch = () => {
+    setCheckInDate(today);
+    setCheckOutDate('');
+    setNumOfGuests('1');
+    setSelectedDestination('');
+    onSearch?.({
+      query: '',
+      check_in_date: today,
+      check_out_date: '',
+      num_of_guests: 1,
     });
   };
 
@@ -78,7 +91,7 @@ export default function SearchSection({ onSearch }) {
             onClick={() => setIsNearbyOpen((open) => !open)}
             className="flex min-h-11 items-center rounded-md bg-transparent px-1 hover:bg-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700"
           >
-            <img src={logo} alt="H&A Cozy Pad" className="h-12 w-auto" />
+            <img src={logo} alt="H&A Cozy Pad" className="h-12 w-auto lg:h-20" />
           </button>
 
           {isNearbyOpen && (
@@ -112,7 +125,7 @@ export default function SearchSection({ onSearch }) {
                           query: destination === 'Other' ? '' : destination,
                           check_in_date: checkInDate,
                           check_out_date: checkOutDate,
-                          num_of_guests: destination === 'Other' ? null : numOfGuests,
+                          num_of_guests: numOfGuests,
                         });
                       }}
                       className="w-full rounded-md px-2 py-1.5 text-left hover:bg-neutral-100 aria-pressed:bg-pink-50 aria-pressed:font-semibold"
@@ -183,22 +196,32 @@ export default function SearchSection({ onSearch }) {
               <input
                 id="num_of_guests"
                 type="number"
-                min="0"
+                min="1"
                 step="1"
+                required
                 value={numOfGuests}
-                onChange={(event) => setNumOfGuests(Number(event.target.value))}
+                onChange={(event) => setNumOfGuests(event.target.value)}
                 className="search-field min-w-0 text-xs md:text-sm font-medium text-neutral-700 bg-transparent outline-none w-full"
               />
             </div>
           </div>
         </div>
 
-        <button
-          type="submit"
-          className="mt-1 rounded-full border border-[#ca635a] bg-[#df766c] px-12 py-3 text-base font-semibold text-white hover:bg-[#bd584f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd584f]"
-        >
-          SEARCH
-        </button>
+        <div className="mt-1 flex w-full flex-wrap items-center justify-center gap-3">
+          <button
+            type="submit"
+            className="rounded-full border border-[#ca635a] bg-[#df766c] px-12 py-3 text-base font-semibold text-white hover:bg-[#bd584f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#bd584f]"
+          >
+            SEARCH
+          </button>
+          <button
+            type="button"
+            onClick={handleResetSearch}
+            className="rounded-full border border-neutral-400 bg-white px-12 py-3 text-base font-semibold text-neutral-700 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700"
+          >
+            Reset filter
+          </button>
+        </div>
       </form>
     </section>
   );

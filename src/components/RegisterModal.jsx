@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { API_BASE_URL } from '../lib/api';
 import GoogleAuthButton from './GoogleAuthButton';
+
+function parseJsonResponse(text) {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return null;
+  }
+}
 
 export default function RegisterModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -12,6 +20,13 @@ export default function RegisterModal({ isOpen, onClose }) {
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setRegistrationSuccess(false);
+    setError('');
+    onClose();
+  }, [onClose]);
 
   // Lock body scroll and register escape key (from register.js)
   useEffect(() => {
@@ -19,7 +34,7 @@ export default function RegisterModal({ isOpen, onClose }) {
 
     document.body.classList.add('overflow-hidden');
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') handleClose();
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -27,9 +42,36 @@ export default function RegisterModal({ isOpen, onClose }) {
       document.body.classList.remove('overflow-hidden');
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
+
+  const completeRegistration = (user) => {
+    if (!user) {
+      throw new Error('Account was created, but sign-in could not be confirmed. Please log in.');
+    }
+
+    window.dispatchEvent(new CustomEvent('auth-changed', {
+      detail: { loggedIn: true, user, suppressWelcomeToast: true },
+    }));
+    setRegistrationSuccess(true);
+  };
+
+  const signInRegisteredUser = async () => {
+    const response = await fetch(`${API_BASE_URL}/login.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        identifier: formData.email,
+        password: formData.password,
+      }),
+    });
+    const responseText = await response.text();
+    const data = parseJsonResponse(responseText);
+
+    return response.ok && data?.success && data.user ? data.user : null;
+  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -44,43 +86,50 @@ export default function RegisterModal({ isOpen, onClose }) {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/register.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          fullName: `${formData.firstName} ${formData.lastName}`.trim(),
-          email: formData.email,
-          contactNum: formData.contactNum,
-          password: formData.password,
-        }),
-      });
-      const responseText = await res.text();
-      let data = {};
-
+      let res;
       try {
-        data = responseText ? JSON.parse(responseText) : {};
-      } catch {
-        if (res.ok) {
-          onClose();
+        res = await fetch(`${API_BASE_URL}/register.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            fullName: `${formData.firstName} ${formData.lastName}`.trim(),
+            email: formData.email,
+            contactNum: formData.contactNum,
+            password: formData.password,
+          }),
+        });
+      } catch (registrationError) {
+        const user = await signInRegisteredUser();
+        if (user) {
+          completeRegistration(user);
           return;
         }
+        throw registrationError;
       }
 
-      if (res.status === 409) {
-        setError(data.error || 'An account with this email already exists. Please log in instead.');
+      const responseText = await res.text();
+      const data = parseJsonResponse(responseText);
+
+      if (!res.ok || !data?.success || !data.user) {
+        const user = await signInRegisteredUser();
+        if (user) {
+          completeRegistration(user);
+          return;
+        }
+
+        if (res.status === 409) {
+          setError('An account with this email already exists. Log in with its password instead.');
+          return;
+        }
+
+        setError(data?.error || 'Unable to confirm registration or sign in. Please try again.');
         return;
       }
 
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong. Please try again.');
-        return;
-      }
-
-      console.log('Registered:', data.user);
-      onClose();
-    } catch {
-      setError('Could not reach the server. Is XAMPP running?');
+      completeRegistration(data.user);
+    } catch (registrationError) {
+      setError(registrationError.message || 'Could not reach the server. Is XAMPP running?');
     } finally {
       setIsSubmitting(false);
     }
@@ -88,17 +137,45 @@ export default function RegisterModal({ isOpen, onClose }) {
 
   return (
     <div
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
+      onClick={(e) => e.target === e.currentTarget && handleClose()}
+      className="auth-modal fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-[1px] px-4"
     >
-      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-[520px] overflow-y-auto rounded-[25px] bg-white px-5 py-7 shadow-xl relative sm:px-12 sm:py-10">
+      <div className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-[25px] bg-white shadow-xl ${registrationSuccess ? 'max-w-md p-5 text-center sm:p-7' : 'max-w-[520px] px-5 py-7 sm:px-12 sm:py-10'}`}>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Close"
           className="absolute top-5 right-6 text-2xl text-neutral-400 hover:text-black leading-none bg-transparent border-0 cursor-pointer"
         >
           &times;
         </button>
+        {registrationSuccess ? (
+          <>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m5 12 4 4L19 6" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-neutral-900">Account registered successfully</h2>
+            <p className="mt-2 text-sm text-neutral-500">You are now logged in and can continue using your account.</p>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="mt-6 w-full rounded-full bg-neutral-900 px-5 py-3 text-sm font-medium text-white hover:bg-neutral-800"
+            >
+              Continue
+            </button>
+          </>
+        ) : (
+          <>
         <h2 className="text-3xl sm:text-4xl font-bold text-center mb-8">Register your account</h2>
 
         <GoogleAuthButton
@@ -115,12 +192,9 @@ export default function RegisterModal({ isOpen, onClose }) {
                 });
                 const data = await res.json();
 
-                if (!res.ok) throw new Error(data.error || 'Google registration failed.');
+                        if (!res.ok || !data.success) throw new Error(data.error || 'Google registration failed.');
 
-                window.dispatchEvent(new CustomEvent('auth-changed', {
-                  detail: { loggedIn: true, user: data.user },
-                }));
-                onClose();
+                        completeRegistration(data.user);
               } catch (registrationError) {
                 setError(registrationError.message || 'Google registration failed.');
               } finally {
@@ -234,6 +308,8 @@ export default function RegisterModal({ isOpen, onClose }) {
             {isSubmitting ? 'Registering...' : 'Agree & Register'}
           </button>
         </form>
+          </>
+        )}
       </div>
     </div>
   );

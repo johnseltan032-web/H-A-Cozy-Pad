@@ -94,8 +94,12 @@ try {
     $bookingSummary = $bookingQuery->fetch(PDO::FETCH_ASSOC);
     $totalBookings = (int) ($bookingSummary['total_bookings'] ?? 0);
 
+    $bookingColumns = $pdo->query("SHOW COLUMNS FROM bookings")->fetchAll(PDO::FETCH_COLUMN);
+    $sourceExpression = in_array('booking_source', $bookingColumns, true)
+        ? "LOWER(TRIM(COALESCE(NULLIF(b.booking_source, ''), 'direct')))"
+        : "'direct'";
     $sourceQuery = $pdo->prepare(
-        "SELECT LOWER(TRIM(COALESCE(NULLIF(b.booking_source, ''), 'direct'))) AS source, COUNT(*) AS bookings
+        "SELECT {$sourceExpression} AS source, COUNT(*) AS bookings
          FROM bookings b
          WHERE b.status NOT IN ('cancelled', 'rejected')
            AND b.check_in_date < ? AND b.check_out_date > ?
