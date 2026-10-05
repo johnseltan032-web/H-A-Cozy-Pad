@@ -66,6 +66,7 @@ try {
 
             b.unit_id,
             b.status AS booking_status,
+            cp.user_id AS customer_user_id,
 
             u.unit_name
 
@@ -76,6 +77,9 @@ try {
 
          JOIN units u
             ON u.unit_id = b.unit_id
+
+         LEFT JOIN customer_profiles cp
+            ON cp.customer_id = b.customer_id
 
          WHERE br.request_id = ?
          AND br.request_type = 'modification'
@@ -115,6 +119,18 @@ try {
         );
 
         $updateRequest->execute([$requestId]);
+
+        if ($request['customer_user_id']) {
+            $notification = $pdo->prepare(
+                "INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
+                 VALUES (?, ?, 'system', ?, 0, NOW())"
+            );
+            $notification->execute([
+                $request['customer_user_id'],
+                $request['booking_id'],
+                'Your request has been rejected.'
+            ]);
+        }
 
         writeActivityLog(
             $pdo,
@@ -291,6 +307,18 @@ try {
     );
 
     $requestUpdate->execute([$requestId]);
+
+    if ($request['customer_user_id']) {
+        $notification = $pdo->prepare(
+            "INSERT INTO notifications (user_id, booking_id, type, message, is_read, sent_at)
+             VALUES (?, ?, 'system', ?, 0, NOW())"
+        );
+        $notification->execute([
+            $request['customer_user_id'],
+            $request['booking_id'],
+            'Your request has been approved.'
+        ]);
+    }
 
     writeActivityLog(
         $pdo,

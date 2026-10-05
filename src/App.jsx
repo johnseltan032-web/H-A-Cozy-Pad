@@ -240,7 +240,7 @@ function AppContent() {
               />
             }
           />
-          <Route path="/host/statistics" element={<DashboardStatistics />} />
+          <Route path="/host/statistics" element={<DashboardStatistics user={user} />} />
           <Route
             element={
               <ProtectedRoute

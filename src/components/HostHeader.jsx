@@ -11,8 +11,8 @@ export default function HostHeader({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [canViewActivityLog, setCanViewActivityLog] = useState(false);
-  const [canViewStatistics, setCanViewStatistics] = useState(false);
 
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
@@ -24,9 +24,11 @@ export default function HostHeader({
     { label: 'Calendar', to: '/host/calendar', key: 'Calendar' },
     { label: 'Reservations', to: '/host/reservations', key: 'Reservations' },
     { label: 'Listings', to: '/host/listings', key: 'Listings' },
-    ...(canViewStatistics
+    ...(isSuperAdmin
       ? [{ label: 'Statistics', to: '/host/statistics', key: 'Statistics' }]
-      : []),
+      : isAdmin
+        ? [{ label: 'Expenses', to: '/host/statistics', key: 'Expenses' }]
+        : []),
   ];
 
   useEffect(() => {
@@ -42,12 +44,12 @@ export default function HostHeader({
         }
 
         setIsAdmin(['admin', 'super_admin'].includes(data.user?.role));
+        setIsSuperAdmin(data.user?.role === 'super_admin');
         setCanViewActivityLog(data.user?.role === 'super_admin');
-        setCanViewStatistics(Boolean(data.user?.can_view_statistics) || data.user?.role === 'super_admin');
       })
       .catch(() => {
         setIsAdmin(false);
-        setCanViewStatistics(false);
+        setIsSuperAdmin(false);
         setCanViewActivityLog(false);
       });
   }, []);
@@ -191,29 +193,6 @@ export default function HostHeader({
               <path d="M9 22V12h6v10" />
             </svg>
             Switch to guest
-          </Link>
-
-          {/* Profile */}
-
-          <Link
-            to="/profile"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center gap-3 max-md:gap-2 px-5 max-md:px-4 py-3 max-md:py-2 text-base max-md:text-sm font-medium hover:bg-neutral-100 text-black no-underline"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5 max-md:w-4 max-md:h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-            </svg>
-            Profile
           </Link>
 
 <Link

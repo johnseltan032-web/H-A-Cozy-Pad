@@ -11,19 +11,13 @@ header('Content-Type: application/json');
 
 $data = $_POST ?: (json_decode(file_get_contents('php://input'), true) ?? []);
 
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Only customer accounts can make bookings.']);
-    exit;
-}
-
-if (strtolower($_SESSION['role'] ?? '') !== 'customer') {
+if (isset($_SESSION['user_id']) && strtolower($_SESSION['role'] ?? '') !== 'customer') {
     http_response_code(403);
     echo json_encode(['error' => 'Only customer accounts can make bookings.']);
     exit;
 }
 
-$isGuestCheckout = false;
+$isGuestCheckout = !isset($_SESSION['user_id']);
 
 $unitId = (int) ($data['unitId'] ?? 0);
 $checkIn = trim($data['checkIn'] ?? '');
@@ -94,12 +88,6 @@ if ($checkInDate < $today) {
 try {
     $customerId = null;
     if (!$isGuestCheckout) {
-        if (strtolower($_SESSION['role'] ?? '') !== 'customer') {
-            http_response_code(403);
-            echo json_encode(['error' => 'Only customer accounts can make bookings']);
-            exit;
-        }
-
         $customer = $pdo->prepare(
             'SELECT customer_id FROM customer_profiles WHERE user_id = ?'
         );

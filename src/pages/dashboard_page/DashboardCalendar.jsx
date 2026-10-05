@@ -166,6 +166,29 @@ function dateEvents(events, date) {
   return events.filter((event) => event.startDate <= date && date < event.endDateExclusive);
 }
 
+function displayEndDateExclusive(event) {
+  return ['booking', 'modification'].includes(event.source)
+    ? dateKey(addDays(parseDateKey(event.endDateExclusive), 1))
+    : event.endDateExclusive;
+}
+
+function eventsInLanes(events) {
+  const laneEndDates = [];
+
+  return [...events]
+    .sort((first, second) =>
+      first.startDate.localeCompare(second.startDate) ||
+      displayEndDateExclusive(first).localeCompare(displayEndDateExclusive(second)) ||
+      first.id.localeCompare(second.id)
+    )
+    .map((event) => {
+      let lane = laneEndDates.findIndex((endDate) => endDate <= event.startDate);
+      if (lane === -1) lane = laneEndDates.length;
+      laneEndDates[lane] = displayEndDateExclusive(event);
+      return { event, lane };
+    });
+}
+
 function monthWeeks(date) {
   const first = new Date(date.getFullYear(), date.getMonth(), 1);
   const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
@@ -1157,7 +1180,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
     return (
       <div className="overflow-x-auto rounded-lg border border-neutral-200">
         <div className="min-w-[920px]">
-          <div className="grid border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(36px, 1fr))' }}>
+          <div className="grid border-b border-neutral-200 bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(56px, 1fr))' }}>
             <div className="border-r border-neutral-200 px-2 py-2 sm:px-3 sm:py-3">Unit</div>
             {monthDayList.map((day) => (
               <div key={dateKey(day)} className={`border-r border-neutral-200 px-1 py-2 text-center sm:px-2 sm:py-3 ${day.getDate() === 1 ? 'font-bold text-neutral-700' : ''}`}>
@@ -1172,11 +1195,13 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
           {units.map((unit) => {
             const unitBookings = events.filter((event) => {
               if (!event.unit_id || event.unit_id !== unit.id) return false;
-              return event.startDate < monthEndKey && event.endDateExclusive > monthStartKey;
+              return event.startDate < monthEndKey && displayEndDateExclusive(event) > monthStartKey;
             });
+            const positionedEvents = eventsInLanes(unitBookings);
+            const rowMinHeight = Math.max(76, positionedEvents.reduce((laneCount, { lane }) => Math.max(laneCount, lane + 1), 0) * 30 + 16);
 
             return (
-              <div key={unit.id} className="grid border-b border-neutral-200 last:border-b-0" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(36px, 1fr))' }}>
+              <div key={unit.id} className="grid border-b border-neutral-200 last:border-b-0" style={{ gridTemplateColumns: '220px repeat(' + monthDayList.length + ', minmax(56px, 1fr))' }}>
                 <button
                   type="button"
                   onClick={() => onSelectDate(null)}
@@ -1186,7 +1211,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                   <div className="mt-1 text-xs text-neutral-500">{unit.building}</div>
                 </button>
 
-                <div className="relative col-span-full grid bg-white" style={{ gridTemplateColumns: `repeat(${monthDayList.length}, minmax(36px, 1fr))`, gridColumn: `2 / ${monthDayList.length + 2}` }}>
+                <div className="relative col-span-full grid bg-white" style={{ gridTemplateColumns: `repeat(${monthDayList.length}, minmax(56px, 1fr))`, gridColumn: `2 / ${monthDayList.length + 2}`, minHeight: `${rowMinHeight}px` }}>
                   {monthDayList.map((day) => {
                     const key = dateKey(day);
                     const isToday = key === dateKey(new Date());
@@ -1202,11 +1227,11 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                     );
                   })}
 
-                  {unitBookings.map((event) => {
+                  {positionedEvents.map(({ event, lane }) => {
                     const startDate = parseDateKey(event.startDate);
-                    const endDate = parseDateKey(event.endDateExclusive);
                     const startOffset = Math.max(0, Math.round((startDate - monthStart) / 86400000));
-                    const endOffset = Math.min(monthDayList.length, Math.round((endDate - monthStart) / 86400000));
+                    const displayEndDate = parseDateKey(displayEndDateExclusive(event));
+                    const endOffset = Math.min(monthDayList.length, Math.round((displayEndDate - monthStart) / 86400000));
                     const leftPercent = (startOffset / monthDayList.length) * 100;
                     const widthPercent = (Math.max(0, endOffset - startOffset) / monthDayList.length) * 100;
 
@@ -1229,6 +1254,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                         style={{
                           left: `${leftPercent}%`,
                           width: `${widthPercent}%`,
+                          transform: lane ? `translateY(${lane * 30}px)` : undefined,
                           ...(event.source === 'booking' ? { backgroundColor: event.color, borderColor: event.color } : {}),
                           whiteSpace: 'nowrap',
                           textOverflow: 'ellipsis',
@@ -1258,29 +1284,30 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
         const weekStartKey = dateKey(week[0]);
         const weekEndKey = dateKey(addDays(week[0], 7));
         const segments = events
-          .filter((event) => event.startDate < weekEndKey && event.endDateExclusive > weekStartKey)
+          .filter((event) => event.startDate < weekEndKey && displayEndDateExclusive(event) > weekStartKey)
           .map((event) => ({
             event,
             startColumn: Math.max(0, daysBetween(weekStartKey, event.startDate)),
-            endColumn: Math.min(7, daysBetween(weekStartKey, event.endDateExclusive)),
+            displayEndColumn: Math.min(7, daysBetween(weekStartKey, displayEndDateExclusive(event))),
           }))
-          .filter((segment) => segment.endColumn > segment.startColumn)
-          .sort((first, second) => first.startColumn - second.startColumn || second.endColumn - first.endColumn);
+          .filter((segment) => segment.displayEndColumn > segment.startColumn)
+          .sort((first, second) => first.startColumn - second.startColumn || second.displayEndColumn - first.displayEndColumn);
         const laneEnds = [];
         const placedSegments = segments.map((segment) => {
           let lane = laneEnds.findIndex((endColumn) => endColumn <= segment.startColumn);
           if (lane < 0) lane = laneEnds.length;
-          laneEnds[lane] = segment.endColumn;
+          laneEnds[lane] = segment.displayEndColumn;
           return { ...segment, lane };
         });
-        const visibleSegments = placedSegments.filter((segment) => segment.lane < 3);
+        const visibleSegments = placedSegments;
+        const laneCount = Math.max(3, laneEnds.length);
 
         return (
-          <div key={weekStartKey} className="grid grid-cols-7 grid-rows-[30px_repeat(3,22px)] border-b border-neutral-200 last:border-b-0 sm:grid-rows-[34px_repeat(3,25px)]">
+          <div key={weekStartKey} className="grid grid-cols-7 grid-rows-[30px_repeat(var(--calendar-lane-count),22px)] border-b border-neutral-200 last:border-b-0 sm:grid-rows-[34px_repeat(var(--calendar-lane-count),25px)]" style={{ '--calendar-lane-count': laneCount }}>
             {week.map((day, column) => {
               const key = dateKey(day);
-              const dayEvents = dateEvents(events, key);
-              const visibleCount = visibleSegments.filter((segment) => segment.startColumn <= column && segment.endColumn > column).length;
+              const dayEvents = events.filter((event) => event.startDate <= key && key < displayEndDateExclusive(event));
+              const visibleCount = visibleSegments.filter((segment) => segment.startColumn <= column && segment.displayEndColumn > column).length;
               const hiddenCount = dayEvents.length - visibleCount;
               const isOutsideMonth = visibleMonth !== null && day.getMonth() !== visibleMonth;
               return (
@@ -1301,7 +1328,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                 </button>
               );
             })}
-            {visibleSegments.map(({ event, startColumn, endColumn, lane }) => (
+            {visibleSegments.map(({ event, startColumn, displayEndColumn, lane }) => (
               <button
                 key={`${event.id}-${weekStartKey}`}
                 type="button"
@@ -1319,7 +1346,7 @@ function CalendarGrid({ weeks, events, selectedDate, visibleMonth, onSelectDate,
                 }}
                 className={`mx-0.5 my-0.5 min-w-0 overflow-hidden rounded px-0.5 text-left text-[8px] font-medium text-white cursor-pointer sm:px-1 sm:text-[10px] ${event.source === 'google' ? 'bg-neutral-900 hover:bg-neutral-700' : event.source === 'blocked' ? 'bg-amber-600 hover:bg-amber-700' : event.source === 'modification' ? 'bg-violet-700 hover:bg-violet-800' : 'hover:brightness-90'}`}
                 style={{
-                  gridColumn: `${startColumn + 1} / ${endColumn + 1}`,
+                  gridColumn: `${startColumn + 1} / ${displayEndColumn + 1}`,
                   gridRow: lane + 2,
                   ...(event.source === 'booking' ? { backgroundColor: event.color } : {}),
                   whiteSpace: 'nowrap',

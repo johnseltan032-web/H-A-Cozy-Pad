@@ -92,23 +92,19 @@ function SectionTitle({ eyebrow, children }) {
   );
 }
 
-export default function DashboardStatistics() {
+export default function DashboardStatistics({ user }) {
+  const isSuperAdmin = user?.role === 'super_admin';
   const [period, setPeriod] = useState('month');
   const [dateRange, setDateRange] = useState(() => getPresetDates('month'));
   const [interval, setInterval] = useState('week');
+  const [selectedUnitId, setSelectedUnitId] = useState('');
   const [unitSort, setUnitSort] = useState('revenue');
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (period !== 'custom') {
-      setDateRange(getPresetDates(period));
-    }
-  }, [period]);
-
-  useEffect(() => {
-    if (!dateRange.start || !dateRange.end) return;
+    if (!isSuperAdmin || !dateRange.start || !dateRange.end) return;
 
     const controller = new AbortController();
     const loadStatistics = async () => {
@@ -121,6 +117,7 @@ export default function DashboardStatistics() {
           end: dateRange.end,
           interval,
         });
+        if (selectedUnitId) params.set('unit_id', selectedUnitId);
         const response = await fetch(`${API_BASE_URL}/statistics.php?${params}`, {
           credentials: 'include',
           signal: controller.signal,
@@ -143,7 +140,7 @@ export default function DashboardStatistics() {
 
     loadStatistics();
     return () => controller.abort();
-  }, [dateRange, interval]);
+  }, [dateRange, interval, isSuperAdmin, selectedUnitId]);
 
   const metrics = report?.metrics;
   const maxRevenue = useMemo(
@@ -151,13 +148,15 @@ export default function DashboardStatistics() {
     [report]
   );
   const sortedUnits = useMemo(() => {
-    const units = [...(report?.units || [])];
+    const units = (report?.units || []).filter((unit) =>
+      !selectedUnitId || String(unit.unitId) === selectedUnitId
+    );
     const direction = unitSort === 'expenses' ? 1 : -1;
     return units.sort((left, right) =>
       direction * (Number(left[unitSort] || 0) - Number(right[unitSort] || 0)) ||
       left.unitName.localeCompare(right.unitName)
     );
-  }, [report, unitSort]);
+  }, [report, selectedUnitId, unitSort]);
 
   const updateCustomDate = (key, value) => {
     setDateRange((current) => ({ ...current, [key]: value }));
@@ -165,14 +164,14 @@ export default function DashboardStatistics() {
 
   return (
     <div className="min-h-screen bg-neutral-50 font-sans text-neutral-900">
-      <HostHeader activeNav="Statistics" />
+      <HostHeader activeNav={isSuperAdmin ? 'Statistics' : 'Expenses'} />
 
       <main className="mx-auto max-w-7xl space-y-8 px-5 py-8 md:px-10">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="m-0 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-500">Performance</p>
-            <h1 className="mb-0 mt-2 text-3xl font-bold">Statistics</h1>
-            <p className="mb-0 mt-2 text-sm text-neutral-600">Understand revenue, occupancy, bookings, and unit performance over time.</p>
+            <p className="m-0 text-sm font-semibold uppercase tracking-[0.16em] text-neutral-500">{isSuperAdmin ? 'Performance' : 'Financial records'}</p>
+            <h1 className="mb-0 mt-2 text-3xl font-bold">{isSuperAdmin ? 'Statistics' : 'Expense management'}</h1>
+            {isSuperAdmin && <p className="mb-0 mt-2 text-sm text-neutral-600">Understand revenue, occupancy, bookings, and unit performance over time.</p>}
           </div>
           <Link
             to="/host/overview"
@@ -182,6 +181,8 @@ export default function DashboardStatistics() {
           </Link>
         </div>
 
+        {isSuperAdmin && (
+          <>
         <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -189,10 +190,29 @@ export default function DashboardStatistics() {
               <select
                 id="statistics-period"
                 value={period}
-                onChange={(event) => setPeriod(event.target.value)}
+                onChange={(event) => {
+                  const nextPeriod = event.target.value;
+                  setPeriod(nextPeriod);
+                  if (nextPeriod !== 'custom') setDateRange(getPresetDates(nextPeriod));
+                }}
                 className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm lg:w-52"
               >
                 {periodOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="statistics-unit" className="mb-2 block text-sm font-medium text-neutral-700">Unit</label>
+              <select
+                id="statistics-unit"
+                value={selectedUnitId}
+                onChange={(event) => setSelectedUnitId(event.target.value)}
+                className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm lg:w-52"
+              >
+                <option value="">All units</option>
+                {(report?.units || []).map((unit) => (
+                  <option key={unit.unitId} value={unit.unitId}>{unit.unitName}</option>
+                ))}
               </select>
             </div>
 
@@ -327,6 +347,8 @@ export default function DashboardStatistics() {
             </section>
           </>
         ) : null}
+          </>
+        )}
 
         <section aria-labelledby="unit-expenses-heading" className="rounded-2xl border border-neutral-200 bg-neutral-100/70 p-4 md:p-6">
           <div className="mb-5">

@@ -206,6 +206,7 @@ export default function AdditionalInformation({
 
   const booking = location.state || {};
   const isCustomer = String(user?.role || '').toLowerCase() === 'customer';
+  const canMakeBooking = !user || isCustomer;
   const bookingProperties = Array.isArray(booking.properties) && booking.properties.length > 0
     ? booking.properties
     : [booking.property || {}];
@@ -599,8 +600,8 @@ export default function AdditionalInformation({
 
     if (booking.bookingId) return;
 
-    if (!isCustomer) {
-      setAccountError('Only customer accounts can make bookings.');
+    if (!canMakeBooking) {
+      setAccountError('Please use a customer account or continue as a guest.');
       return;
     }
 
@@ -743,12 +744,12 @@ export default function AdditionalInformation({
             </button>
           </div>
 
-          {!isCustomer && (
+          {user && !isCustomer && (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4" role="alert">
               <p className="text-sm font-semibold text-amber-950">
-                {accountError || 'Only customer accounts can make bookings.'}
+                {accountError || 'Please use a customer account or continue as a guest.'}
               </p>
-              <p className="mt-1 text-sm text-amber-900">Please log in or create a customer account to continue.</p>
+              <p className="mt-1 text-sm text-amber-900">You can sign out to book as a guest, or sign in with a customer account.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" onClick={onOpenSignIn} className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800">Log In</button>
                 <button type="button" onClick={onOpenRegister} className="rounded-full border border-amber-900 px-4 py-2 text-sm font-medium text-amber-950 hover:bg-amber-100">Sign Up</button>
@@ -1151,7 +1152,7 @@ export default function AdditionalInformation({
               disabled={
                 isSubmitting ||
                 Boolean(savedBookingId) ||
-                !isCustomer
+                !canMakeBooking
               }
               className="w-full sm:w-auto sm:mx-auto sm:block md:col-span-2 bg-gray-900 text-white text-sm font-medium rounded-full px-10 py-3 hover:bg-gray-800 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >

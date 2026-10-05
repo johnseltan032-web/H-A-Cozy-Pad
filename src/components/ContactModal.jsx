@@ -198,6 +198,19 @@ export default function ContactModal({ isOpen, onClose }) {
               />
             </Field>
 
+            <p className="-mt-2 text-sm text-neutral-600">
+              Or contact us through our official Facebook page:{' '}
+              <a
+                href="https://www.facebook.com/profile.php?id=61578157439267"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-600"
+              >
+                Visit our Facebook page
+              </a>
+              .
+            </p>
+
             {/* Honeypot: hidden from people, bots tend to fill it */}
             <input
               type="text"
